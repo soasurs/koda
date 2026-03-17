@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import "charm.land/lipgloss/v2"
 
 // foldThreshold is the number of lines above which a tool result is collapsed by default.
 const foldThreshold = 10
@@ -80,28 +80,47 @@ var (
 	toolResultCardFocusedStyle = toolResultCardStyle.
 					BorderForeground(lipgloss.Color("109"))
 
-	// ── focus indicator (shown next to focused foldable message) ─────────────
-	focusIndicatorStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("62")).
-				Bold(true)
-
 	// ── status bar ────────────────────────────────────────────────────────────
 	statusBarStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("250"))
 
-	statusModelStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("153"))
+	// ── input area ────────────────────────────────────────────────────────────
 
-	statusProviderStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("180")).
+	composerOuterStyle = lipgloss.NewStyle().
+				Padding(0, 1)
+
+	composerHeaderStyle = lipgloss.NewStyle().
+				PaddingLeft(1).
+				MarginBottom(1)
+
+	composerHeaderBuildStyle = lipgloss.NewStyle().
+					Foreground(lipgloss.Color("39")).
+					Bold(true)
+
+	composerHeaderPlanStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("214")).
 				Bold(true)
 
-	statusHintStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("238"))
+	composerHeaderMetaStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("244"))
 
-	// ── input area ────────────────────────────────────────────────────────────
-	inputSeparatorStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("237"))
+	composerHeaderDotStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("240"))
+
+	composerInputShellStyle = lipgloss.NewStyle().
+				BorderStyle(lipgloss.NormalBorder()).
+				BorderForeground(lipgloss.Color("240")).
+				Padding(1, 1)
+
+	composerFooterStyle = lipgloss.NewStyle().
+				Padding(0, 1)
+
+	composerFooterHintStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("244"))
+
+	composerFooterKeyStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("252")).
+				Bold(true)
 
 	// ── slash menu ────────────────────────────────────────────────────────────
 	slashMenuBoxStyle = lipgloss.NewStyle().
@@ -169,9 +188,4 @@ var (
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color("240")).
 			Padding(0, 1)
-
-	// ── empty state ───────────────────────────────────────────────────────────
-	emptyStateStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240")).
-			Italic(true)
 )

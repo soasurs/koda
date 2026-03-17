@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	textarea "github.com/jbarrieault/bubble-textarea"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/soasurs/koda/internal/agent"
 
@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	statusBarHeight = 1
 	commandListGap  = 1
+	composerMaxRows = 5
 )
 
 type Model struct {
@@ -57,26 +57,31 @@ func New(rt *agent.Runtime) Model {
 	ta := textarea.New()
 	ta.Placeholder = "Message koda..."
 	ta.Prompt = ""
+	ta.SetVirtualCursor(false)
 	ta.Focus()
 	ta.CharLimit = 0
 	ta.ShowLineNumbers = false
-	ta.SetMaxVisualHeight(5)
+	ta.MaxHeight = 0
 	ta.MaxWidth = 0
-	ta.KeyMap.InsertNewline.SetEnabled(false)
-	ta.FocusedStyle.Base = lipgloss.NewStyle()
-	ta.FocusedStyle.Prompt = lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
-	ta.FocusedStyle.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
-	ta.FocusedStyle.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
-	ta.FocusedStyle.CursorLineNumber = lipgloss.NewStyle()
-	ta.FocusedStyle.EndOfBuffer = lipgloss.NewStyle()
-	ta.BlurredStyle = ta.FocusedStyle
+	ta.SetHeight(1)
+	inputStyles := ta.Styles()
+	inputStyles.Focused.Base = lipgloss.NewStyle()
+	inputStyles.Focused.Prompt = lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+	inputStyles.Focused.Placeholder = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+	inputStyles.Focused.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+	inputStyles.Focused.CursorLine = lipgloss.NewStyle()
+	inputStyles.Focused.CursorLineNumber = lipgloss.NewStyle()
+	inputStyles.Focused.EndOfBuffer = lipgloss.NewStyle()
+	inputStyles.Blurred = inputStyles.Focused
+	ta.SetStyles(inputStyles)
 
-	sp := spinner.New()
-	sp.Spinner = spinner.Dot
-	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	sp := spinner.New(
+		spinner.WithSpinner(spinner.Dot),
+		spinner.WithStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("205"))),
+	)
 
-	vp := viewport.New(80, 20)
+	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
+	vp.KeyMap = viewport.KeyMap{}
 
 	m := Model{
 		viewport:    vp,
@@ -85,6 +90,7 @@ func New(rt *agent.Runtime) Model {
 		focusMsgIdx: -1,
 		runtime:     rt,
 	}
+	m.syncComposerSize()
 	m.syncSlashState()
 	return m
 }
@@ -100,28 +106,54 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.textarea.SetWidth(msg.Width)
-		vpHeight := msg.Height - m.currentComposerHeight() - statusBarHeight - m.commandListHeight()
+		m.textarea.SetWidth(max(1, msg.Width-composerOuterStyle.GetHorizontalPadding()-composerInputShellStyle.GetHorizontalFrameSize()))
+		m.syncComposerSize()
+		vpHeight := msg.Height - m.currentComposerHeight() - m.statusBarHeight() - m.commandListHeight()
 		if vpHeight < 1 {
 			vpHeight = 1
 		}
-		m.viewport.Width = msg.Width
-		m.viewport.Height = vpHeight
+		m.viewport.SetWidth(msg.Width)
+		m.viewport.SetHeight(vpHeight)
 		m.refreshViewport()
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.chooser.Stage != chooserStageNone {
 			return m.handleChooserKey(msg)
 		}
 
-		switch msg.String() {
+		switch msg.Keystroke() {
 		case "ctrl+c":
 			return m, tea.Quit
+
+		case "ctrl+t":
+			if !m.running {
+				if _, err := m.runtime.CycleThinking(context.Background()); err != nil {
+					m.err = err
+				}
+				m.refreshViewport()
+			}
+			return m, nil
+
+		case "ctrl+enter":
+			// Insert newline into textarea
+			if !m.running {
+				m.textarea.InsertString("\n")
+				m.syncComposerSize()
+				m.refreshViewport()
+			}
+			return m, nil
 
 		case "enter":
 			if m.running {
 				return m, nil
+			}
+			// When slash menu is visible, enter applies the selection
+			// then falls through to execute the command.
+			if m.slash.Visible() {
+				m.applySelectedSlashOption()
+				m.syncSlashState()
+				m.refreshViewport()
 			}
 			input := strings.TrimSpace(m.textarea.Value())
 			if input == "" {
@@ -153,16 +185,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.refreshViewport()
 				return m, nil
 			}
-			if m.shouldApplySlashSelection(input) {
-				m.applySelectedSlashOption()
-				m.syncSlashState()
-				m.refreshViewport()
-				return m, nil
-			}
 			if strings.HasPrefix(input, "/") {
 				cmd := strings.Fields(input)
 				if len(cmd) > 0 {
 					m.textarea.Reset()
+					m.syncComposerSize()
 					m.syncSlashState()
 					if cmd[0] == "/compact" {
 						m.running = true
@@ -186,6 +213,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.hasSession = true
 			}
 			m.textarea.Reset()
+			m.syncComposerSize()
 			m.msgs = append(m.msgs, ChatMessage{Kind: KindUser, Content: input})
 			if err := m.runtime.TouchSession(context.Background(), m.sessionID, ""); err != nil {
 				m.msgs = append(m.msgs, ChatMessage{Kind: KindSystem, Content: "Failed to update session metadata: " + err.Error()})
@@ -207,13 +235,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tea.Batch(cmds...)
 
-		case "up", "ctrl+p":
+		case "up":
 			if m.slash.Visible() {
 				m.selectSlash(-1)
 				return m, nil
 			}
 
-		case "down", "ctrl+n":
+		case "down":
 			if m.slash.Visible() {
 				m.selectSlash(1)
 				return m, nil
@@ -259,38 +287,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if m.slash.Mode != slashModeNone {
 				m.textarea.Reset()
+				m.syncComposerSize()
 				m.syncSlashState()
 				m.refreshViewport()
 				return m, nil
 			}
 
-		case "[":
-			m.moveFocus(-1)
-			m.refreshViewport()
-			return m, nil
-
-		case "]":
-			m.moveFocus(+1)
-			m.refreshViewport()
-			return m, nil
-
-		case "x":
-			m.toggleFocused()
-			m.refreshViewport()
-			return m, nil
-
 		case "pgup":
-			m.viewport.HalfViewUp()
+			m.viewport.HalfPageUp()
 			return m, nil
 
 		case "pgdown":
-			m.viewport.HalfViewDown()
+			m.viewport.HalfPageDown()
 			return m, nil
 		}
 
+		// Focus navigation for tool blocks (only when agent is running)
+		if m.running {
+			switch msg.String() {
+			case "[":
+				m.moveFocus(-1)
+				m.refreshViewport()
+				return m, nil
+			case "]":
+				m.moveFocus(+1)
+				m.refreshViewport()
+				return m, nil
+			case "x":
+				m.toggleFocused()
+				m.refreshViewport()
+				return m, nil
+			}
+		}
+
 		if !m.running {
+			m.textarea.SetHeight(composerMaxRows) // pre-expand so internal repositionView won't scroll
 			var taCmd tea.Cmd
 			m.textarea, taCmd = m.textarea.Update(msg)
+			m.syncComposerSize()
 			m.syncSlashState()
 			m.refreshViewport()
 			cmds = append(cmds, taCmd)
@@ -396,28 +430,54 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var vpCmd, taCmd tea.Cmd
 	m.viewport, vpCmd = m.viewport.Update(msg)
 	if !m.running {
+		m.textarea.SetHeight(composerMaxRows) // pre-expand so internal repositionView won't scroll
 		m.textarea, taCmd = m.textarea.Update(msg)
+		m.syncComposerSize()
 		m.syncSlashState()
 		m.refreshViewport()
 	}
 	return m, tea.Batch(vpCmd, taCmd)
 }
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
+	content := "Initializing..."
 	if m.width == 0 {
-		return "Initializing..."
+		view := tea.NewView(content)
+		view.AltScreen = true
+		view.MouseMode = tea.MouseModeCellMotion
+		view.WindowTitle = "koda"
+		return view
 	}
 
-	parts := []string{m.viewport.View(), m.renderStatusBar()}
+	preComposer := m.renderPreComposer()
+	content = lipgloss.JoinVertical(lipgloss.Left, preComposer, m.renderComposer())
+	if m.chooser.Stage != chooserStageNone {
+		content = m.renderChooserModal()
+	}
+
+	view := tea.NewView(content)
+	view.AltScreen = true
+	view.MouseMode = tea.MouseModeCellMotion
+	view.WindowTitle = "koda"
+	if m.chooser.Stage == chooserStageNone && !m.running && !m.textarea.VirtualCursor() && m.textarea.Focused() {
+		if cursor := m.textarea.Cursor(); cursor != nil {
+			cursor.Position.X += composerOuterStyle.GetPaddingLeft() + composerInputShellStyle.GetPaddingLeft() + composerInputShellStyle.GetBorderLeftSize()
+			cursor.Position.Y += lipgloss.Height(preComposer) + lipgloss.Height(composerHeaderStyle.Render(m.renderComposerHeader())) + composerOuterStyle.GetPaddingTop() + composerInputShellStyle.GetPaddingTop() + composerInputShellStyle.GetBorderTopSize()
+			view.Cursor = cursor
+		}
+	}
+	return view
+}
+
+func (m Model) renderPreComposer() string {
+	parts := []string{m.viewport.View()}
+	if sb := m.renderStatusBar(); sb != "" {
+		parts = append(parts, sb)
+	}
 	if m.slash.Visible() {
 		parts = append(parts, m.renderSlashMenu())
 	}
-	parts = append(parts, m.renderComposer())
-	view := lipgloss.JoinVertical(lipgloss.Left, parts...)
-	if m.chooser.Stage != chooserStageNone {
-		return m.renderChooserModal()
-	}
-	return view
+	return lipgloss.JoinVertical(lipgloss.Left, parts...)
 }
 
 func (m *Model) openProviderChooser() {
@@ -505,11 +565,12 @@ func (m *Model) openSessionsChooser(sessions []agent.SessionMeta) {
 func (m *Model) closeChooser() tea.Cmd {
 	m.chooser = chooserState{}
 	m.textarea.SetValue("")
+	m.syncComposerSize()
 	m.syncSlashState()
 	return m.textarea.Focus()
 }
 
-func (m Model) handleChooserKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) handleChooserKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch m.chooser.Stage {
 	case chooserStageProvider:
 		switch msg.String() {
@@ -575,8 +636,8 @@ func (m Model) handleChooserKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if len(msg.Runes) > 0 {
-			m.chooser.APIKeyInput += string(msg.Runes)
+		if keyText := msg.Key().Text; keyText != "" {
+			m.chooser.APIKeyInput += keyText
 			return m, nil
 		}
 
@@ -626,8 +687,8 @@ func (m Model) handleChooserKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(cmd, m.runModelSelection(selected))
 		}
 
-		if len(msg.Runes) > 0 {
-			m.chooser.Query += string(msg.Runes)
+		if keyText := msg.Key().Text; keyText != "" {
+			m.chooser.Query += keyText
 			m.resetModelChooserSelection()
 			return m, nil
 		}
@@ -1109,7 +1170,7 @@ func (m *Model) syncSlashState() {
 		m.slash.Selected = 0
 	}
 	if m.height > 0 {
-		m.viewport.Height = max(1, m.height-m.currentComposerHeight()-statusBarHeight-m.commandListHeight())
+		m.viewport.SetHeight(max(1, m.height-m.currentComposerHeight()-m.statusBarHeight()-m.commandListHeight()))
 	}
 }
 
@@ -1135,21 +1196,7 @@ func (m *Model) applySelectedSlashOption() {
 	case slashModeRoot:
 		m.textarea.SetValue(option.Value + " ")
 		m.textarea.CursorEnd()
-	}
-}
-
-func (m Model) shouldApplySlashSelection(input string) bool {
-	if !m.slash.Visible() {
-		return false
-	}
-
-	trimmed := strings.TrimSpace(input)
-	mode, _ := parseSlashInput(trimmed)
-	switch mode {
-	case slashModeRoot:
-		return trimmed != "/new" && trimmed != "/compact" && trimmed != "/connect" && trimmed != "/model" && trimmed != "/sessions"
-	default:
-		return false
+		m.syncComposerSize()
 	}
 }
 
@@ -1157,11 +1204,7 @@ func (m *Model) commandListHeight() int {
 	if !m.slash.Visible() {
 		return 0
 	}
-	count := len(m.slash.Options)
-	if count > 5 {
-		count = 5
-	}
-	return count + 2 + commandListGap
+	return lipgloss.Height(m.renderSlashMenu())
 }
 
 func (m Model) renderSlashMenu() string {
@@ -1298,76 +1341,110 @@ func (m *Model) toggleFocused() {
 }
 
 func (m *Model) refreshViewport() {
-	m.viewport.SetContent(renderMessages(m.msgs, m.focusMsgIdx, m.viewport.Width))
+	m.viewport.SetContent(renderMessages(m.msgs, m.focusMsgIdx, m.viewport.Width()))
 }
 
 // currentComposerHeight returns the number of terminal lines the input area
 // currently occupies: 1 separator line + the current textarea height.
 func (m Model) currentComposerHeight() int {
-	h := m.textarea.Height()
-	if h < 1 {
-		h = 1
-	}
-	return 1 + h
+	return lipgloss.Height(m.renderComposer())
 }
 
 func (m Model) renderComposer() string {
-	sep := inputSeparatorStyle.Render(strings.Repeat("─", m.width))
-	input := strings.TrimRight(m.textarea.View(), "\n")
-	return lipgloss.JoinVertical(lipgloss.Left, sep, input)
+	if m.width <= 0 {
+		return ""
+	}
+
+	innerWidth := max(1, m.width-2)
+	inputBlock := composerInputShellStyle.Width(innerWidth).Render(strings.TrimRight(m.textarea.View(), "\n"))
+
+	head := composerHeaderStyle.Width(innerWidth).Render(m.renderComposerHeader())
+	footer := composerFooterStyle.Width(innerWidth).Render(m.renderComposerFooter())
+
+	return composerOuterStyle.Width(m.width).Render(lipgloss.JoinVertical(lipgloss.Left, head, inputBlock, footer))
+}
+
+func (m Model) renderComposerHeader() string {
+	var modeStr string
+	if m.runtime.Mode() == agent.ModePlan {
+		modeStr = composerHeaderPlanStyle.Render("Plan")
+	} else {
+		modeStr = composerHeaderBuildStyle.Render("Build")
+	}
+
+	var prefix string
+	if m.running {
+		prefix = m.spinner.View() + " "
+	}
+
+	meta := composerHeaderMetaStyle.Render(m.runtime.ProviderLabel() + "/" + m.runtime.ModelName())
+	dot := composerHeaderDotStyle.Render(" . ")
+	left := prefix + modeStr + dot + meta
+
+	// Thinking level
+	thinkLabel := "thinking:" + m.runtime.Thinking().String()
+	left += dot + composerHeaderMetaStyle.Render(thinkLabel)
+
+	if m.contextTokens > 0 {
+		var tokensStr string
+		if m.contextTokens >= 1000 {
+			tokensStr = fmt.Sprintf("%.1fk tokens", float64(m.contextTokens)/1000.0)
+		} else {
+			tokensStr = fmt.Sprintf("%d tokens", m.contextTokens)
+		}
+		left += dot + composerHeaderMetaStyle.Render(tokensStr)
+	}
+
+	return left
+}
+
+func (m Model) renderComposerFooter() string {
+	var parts []string
+
+	parts = append(parts,
+		composerFooterKeyStyle.Render("enter")+" "+composerFooterHintStyle.Render("send"),
+		composerFooterKeyStyle.Render("ctrl+enter")+" "+composerFooterHintStyle.Render("newline"),
+		composerFooterKeyStyle.Render("ctrl+t")+" "+composerFooterHintStyle.Render("thinking"),
+		composerFooterKeyStyle.Render("esc")+" "+composerFooterHintStyle.Render("cancel"),
+		composerFooterKeyStyle.Render("/")+" "+composerFooterHintStyle.Render("commands"),
+		composerFooterKeyStyle.Render("ctrl+c")+" "+composerFooterHintStyle.Render("quit"),
+	)
+
+	return strings.Join(parts, "   ")
+}
+
+func (m *Model) syncComposerSize() {
+	rows := m.textarea.LineCount()
+	if rows < 1 {
+		rows = 1
+	}
+	if rows > composerMaxRows {
+		rows = composerMaxRows
+	}
+	m.textarea.SetHeight(rows)
+	// Recalculate viewport height so the composer expands upward.
+	if m.height > 0 {
+		m.viewport.SetHeight(max(1, m.height-m.currentComposerHeight()-m.statusBarHeight()-m.commandListHeight()))
+	}
 }
 
 func (m Model) renderStatusBar() string {
-	var left string
-
-	if m.running {
-		if m.escPending {
-			left = statusBarStyle.Foreground(lipgloss.Color("214")).Render(" " + m.spinner.View() + "  Esc again to cancel...")
-		} else {
-			escHint := statusHintStyle.Render("  esc cancel")
-			left = statusBarStyle.Render(" "+m.spinner.View()+" "+m.status) + escHint
-		}
-	} else if m.err != nil {
-		left = statusBarStyle.Foreground(lipgloss.Color("9")).Render(" x " + m.err.Error())
-	} else {
-		left = statusBarStyle.Render(" ")
+	if m.running && m.escPending {
+		return statusBarStyle.Foreground(lipgloss.Color("214")).Render(" " + m.spinner.View() + "  Esc again to cancel...")
 	}
-
-	model := statusModelStyle.Render(m.runtime.ModelName())
-	modeStr := strings.ToUpper(string(m.runtime.Mode()))
-	var modeLabel string
-	if m.runtime.Mode() == agent.ModePlan {
-		modeLabel = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Render("[" + modeStr + "]")
-	} else {
-		modeLabel = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Render("[" + modeStr + "]")
+	if m.err != nil {
+		return statusBarStyle.Foreground(lipgloss.Color("9")).Render(" x " + m.err.Error())
 	}
-	provider := statusBarStyle.Render(m.runtime.ProviderLabel())
-	providerAndMode := modeLabel + " " + provider
+	return ""
+}
 
-	var tokensStr string
-	if m.contextTokens >= 1000 {
-		tokensStr = fmt.Sprintf("%.1fk tokens", float64(m.contextTokens)/1000.0)
-	} else {
-		tokensStr = fmt.Sprintf("%d tokens", m.contextTokens)
-	}
-	tokensStr = lipgloss.NewStyle().Foreground(lipgloss.Color("243")).Render(tokensStr) + "  "
-
-	hint := statusHintStyle.Render("/ commands  ctrl+c quit ")
-	right := providerAndMode + "  " + model + "  " + tokensStr + hint
-	leftWidth := lipgloss.Width(left)
-	rightWidth := lipgloss.Width(right)
-	gap := m.width - leftWidth - rightWidth
-	if gap < 0 {
-		gap = 0
-	}
-	filler := statusBarStyle.Render(strings.Repeat(" ", gap))
-	return left + filler + right
+func (m Model) statusBarHeight() int {
+	return lipgloss.Height(m.renderStatusBar())
 }
 
 func renderMessages(msgs []ChatMessage, focusedIdx, width int) string {
 	if len(msgs) == 0 {
-		hint := "Start a conversation - ask koda anything about your code. Use / to see commands."
-		return emptyStateStyle.Width(width).Align(lipgloss.Center).Padding(2, 0).Render(hint)
+		return ""
 	}
 
 	var sb strings.Builder

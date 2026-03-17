@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	agentpkg "github.com/soasurs/koda/internal/agent"
 	"github.com/soasurs/koda/internal/config"
@@ -54,11 +54,7 @@ func main() {
 
 	// ── interactive TUI mode ───────────────────────────────────────────────
 	m := tui.New(rt)
-	p := tea.NewProgram(
-		m,
-		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
-	)
+	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "koda: %v\n", err)
 		os.Exit(1)

@@ -28,6 +28,32 @@ const (
 	ModePlan  AgentMode = "plan"
 )
 
+// ThinkingLevel controls the model's reasoning/thinking intensity.
+type ThinkingLevel int
+
+const (
+	ThinkingOff    ThinkingLevel = iota // thinking disabled
+	ThinkingLow                         // low effort
+	ThinkingMedium                      // medium effort
+	ThinkingHigh                        // high effort (default)
+)
+
+// String returns a short display label for the thinking level.
+func (t ThinkingLevel) String() string {
+	switch t {
+	case ThinkingOff:
+		return "off"
+	case ThinkingLow:
+		return "low"
+	case ThinkingMedium:
+		return "medium"
+	case ThinkingHigh:
+		return "high"
+	default:
+		return "off"
+	}
+}
+
 type ProviderOption struct {
 	Value string
 	Label string
@@ -52,6 +78,7 @@ type Runtime struct {
 	idNode     *snowflake.Node
 	models     []string
 	mode       AgentMode
+	thinking   ThinkingLevel
 }
 
 func NewRuntime(ctx context.Context, cfg *config.Config) (*Runtime, error) {
@@ -82,6 +109,7 @@ func NewRuntime(ctx context.Context, cfg *config.Config) (*Runtime, error) {
 		tools:      agentTools,
 		idNode:     idNode,
 		mode:       ModeBuild,
+		thinking:   ThinkingHigh,
 	}
 
 	if err := rt.rebuildRunner(ctx); err != nil {
@@ -101,6 +129,20 @@ func (r *Runtime) SetMode(ctx context.Context, mode AgentMode) error {
 	}
 	r.mode = mode
 	return r.rebuildRunner(ctx)
+}
+
+func (r *Runtime) Thinking() ThinkingLevel {
+	return r.thinking
+}
+
+// CycleThinking advances to the next thinking level (off → low → medium → high → off)
+// and rebuilds the runner with the new config.
+func (r *Runtime) CycleThinking(ctx context.Context) (ThinkingLevel, error) {
+	r.thinking = (r.thinking + 1) % (ThinkingHigh + 1)
+	if err := r.rebuildRunner(ctx); err != nil {
+		return r.thinking, err
+	}
+	return r.thinking, nil
 }
 
 func (r *Runtime) Run(ctx context.Context, sessionID int64, userInput string) iter.Seq2[*amodel.Event, error] {
@@ -338,6 +380,32 @@ func (r *Runtime) RefreshModels(ctx context.Context) error {
 	return r.refreshModels(ctx)
 }
 
+// thinkingGenerateConfig builds a GenerateConfig from the current thinking level.
+func (r *Runtime) thinkingGenerateConfig() *amodel.GenerateConfig {
+	switch r.thinking {
+	case ThinkingOff:
+		return &amodel.GenerateConfig{
+			EnableThinking:  new(false),
+			ReasoningEffort: amodel.ReasoningEffortNone,
+		}
+	case ThinkingLow:
+		return &amodel.GenerateConfig{
+			EnableThinking:  new(true),
+			ReasoningEffort: amodel.ReasoningEffortLow,
+		}
+	case ThinkingMedium:
+		return &amodel.GenerateConfig{
+			EnableThinking:  new(true),
+			ReasoningEffort: amodel.ReasoningEffortMedium,
+		}
+	default: // ThinkingHigh
+		return &amodel.GenerateConfig{
+			EnableThinking:  new(true),
+			ReasoningEffort: amodel.ReasoningEffortHigh,
+		}
+	}
+}
+
 func (r *Runtime) rebuildRunner(ctx context.Context) error {
 	llm, modelName, err := newLLM(ctx, &r.cfg)
 	if err != nil {
@@ -366,17 +434,17 @@ func (r *Runtime) rebuildRunner(ctx context.Context) error {
 		instruction += "\n\n---\n\n## Project-Specific Instructions (from AGENTS.md)\n\n" + agentsMD
 	}
 
+	genCfg := r.thinkingGenerateConfig()
+
 	a := llmagent.New(llmagent.Config{
-		Name:        agentName,
-		Description: agentDesc,
-		Model:       llm,
-		GenerateConfig: &amodel.GenerateConfig{
-			EnableThinking: new(true),
-		},
-		Tools:         activeTools,
-		Instruction:   instruction,
-		Stream:        true,
-		MaxIterations: 50,
+		Name:           agentName,
+		Description:    agentDesc,
+		Model:          llm,
+		GenerateConfig: genCfg,
+		Tools:          activeTools,
+		Instruction:    instruction,
+		Stream:         true,
+		MaxIterations:  50,
 	})
 
 	run, err := runner.New(a, r.sessionSvc)
