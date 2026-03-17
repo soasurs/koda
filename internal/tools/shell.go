@@ -1,0 +1,88 @@
+package tools
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"os/exec"
+	"reflect"
+	"strings"
+	"time"
+
+	"github.com/google/jsonschema-go/jsonschema"
+	"github.com/soasurs/adk/tool"
+)
+
+const defaultShellTimeout = 60 * time.Second
+const maxOutputBytes = 50 * 1024 // 50 KB
+
+type runShellInput struct {
+	Command string `json:"command" jsonschema:"Shell command to execute"`
+	WorkDir string `json:"work_dir,omitempty" jsonschema:"Working directory for the command. Defaults to the current working directory if omitted"`
+}
+
+type runShellTool struct{ def tool.Definition }
+
+// NewRunShellTool creates a tool that executes shell commands.
+func NewRunShellTool() (tool.Tool, error) {
+	schema, err := jsonschema.ForType(reflect.TypeFor[runShellInput](), &jsonschema.ForOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("run_shell: build schema: %w", err)
+	}
+	return &runShellTool{tool.Definition{
+		Name:        "run_shell",
+		Description: "Execute a shell command and return its combined stdout/stderr output. The command runs with a 60-second timeout. Use work_dir to set the working directory.",
+		InputSchema: schema,
+	}}, nil
+}
+
+func (t *runShellTool) Definition() tool.Definition { return t.def }
+
+func (t *runShellTool) Run(_ context.Context, _ string, arguments string) (string, error) {
+	var input runShellInput
+	if err := json.Unmarshal([]byte(arguments), &input); err != nil {
+		return "", fmt.Errorf("run_shell: parse arguments: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultShellTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "sh", "-c", input.Command)
+	if input.WorkDir != "" {
+		cmd.Dir = input.WorkDir
+	}
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	runErr := cmd.Run()
+
+	output := out.String()
+	// Truncate huge outputs to avoid swamping the LLM context
+	if len(output) > maxOutputBytes {
+		output = output[:maxOutputBytes] + fmt.Sprintf("\n\n... (output truncated at %d KB)", maxOutputBytes/1024)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("$ %s\n", input.Command))
+	if output != "" {
+		sb.WriteString(output)
+		if !strings.HasSuffix(output, "\n") {
+			sb.WriteByte('\n')
+		}
+	}
+
+	if runErr != nil {
+		if ctx.Err() != nil {
+			sb.WriteString(fmt.Sprintf("[timed out after %s]\n", defaultShellTimeout))
+		} else {
+			sb.WriteString(fmt.Sprintf("[exit: %s]\n", runErr))
+		}
+	} else {
+		sb.WriteString("[exit: 0]\n")
+	}
+
+	return sb.String(), nil
+}
