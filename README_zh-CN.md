@@ -1,6 +1,6 @@
 # koda
 
-> **⚠️ 早期开发阶段 — 可能存在破坏性变更、功能不完整和各种粗糙之处。**
+> **Warning: 早期开发阶段 — 可能存在破坏性变更、功能不完整和各种粗糙之处。**
 
 koda 是一个用 Go 编写的终端 AI 编程助手，灵感来自 Claude Code 和 Aider。它提供丰富的 TUI 界面，支持与大语言模型进行交互式对话，内置文件编辑、Shell 执行、代码搜索和 Git 工具，帮助你在终端中更高效地编程。
 
@@ -22,6 +22,7 @@ koda 是一个用 Go 编写的终端 AI 编程助手，灵感来自 Claude Code 
   | `git_status` | 显示工作区状态 |
   | `git_diff` | 显示差异（暂存或未暂存） |
 - **Build 与 Plan 模式** — 按 `Tab` 在完整工具访问（Build）和只读子集（Plan，用于架构分析）之间切换
+- **思考级别** — 按 `Ctrl+T` 在关闭 / 低 / 中 / 高四档扩展思考间切换
 - **会话持久化** — 基于 SQLite 的对话历史，存储于 `~/.koda/sessions.db`；通过 `/sessions` 浏览和恢复
 - **上下文压缩** — 自动滑动窗口压缩保持上下文可控；也可通过 `/compact` 手动触发
 - **可折叠工具输出** — 长工具结果默认折叠，按 `x` 展开
@@ -29,9 +30,8 @@ koda 是一个用 Go 编写的终端 AI 编程助手，灵感来自 Claude Code 
 
 ## 环境要求
 
-- **Go 1.26.1+**
+- **Go 1.26+**
 - **C 编译器**（`go-sqlite3` 需要 CGo）— macOS 上执行 `xcode-select --install` 即可
-- **私有依赖：** `github.com/soasurs/adk` 需在本地克隆（参见 `go.mod` 中的 `replace` 指令）
 
 ## 安装
 
@@ -39,9 +39,6 @@ koda 是一个用 Go 编写的终端 AI 编程助手，灵感来自 Claude Code 
 # 克隆仓库
 git clone https://github.com/soasurs/koda.git
 cd koda
-
-# 确保 adk 依赖在本地可用
-# （如需要请调整 go.mod 中的 replace 路径）
 
 # 构建
 go build ./cmd/koda
@@ -101,8 +98,10 @@ koda "列出当前目录下的文件"
 | 按键 | 操作 |
 |------|------|
 | `Enter` | 发送消息 |
-| `Tab` | 切换 Build ↔ Plan 模式 |
-| `Esc` (×2) | 取消正在运行的 Agent |
+| `Ctrl+Enter` | 插入换行 |
+| `Tab` | 切换 Build / Plan 模式 |
+| `Ctrl+T` | 切换思考级别（关闭 / 低 / 中 / 高） |
+| `Esc` (x2) | 取消正在运行的 Agent |
 | `[` / `]` | 在消息间导航 |
 | `x` | 展开 / 折叠工具输出 |
 | `PgUp` / `PgDn` | 滚动视口 |
@@ -114,6 +113,7 @@ koda "列出当前目录下的文件"
 | `/connect` | 选择 LLM 供应商并输入 API Key |
 | `/model` | 从供应商实时模型列表中选择模型 |
 | `/sessions` | 浏览并恢复历史会话 |
+| `/new` | 创建新会话 |
 | `/compact` | 压缩当前会话上下文 |
 
 ## 项目结构

@@ -1,6 +1,6 @@
 # koda
 
-> **⚠️ Early Development — Expect breaking changes, incomplete features, and rough edges.**
+> **Warning: Early Development — Expect breaking changes, incomplete features, and rough edges.**
 
 koda is a terminal-based AI coding assistant written in Go — similar in spirit to Claude Code and Aider. It provides a rich TUI for interactive conversations with LLMs, equipped with file editing, shell execution, code search, and git tools to help you code faster from the terminal.
 
@@ -22,6 +22,7 @@ koda is a terminal-based AI coding assistant written in Go — similar in spirit
   | `git_status` | Show working tree status |
   | `git_diff` | Show diffs (staged or unstaged) |
 - **Build & Plan modes** — Toggle with `Tab` between full tool access (Build) and a read-only subset (Plan) for architecture analysis
+- **Thinking levels** — Cycle through Off / Low / Medium / High extended thinking with `Ctrl+T`
 - **Session persistence** — SQLite-backed conversation history at `~/.koda/sessions.db`; browse and resume with `/sessions`
 - **Context compaction** — Automatic sliding-window compaction keeps context manageable; trigger manually with `/compact`
 - **Collapsible tool output** — Long tool results are collapsed by default; press `x` to expand
@@ -29,9 +30,8 @@ koda is a terminal-based AI coding assistant written in Go — similar in spirit
 
 ## Requirements
 
-- **Go 1.26.1+**
+- **Go 1.26+**
 - **C compiler** (CGo required by `go-sqlite3`) — on macOS: `xcode-select --install`
-- **Private dependency:** `github.com/soasurs/adk` must be cloned locally (see `go.mod` `replace` directive)
 
 ## Installation
 
@@ -39,9 +39,6 @@ koda is a terminal-based AI coding assistant written in Go — similar in spirit
 # Clone the repository
 git clone https://github.com/soasurs/koda.git
 cd koda
-
-# Ensure the adk dependency is available locally
-# (adjust the replace path in go.mod if needed)
 
 # Build
 go build ./cmd/koda
@@ -101,8 +98,10 @@ koda "list the files in this directory"
 | Key | Action |
 |-----|--------|
 | `Enter` | Send message |
-| `Tab` | Toggle Build ↔ Plan mode |
-| `Esc` (×2) | Cancel running agent |
+| `Ctrl+Enter` | Insert newline |
+| `Tab` | Toggle Build / Plan mode |
+| `Ctrl+T` | Cycle thinking level (Off / Low / Medium / High) |
+| `Esc` (x2) | Cancel running agent |
 | `[` / `]` | Navigate between messages |
 | `x` | Expand / collapse tool output |
 | `PgUp` / `PgDn` | Scroll viewport |
@@ -114,6 +113,7 @@ koda "list the files in this directory"
 | `/connect` | Choose LLM provider and enter API key |
 | `/model` | Select model from live provider list |
 | `/sessions` | Browse and resume previous sessions |
+| `/new` | Create a new session |
 | `/compact` | Compact current session context |
 
 ## Project Structure
