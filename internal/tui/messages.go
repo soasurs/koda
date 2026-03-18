@@ -40,9 +40,10 @@ type ChatMessage struct {
 
 // runnerMsg carries a single event (or termination signal) from the agent runner.
 type runnerMsg struct {
-	event *model.Event
-	err   error
-	done  bool // true when the runner goroutine has finished
+	event       *model.Event
+	err         error
+	done        bool // true when the runner goroutine has finished
+	toolConfirm *toolConfirmRequest
 }
 
 type commandResultMsg struct {
@@ -72,6 +73,7 @@ const (
 	chooserStageAPIKey
 	chooserStageModel
 	chooserStageSessions
+	chooserStageShellConfirm
 )
 
 type chooserState struct {
@@ -90,11 +92,22 @@ type chooserState struct {
 	Sessions         []agent.SessionMeta
 	SelectedSession  int
 	SessionOffset    int
+	ConfirmToolName  string
+	ConfirmSummary   string
+	ConfirmArguments string
+	ConfirmResponse  chan bool
 }
 
 type providerChoice struct {
 	Label string
 	Value string
+}
+
+type toolConfirmRequest struct {
+	ToolName  string
+	Summary   string
+	Arguments string
+	Response  chan bool
 }
 
 // escTimeoutMsg fires 5 s after the first Esc press during agent execution,

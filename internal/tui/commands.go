@@ -44,11 +44,17 @@ func parseSlashInput(input string) (slashMode, string) {
 	}
 
 	switch cmd {
+	case "/help":
+		return slashModeNone, arg
 	case "/model":
 		return slashModeNone, arg
 	case "/connect":
 		return slashModeNone, arg
 	case "/sessions":
+		return slashModeNone, arg
+	case "/new":
+		return slashModeNone, arg
+	case "/compact":
 		return slashModeNone, arg
 	case "/exit":
 		return slashModeNone, arg

@@ -161,6 +161,10 @@ func (r *Runtime) ModelName() string {
 	return r.modelName
 }
 
+func (r *Runtime) SafeMode() bool {
+	return r.cfg.SafeMode
+}
+
 func (r *Runtime) NewSession(ctx context.Context) (int64, error) {
 	sessionID := r.idNode.Generate().Int64()
 	if _, err := r.sessionSvc.CreateSession(ctx, sessionID); err != nil {
@@ -364,6 +368,9 @@ func (r *Runtime) UndoLastUserMessage(ctx context.Context, sessionID int64) (int
 			return 0, "", fmt.Errorf("agent runtime: undo: delete message %d: %w", msg.MessageID, err)
 		}
 	}
+	if err := r.TouchSession(ctx, sessionID, ""); err != nil {
+		return 0, "", err
+	}
 	return len(toDelete), userContent, nil
 }
 
@@ -552,6 +559,7 @@ func (r *Runtime) rebuildRunner(ctx context.Context) error {
 		Name:           agentName,
 		Description:    agentDesc,
 		Model:          llm,
+		BeforeToolCall: r.beforeToolCall,
 		GenerateConfig: genCfg,
 		Tools:          activeTools,
 		Instruction:    instruction,
@@ -568,6 +576,36 @@ func (r *Runtime) rebuildRunner(ctx context.Context) error {
 	r.modelName = modelName
 	r.runner = run
 	return nil
+}
+
+func (r *Runtime) beforeToolCall(ctx context.Context, call *llmagent.ToolCall) (*llmagent.ToolCallResult, error) {
+	if !r.cfg.SafeMode || !requiresToolConfirmation(call.Definition.Name) {
+		return nil, nil
+	}
+
+	confirm := toolConfirmationFromContext(ctx)
+	if confirm == nil {
+		return nil, nil
+	}
+
+	request := ToolConfirmationRequest{
+		ToolName:  call.Definition.Name,
+		Summary:   safeModeSummary(call.Definition.Name, call.Request.Arguments),
+		Arguments: call.Request.Arguments,
+	}
+	if err := confirm(ctx, request); err != nil {
+		content := "blocked by safe mode: " + err.Error()
+		return &llmagent.ToolCallResult{
+			Message: amodel.Message{
+				Role:       amodel.RoleTool,
+				ToolCallID: call.Request.ID,
+				Content:    content,
+			},
+			Result: content,
+		}, nil
+	}
+
+	return nil, nil
 }
 
 func (r *Runtime) getSession(ctx context.Context, sessionID int64) (session.Session, error) {

@@ -27,6 +27,7 @@ koda 是一个用 Go 编写的终端 AI 编程助手，灵感来自 Claude Code 
 - **上下文压缩** — 自动滑动窗口压缩保持上下文可控；也可通过 `/compact` 手动触发
 - **可折叠工具输出** — 长工具结果默认折叠，按 `x` 展开
 - **项目感知** — 读取工作区的 `AGENTS.md` 以获取项目特定指令
+- **安全模式** — 可通过 `--safe` 为 `run_shell`、`write_file`、`create_file` 等有副作用的工具调用启用执行前确认
 
 ## 环境要求
 
@@ -80,7 +81,7 @@ koda "列出当前目录下的文件"
 | `--provider` | LLM 供应商：`anthropic`、`openai` 或 `gemini` |
 | `--model` | 模型名称（如 `claude-sonnet-4-5`、`gpt-4o`） |
 | `--no-session` | 禁用 SQLite 会话持久化（仅内存） |
-| `--safe` | 预留：执行 Shell 命令前需确认 |
+| `--safe` | 在有副作用的工具调用执行前要求确认 |
 
 ### 环境变量
 
@@ -88,6 +89,7 @@ koda "列出当前目录下的文件"
 |------|------|
 | `KODA_PROVIDER` | 默认供应商 |
 | `KODA_MODEL` | 默认模型名称 |
+| `KODA_SAFE_MODE` | 默认启用安全模式（`true` / `false`） |
 | `KODA_BASE_URL` | OpenAI 兼容端点的自定义 Base URL |
 | `ANTHROPIC_API_KEY` | Anthropic API Key |
 | `OPENAI_API_KEY` | OpenAI API Key |
@@ -113,8 +115,10 @@ koda "列出当前目录下的文件"
 | `/connect` | 选择 LLM 供应商并输入 API Key |
 | `/model` | 从供应商实时模型列表中选择模型 |
 | `/sessions` | 浏览并恢复历史会话 |
+| `/help` | 显示命令、快捷键和安全模式提示 |
 | `/new` | 创建新会话 |
 | `/compact` | 压缩当前会话上下文 |
+| `/undo` | 移除最后一轮用户输入及其后续消息 |
 
 ## 项目结构
 

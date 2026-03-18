@@ -1,10 +1,12 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -53,6 +55,7 @@ type ProviderConfig struct {
 type StoredConfig struct {
 	Provider  string           `json:"provider,omitempty"`
 	Model     string           `json:"model,omitempty"`
+	SafeMode  bool             `json:"safe_mode,omitempty"`
 	Providers []ProviderConfig `json:"providers,omitempty"`
 }
 
@@ -80,6 +83,7 @@ func Load() *Config {
 	}
 
 	model := getenv("KODA_MODEL", stored.Model)
+	safeMode := getenvBool("KODA_SAFE_MODE", stored.SafeMode)
 
 	pc := stored.FindProvider(provider)
 
@@ -100,6 +104,7 @@ func Load() *Config {
 		Model:    model,
 		APIKey:   apiKey,
 		BaseURL:  baseURL,
+		SafeMode: safeMode,
 		WorkDir:  cwd,
 		Stored:   stored,
 		Path:     path,
@@ -215,20 +220,6 @@ func defaultConfigPath() string {
 	return filepath.Join(home, ".koda", configFileName)
 }
 
-// rawStoredConfig is the on-disk format with both old (map) and new (array)
-// providers fields so we can migrate transparently.
-type rawStoredConfig struct {
-	Provider  string           `json:"provider,omitempty"`
-	Model     string           `json:"model,omitempty"`
-	Providers []ProviderConfig `json:"providers,omitempty"`
-
-	// LegacyProviders holds the old map[string]ProviderSettings format.
-	// It is read but never written; on the next save it is migrated to Providers.
-	LegacyProviders map[string]struct {
-		APIKey string `json:"api_key,omitempty"`
-	} `json:"_legacy_providers,omitempty"`
-}
-
 func loadStoredConfig(path string) (StoredConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -238,28 +229,46 @@ func loadStoredConfig(path string) (StoredConfig, error) {
 		return StoredConfig{}, fmt.Errorf("config: read stored config: %w", err)
 	}
 
-	// Try new array format first.
-	var stored StoredConfig
-	if err := json.Unmarshal(data, &stored); err != nil {
+	var raw struct {
+		Provider  string          `json:"provider,omitempty"`
+		Model     string          `json:"model,omitempty"`
+		SafeMode  bool            `json:"safe_mode,omitempty"`
+		Providers json.RawMessage `json:"providers,omitempty"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
 		return StoredConfig{}, fmt.Errorf("config: decode stored config: %w", err)
 	}
 
-	// If providers is empty, try to migrate from the old map format.
-	if len(stored.Providers) == 0 {
-		var legacy struct {
-			Providers map[string]struct {
-				APIKey string `json:"api_key,omitempty"`
-			} `json:"providers,omitempty"`
+	stored := StoredConfig{
+		Provider: raw.Provider,
+		Model:    raw.Model,
+		SafeMode: raw.SafeMode,
+	}
+
+	providers := bytes.TrimSpace(raw.Providers)
+	if len(providers) == 0 || bytes.Equal(providers, []byte("null")) {
+		return stored, nil
+	}
+
+	if providers[0] == '[' {
+		if err := json.Unmarshal(providers, &stored.Providers); err != nil {
+			return StoredConfig{}, fmt.Errorf("config: decode providers array: %w", err)
 		}
-		if json.Unmarshal(data, &legacy) == nil {
-			for name, ps := range legacy.Providers {
-				stored.upsertProvider(ProviderConfig{
-					Name:   name,
-					Format: BuiltinFormat(name),
-					APIKey: ps.APIKey,
-				})
-			}
-		}
+		return stored, nil
+	}
+
+	var legacy map[string]struct {
+		APIKey string `json:"api_key,omitempty"`
+	}
+	if err := json.Unmarshal(providers, &legacy); err != nil {
+		return StoredConfig{}, fmt.Errorf("config: decode legacy providers map: %w", err)
+	}
+	for name, ps := range legacy {
+		stored.upsertProvider(ProviderConfig{
+			Name:   name,
+			Format: BuiltinFormat(name),
+			APIKey: ps.APIKey,
+		})
 	}
 
 	return stored, nil
@@ -313,4 +322,16 @@ func getenv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func getenvBool(key string, fallback bool) bool {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseBool(v)
+	if err != nil {
+		return fallback
+	}
+	return parsed
 }

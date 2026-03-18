@@ -27,6 +27,7 @@ koda is a terminal-based AI coding assistant written in Go — similar in spirit
 - **Context compaction** — Automatic sliding-window compaction keeps context manageable; trigger manually with `/compact`
 - **Collapsible tool output** — Long tool results are collapsed by default; press `x` to expand
 - **Project-aware** — Reads workspace `AGENTS.md` to pick up project-specific instructions
+- **Safe mode** — Optional confirmation for mutating tool calls such as `run_shell`, `write_file`, and `create_file`
 
 ## Requirements
 
@@ -80,7 +81,7 @@ koda "list the files in this directory"
 | `--provider` | LLM provider: `anthropic`, `openai`, or `gemini` |
 | `--model` | Model name override (e.g. `claude-sonnet-4-5`, `gpt-4o`) |
 | `--no-session` | Disable SQLite session persistence (in-memory only) |
-| `--safe` | Reserved: require confirmation for shell commands |
+| `--safe` | Require confirmation before mutating tool calls execute |
 
 ### Environment variables
 
@@ -88,6 +89,7 @@ koda "list the files in this directory"
 |----------|---------|
 | `KODA_PROVIDER` | Default provider |
 | `KODA_MODEL` | Default model name |
+| `KODA_SAFE_MODE` | Enable safe mode by default (`true` / `false`) |
 | `KODA_BASE_URL` | Custom base URL for OpenAI-compatible endpoints |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `OPENAI_API_KEY` | OpenAI API key |
@@ -113,8 +115,10 @@ koda "list the files in this directory"
 | `/connect` | Choose LLM provider and enter API key |
 | `/model` | Select model from live provider list |
 | `/sessions` | Browse and resume previous sessions |
+| `/help` | Show commands, shortcuts, and safe-mode hints |
 | `/new` | Create a new session |
 | `/compact` | Compact current session context |
+| `/undo` | Remove the last user turn and its follow-up messages |
 
 ## Project Structure
 

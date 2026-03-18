@@ -349,10 +349,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case runnerMsg:
+		if msg.toolConfirm != nil {
+			m.openToolConfirm(msg.toolConfirm)
+			m.refreshViewport()
+			cmds = append(cmds, waitForRunnerMsg(m.eventChan))
+			return m, tea.Batch(cmds...)
+		}
 		if msg.done {
 			m.running = false
 			m.escPending = false
 			m.cancelAgent = nil
+			if m.chooser.Stage == chooserStageShellConfirm {
+				m.chooser = chooserState{}
+			}
 			m.refreshViewport()
 			cmds = append(cmds, textarea.Blink)
 			return m, tea.Batch(cmds...)
@@ -363,6 +372,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cancelAgent = nil
 			if !errors.Is(msg.err, context.Canceled) {
 				m.err = msg.err
+			}
+			if m.chooser.Stage == chooserStageShellConfirm {
+				m.chooser = chooserState{}
 			}
 			m.refreshViewport()
 			cmds = append(cmds, textarea.Blink)
@@ -584,6 +596,20 @@ func (m *Model) openSessionsChooser(sessions []agent.SessionMeta) {
 	m.textarea.Blur()
 }
 
+func (m *Model) openToolConfirm(req *toolConfirmRequest) {
+	m.chooser = chooserState{
+		Stage:            chooserStageShellConfirm,
+		Title:            "Confirm Tool Call",
+		Prompt:           "Safe mode is enabled. Allow the agent to run this tool call?",
+		Hint:             "Enter/y approves. Esc/n rejects.",
+		ConfirmToolName:  req.ToolName,
+		ConfirmSummary:   strings.TrimSpace(req.Summary),
+		ConfirmArguments: strings.TrimSpace(req.Arguments),
+		ConfirmResponse:  req.Response,
+	}
+	m.textarea.Blur()
+}
+
 func (m *Model) closeChooser() tea.Cmd {
 	m.chooser = chooserState{}
 	m.textarea.SetValue("")
@@ -757,9 +783,36 @@ func (m Model) handleChooserKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.refreshViewport()
 			return m, tea.Batch(cmd, m.runSessionSelection(selected))
 		}
+
+	case chooserStageShellConfirm:
+		switch msg.String() {
+		case "ctrl+c":
+			m.resolveShellConfirm(false)
+			m.refreshViewport()
+			return m, tea.Quit
+		case "esc", "n":
+			m.resolveShellConfirm(false)
+			m.refreshViewport()
+			return m, nil
+		case "enter", "y":
+			m.resolveShellConfirm(true)
+			m.refreshViewport()
+			return m, nil
+		}
 	}
 
 	return m, nil
+}
+
+func (m *Model) resolveShellConfirm(approved bool) {
+	if m.chooser.Stage != chooserStageShellConfirm || m.chooser.ConfirmResponse == nil {
+		return
+	}
+	select {
+	case m.chooser.ConfirmResponse <- approved:
+	default:
+	}
+	m.chooser = chooserState{}
 }
 
 func (m *Model) runModelSelection(modelName string) tea.Cmd {
@@ -938,6 +991,17 @@ func (m Model) renderChooserModalBody(width int) string {
 		}
 		lines = append(lines, "", modalHintStyle.Render(fmt.Sprintf("%d sessions", len(m.chooser.Sessions))))
 		lines = append(lines, modalHintStyle.Render(m.chooser.Hint))
+
+	case chooserStageShellConfirm:
+		lines = append(lines, modalBodyStyle.Width(width).Render(m.chooser.Prompt), "")
+		lines = append(lines, modalInputStyle.Width(fitWidth(modalInputStyle)).Render("tool: "+m.chooser.ConfirmToolName))
+		if m.chooser.ConfirmSummary != "" {
+			lines = append(lines, modalBodyStyle.Width(width).Render(m.chooser.ConfirmSummary))
+		}
+		if m.chooser.ConfirmArguments != "" && m.chooser.ConfirmArguments != m.chooser.ConfirmSummary {
+			lines = append(lines, modalHintStyle.Width(width).Render("args: "+m.chooser.ConfirmArguments))
+		}
+		lines = append(lines, "", modalHintStyle.Render(m.chooser.Hint))
 	}
 
 	return strings.Join(lines, "\n")
@@ -1078,6 +1142,31 @@ func (m *Model) launchAgent(input string) tea.Cmd {
 	rt := m.runtime
 	sessionID := m.sessionID
 	ctx, cancel := context.WithCancel(context.Background())
+	if m.runtime.SafeMode() {
+		ctx = agent.WithToolConfirmation(ctx, func(ctx context.Context, req agent.ToolConfirmationRequest) error {
+			response := make(chan bool, 1)
+			request := &toolConfirmRequest{
+				ToolName:  req.ToolName,
+				Summary:   req.Summary,
+				Arguments: req.Arguments,
+				Response:  response,
+			}
+			select {
+			case ch <- runnerMsg{toolConfirm: request}:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+			select {
+			case approved := <-response:
+				if approved {
+					return nil
+				}
+				return fmt.Errorf("command rejected by user")
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		})
+	}
 	m.cancelAgent = cancel
 
 	go func() {
@@ -1116,6 +1205,36 @@ func (m *Model) runCommand(cmd, arg string) tea.Cmd {
 
 	return func() tea.Msg {
 		switch cmd {
+		case "/help":
+			modeLabel := "off"
+			if m.runtime.SafeMode() {
+				modeLabel = "on"
+			}
+			return commandResultMsg{cmd: cmd, ack: strings.Join([]string{
+				"Commands:",
+				"  /help      Show commands and shortcuts",
+				"  /connect   Choose provider and save API key",
+				"  /model     Pick a model for the active provider",
+				"  /sessions  Browse and resume saved sessions",
+				"  /new       Start a fresh session in the current workspace",
+				"  /compact   Compress older context into a summary",
+				"  /undo      Remove the last user turn and its follow-up messages",
+				"  /exit      Quit koda",
+				"",
+				"Shortcuts:",
+				"  Enter       send message",
+				"  Ctrl+Enter  newline",
+				"  Tab         toggle Build/Plan mode",
+				"  Ctrl+T      cycle thinking level",
+				"  Esc x2      cancel running agent",
+				"  [ / ]       move between tool messages",
+				"  x           expand or collapse tool output",
+				"",
+				"Safe mode:",
+				"  mutating tool-call confirmation is currently " + modeLabel,
+				"  Use --safe or KODA_SAFE_MODE=true to enable it by default.",
+			}, "\n")}
+
 		case "/new":
 			return commandResultMsg{cmd: cmd, ack: "Started a new empty session.", setSession: true, hasSession: false, msgs: []*message.Message{}}
 
@@ -1181,6 +1300,7 @@ func (m *Model) syncSlashState() {
 	switch mode {
 	case slashModeRoot:
 		options = filterSlashOptions([]slashOption{
+			{Title: "/help", Value: "/help", Description: "Show commands and shortcuts"},
 			{Title: "/connect", Value: "/connect", Description: "Switch provider"},
 			{Title: "/model", Value: "/model", Description: "Switch model"},
 			{Title: "/sessions", Value: "/sessions", Description: "Open saved sessions"},

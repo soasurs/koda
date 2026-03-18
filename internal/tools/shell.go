@@ -17,6 +17,15 @@ import (
 const defaultShellTimeout = 60 * time.Second
 const maxOutputBytes = 50 * 1024 // 50 KB
 
+type ShellConfirmationRequest struct {
+	Command string
+	WorkDir string
+}
+
+type ShellConfirmationFunc func(ctx context.Context, request ShellConfirmationRequest) error
+
+type shellConfirmationContextKey struct{}
+
 type runShellInput struct {
 	Command string `json:"command" jsonschema:"Shell command to execute"`
 	WorkDir string `json:"work_dir,omitempty" jsonschema:"Working directory for the command. Defaults to the current working directory if omitted"`
@@ -39,13 +48,40 @@ func NewRunShellTool() (tool.Tool, error) {
 
 func (t *runShellTool) Definition() tool.Definition { return t.def }
 
-func (t *runShellTool) Run(_ context.Context, _ string, arguments string) (string, error) {
+func WithShellConfirmation(ctx context.Context, confirm ShellConfirmationFunc) context.Context {
+	if confirm == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, shellConfirmationContextKey{}, confirm)
+}
+
+func shellConfirmationFromContext(ctx context.Context) ShellConfirmationFunc {
+	if ctx == nil {
+		return nil
+	}
+	confirm, _ := ctx.Value(shellConfirmationContextKey{}).(ShellConfirmationFunc)
+	return confirm
+}
+
+func (t *runShellTool) Run(ctx context.Context, _ string, arguments string) (string, error) {
 	var input runShellInput
 	if err := json.Unmarshal([]byte(arguments), &input); err != nil {
 		return "", fmt.Errorf("run_shell: parse arguments: %w", err)
 	}
+	return runShellCommand(ctx, input)
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultShellTimeout)
+func runShellCommand(ctx context.Context, input runShellInput) (string, error) {
+	if confirm := shellConfirmationFromContext(ctx); confirm != nil {
+		if err := confirm(ctx, ShellConfirmationRequest{
+			Command: input.Command,
+			WorkDir: input.WorkDir,
+		}); err != nil {
+			return "", fmt.Errorf("run_shell: confirm execution: %w", err)
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, defaultShellTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", input.Command)
