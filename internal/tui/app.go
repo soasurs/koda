@@ -117,6 +117,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.refreshViewport()
 		return m, nil
 
+	case tea.PasteMsg:
+		if m.chooser.Stage == chooserStageAPIKey {
+			m.chooser.APIKeyInput += msg.Content
+			m.refreshViewport()
+			return m, nil
+		}
+
 	case tea.KeyPressMsg:
 		if m.chooser.Stage != chooserStageNone {
 			return m.handleChooserKey(msg)
@@ -159,15 +166,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if input == "" {
 				return m, nil
 			}
+			if input == "/exit" {
+				return m, tea.Quit
+			}
 			if input == "/connect" {
 				m.openProviderChooser()
 				m.refreshViewport()
 				return m, nil
 			}
 			if input == "/model" {
-				if err := m.runtime.RefreshModels(context.Background()); err != nil {
-					m.err = nil
-					m.msgs = append(m.msgs, ChatMessage{Kind: KindSystem, Content: "Unable to load live model list, using built-in defaults: " + err.Error()})
+				if !m.runtime.HasConfiguredModels() {
+					if err := m.runtime.RefreshModels(context.Background()); err != nil {
+						m.err = nil
+						m.msgs = append(m.msgs, ChatMessage{Kind: KindSystem, Content: "Unable to load live model list, using built-in defaults: " + err.Error()})
+					}
 				}
 				m.openModelChooser()
 				m.refreshViewport()
@@ -196,6 +208,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.status = "compacting..."
 						return m, tea.Batch(m.runCommand(cmd[0], strings.TrimSpace(strings.TrimPrefix(input, cmd[0]))), m.spinner.Tick)
 					}
+					if cmd[0] == "/undo" {
+						m.running = true
+						m.status = "undoing..."
+						return m, tea.Batch(m.runCommand(cmd[0], strings.TrimSpace(strings.TrimPrefix(input, cmd[0]))), m.spinner.Tick)
+					}
 					return m, m.runCommand(cmd[0], strings.TrimSpace(strings.TrimPrefix(input, cmd[0])))
 				}
 			}
@@ -214,7 +231,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.textarea.Reset()
 			m.syncComposerSize()
-			m.msgs = append(m.msgs, ChatMessage{Kind: KindUser, Content: input})
+			m.msgs = append(m.msgs, ChatMessage{Kind: KindUser, Content: input, Timestamp: time.Now()})
 			if err := m.runtime.TouchSession(context.Background(), m.sessionID, ""); err != nil {
 				m.msgs = append(m.msgs, ChatMessage{Kind: KindSystem, Content: "Failed to update session metadata: " + err.Error()})
 			}
@@ -386,6 +403,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.msgs = append(m.msgs, ChatMessage{Kind: KindSystem, Content: msg.ack})
+			if msg.restoreInput != "" {
+				m.textarea.SetValue(msg.restoreInput)
+				m.textarea.CursorEnd()
+				m.syncComposerSize()
+			}
 			if msg.models != nil {
 				m.openModelChooserWithModels(msg.models)
 				m.refreshViewport()
@@ -1110,6 +1132,23 @@ func (m *Model) runCommand(cmd, arg string) tea.Cmd {
 			}
 			return commandResultMsg{cmd: cmd, ack: "Choose a saved session.", sessions: sessions}
 
+		case "/undo":
+			if !m.hasSession {
+				return commandResultMsg{cmd: cmd, ack: "Nothing to undo."}
+			}
+			deleted, userContent, err := m.runtime.UndoLastUserMessage(ctx, m.sessionID)
+			if err != nil {
+				return commandResultMsg{cmd: cmd, err: err}
+			}
+			msgs, err := m.runtime.SessionMessages(ctx, m.sessionID)
+			if err != nil {
+				return commandResultMsg{cmd: cmd, err: err}
+			}
+			if deleted == 0 {
+				return commandResultMsg{cmd: cmd, ack: "Nothing to undo.", setSession: true, hasSession: true, msgs: msgs}
+			}
+			return commandResultMsg{cmd: cmd, ack: fmt.Sprintf("Undid last message (%d message(s) removed).", deleted), setSession: true, hasSession: true, msgs: msgs, restoreInput: userContent}
+
 		case "/compact":
 			if !m.hasSession {
 				return commandResultMsg{cmd: cmd, ack: "Nothing to compact yet; this session has not started."}
@@ -1147,6 +1186,8 @@ func (m *Model) syncSlashState() {
 			{Title: "/sessions", Value: "/sessions", Description: "Open saved sessions"},
 			{Title: "/new", Value: "/new", Description: "Create a new session"},
 			{Title: "/compact", Value: "/compact", Description: "Compress current context"},
+			{Title: "/undo", Value: "/undo", Description: "Remove last user message and response"},
+			{Title: "/exit", Value: "/exit", Description: "Exit koda"},
 		}, query)
 	}
 
@@ -1479,7 +1520,27 @@ func renderUserMsg(msg ChatMessage, width int) string {
 	if contentWidth < 20 {
 		contentWidth = 20
 	}
-	return userBubbleStyle.Width(contentWidth).Render(msg.Content)
+	bubble := userBubbleStyle.Width(contentWidth).Render(msg.Content)
+	if msg.Timestamp.IsZero() {
+		return bubble
+	}
+	ts := msgTimestampStyle.MarginLeft(4).Render(formatMsgTime(msg.Timestamp))
+	return bubble + "\n" + ts
+}
+
+// formatMsgTime formats t for display next to a chat message:
+//   - same day  → "15:04"
+//   - same year → "01/02 15:04"
+//   - other     → "2006/01/02 15:04"
+func formatMsgTime(t time.Time) string {
+	now := time.Now()
+	if t.Year() == now.Year() && t.YearDay() == now.YearDay() {
+		return t.Format("15:04")
+	}
+	if t.Year() == now.Year() {
+		return t.Format("01/02 15:04")
+	}
+	return t.Format("2006/01/02 15:04")
 }
 
 func renderAssistantMsg(msg ChatMessage, width int) string {
@@ -1558,7 +1619,11 @@ func chatMessagesFromSession(msgs []*message.Message) []ChatMessage {
 	for _, msg := range msgs {
 		switch msg.Role {
 		case string(amodel.RoleUser):
-			result = append(result, ChatMessage{Kind: KindUser, Content: msg.Content})
+			ts := time.Time{}
+			if msg.CreatedAt > 0 {
+				ts = time.UnixMilli(msg.CreatedAt)
+			}
+			result = append(result, ChatMessage{Kind: KindUser, Content: msg.Content, Timestamp: ts})
 		case string(amodel.RoleAssistant):
 			if msg.ReasoningContent != "" {
 				result = append(result, ChatMessage{Kind: KindThinking, Content: msg.ReasoningContent})

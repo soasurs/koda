@@ -245,27 +245,57 @@ func (r *Runtime) SetProvider(ctx context.Context, provider string) error {
 }
 
 func (r *Runtime) SetProviderAPIKey(ctx context.Context, provider, apiKey string) error {
-	canonical, err := canonicalProvider(provider)
-	if err != nil {
-		return err
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		return fmt.Errorf("agent runtime: provider name is required")
 	}
-	r.cfg.Provider = canonical
+	// For the three built-in names, apply canonical normalisation (e.g. "google" → "gemini").
+	if canonical, err := canonicalBuiltinProvider(provider); err == nil {
+		provider = canonical
+	}
+	// Accept any provider that exists in the stored config, plus the three built-ins.
+	if !r.isKnownProvider(provider) {
+		return fmt.Errorf("agent runtime: unknown provider %q — add it to config.json first", provider)
+	}
+
+	r.cfg.Provider = provider
 	r.cfg.Model = ""
 	if strings.TrimSpace(apiKey) != "" {
 		r.cfg.APIKey = strings.TrimSpace(apiKey)
 	} else {
-		r.cfg.APIKey = providerAPIKey(canonical)
+		r.cfg.APIKey = providerAPIKey(provider)
+		if r.cfg.APIKey == "" {
+			if pc := r.cfg.Stored.FindProvider(provider); pc != nil {
+				r.cfg.APIKey = strings.TrimSpace(pc.APIKey)
+			}
+		}
+	}
+	// Propagate base_url from the stored provider config.
+	if pc := r.cfg.Stored.FindProvider(provider); pc != nil {
+		r.cfg.BaseURL = pc.BaseURL
+	} else {
+		r.cfg.BaseURL = ""
 	}
 	if err := r.rebuildRunner(ctx); err != nil {
 		return err
 	}
-	if err := r.cfg.SaveProviderSelection(canonical, apiKey); err != nil {
+	if err := r.cfg.SaveProviderSelection(provider, apiKey); err != nil {
 		return fmt.Errorf("agent runtime: save provider selection: %w", err)
 	}
 	if err := r.refreshModels(ctx); err != nil {
 		return err
 	}
 	return nil
+}
+
+// isKnownProvider returns true if provider is one of the three built-ins or
+// has an explicit entry in the stored config.
+func (r *Runtime) isKnownProvider(provider string) bool {
+	switch provider {
+	case "anthropic", "openai", "gemini":
+		return true
+	}
+	return r.cfg.Stored.FindProvider(provider) != nil
 }
 
 func (r *Runtime) SetModel(ctx context.Context, modelName string) error {
@@ -296,6 +326,45 @@ func (r *Runtime) SessionMessages(ctx context.Context, sessionID int64) ([]*mess
 		return nil, fmt.Errorf("agent runtime: list messages: %w", err)
 	}
 	return msgs, nil
+}
+
+// UndoLastUserMessage deletes the last user message and every message after it
+// from the session. Returns the number of messages deleted and the content of
+// the deleted user message (so the caller can restore it to the input box).
+// Returns 0, "", nil if there are no user messages to undo.
+func (r *Runtime) UndoLastUserMessage(ctx context.Context, sessionID int64) (int, string, error) {
+	sess, err := r.getSession(ctx, sessionID)
+	if err != nil {
+		return 0, "", err
+	}
+
+	msgs, err := sess.ListMessages(ctx)
+	if err != nil {
+		return 0, "", fmt.Errorf("agent runtime: undo: list messages: %w", err)
+	}
+
+	// Find the index of the last user message.
+	lastUserIdx := -1
+	for i := len(msgs) - 1; i >= 0; i-- {
+		if msgs[i].Role == string(amodel.RoleUser) {
+			lastUserIdx = i
+			break
+		}
+	}
+	if lastUserIdx == -1 {
+		return 0, "", nil
+	}
+
+	userContent := msgs[lastUserIdx].Content
+
+	// Delete from the last user message through to the end.
+	toDelete := msgs[lastUserIdx:]
+	for _, msg := range toDelete {
+		if err := sess.DeleteMessage(ctx, msg.MessageID); err != nil {
+			return 0, "", fmt.Errorf("agent runtime: undo: delete message %d: %w", msg.MessageID, err)
+		}
+	}
+	return len(toDelete), userContent, nil
 }
 
 func (r *Runtime) CompactSession(ctx context.Context, sessionID int64) (*CompactResult, error) {
@@ -358,18 +427,61 @@ func (r *Runtime) CompactSession(ctx context.Context, sessionID int64) (*Compact
 }
 
 func (r *Runtime) AvailableProviders() []ProviderOption {
-	return []ProviderOption{
+	// Built-in providers always appear first, in a fixed order.
+	builtins := []ProviderOption{
 		{Value: "anthropic", Label: "Anthropic"},
 		{Value: "openai", Label: "OpenAI"},
 		{Value: "gemini", Label: "Google"},
 	}
+	builtinSet := map[string]bool{"anthropic": true, "openai": true, "gemini": true}
+
+	result := append([]ProviderOption(nil), builtins...)
+	for _, pc := range r.cfg.Stored.Providers {
+		if builtinSet[pc.Name] {
+			continue
+		}
+		label := pc.Name
+		result = append(result, ProviderOption{Value: pc.Name, Label: label})
+	}
+	return result
+}
+
+// HasConfiguredModels reports whether the active provider has an explicit
+// models list in the stored config. When true, /model can open the chooser
+// directly without a live API fetch.
+func (r *Runtime) HasConfiguredModels() bool {
+	pc := r.cfg.Stored.FindProvider(r.cfg.Provider)
+	return pc != nil && len(pc.Models) > 0
 }
 
 func (r *Runtime) AvailableModels() []string {
-	base := append([]string(nil), r.models...)
-	if len(base) == 0 {
-		base = defaultAvailableModels(r.cfg.Provider)
+	// 1. Live-fetched models take highest priority.
+	if len(r.models) > 0 {
+		base := append([]string(nil), r.models...)
+		if r.modelName != "" && !contains(base, r.modelName) {
+			return append([]string{r.modelName}, base...)
+		}
+		return base
 	}
+
+	// 2. Models declared in the provider's config entry.
+	if pc := r.cfg.Stored.FindProvider(r.cfg.Provider); pc != nil && len(pc.Models) > 0 {
+		base := make([]string, 0, len(pc.Models))
+		for _, m := range pc.Models {
+			if m.ID != "" {
+				base = append(base, m.ID)
+			}
+		}
+		if len(base) > 0 {
+			if r.modelName != "" && !contains(base, r.modelName) {
+				return append([]string{r.modelName}, base...)
+			}
+			return base
+		}
+	}
+
+	// 3. Hard-coded defaults for the three built-in providers.
+	base := defaultAvailableModels(r.cfg.Provider)
 	if r.modelName != "" && !contains(base, r.modelName) {
 		return append([]string{r.modelName}, base...)
 	}
@@ -529,7 +641,10 @@ func defaultAvailableModels(provider string) []string {
 	}
 }
 
-func canonicalProvider(provider string) (string, error) {
+// canonicalBuiltinProvider normalises the three built-in provider names.
+// "google" is accepted as an alias for "gemini".
+// Returns an error for any name that is not a built-in.
+func canonicalBuiltinProvider(provider string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case "openai":
 		return "openai", nil
@@ -538,8 +653,21 @@ func canonicalProvider(provider string) (string, error) {
 	case "google", "gemini":
 		return "gemini", nil
 	default:
-		return "", fmt.Errorf("agent runtime: unsupported provider %q", provider)
+		return "", fmt.Errorf("agent runtime: %q is not a built-in provider", provider)
 	}
+}
+
+// canonicalProvider is kept for backwards compatibility; it now accepts custom
+// providers by returning the input unchanged when it is not a built-in name.
+func canonicalProvider(provider string) (string, error) {
+	if c, err := canonicalBuiltinProvider(provider); err == nil {
+		return c, nil
+	}
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		return "", fmt.Errorf("agent runtime: provider name is required")
+	}
+	return provider, nil
 }
 
 func providerLabel(provider string) string {
@@ -548,8 +676,10 @@ func providerLabel(provider string) string {
 		return "OpenAI"
 	case "gemini":
 		return "Google"
-	default:
+	case "anthropic":
 		return "Anthropic"
+	default:
+		return provider
 	}
 }
 

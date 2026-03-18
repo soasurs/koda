@@ -50,6 +50,10 @@ func parseSlashInput(input string) (slashMode, string) {
 		return slashModeNone, arg
 	case "/sessions":
 		return slashModeNone, arg
+	case "/exit":
+		return slashModeNone, arg
+	case "/undo":
+		return slashModeNone, arg
 	default:
 		return slashModeRoot, strings.TrimPrefix(trimmed, "/")
 	}

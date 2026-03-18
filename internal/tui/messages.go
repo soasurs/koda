@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	"github.com/soasurs/adk/model"
 	"github.com/soasurs/adk/session/message"
 	"github.com/soasurs/koda/internal/agent"
@@ -23,6 +25,8 @@ type ChatMessage struct {
 	Kind MsgKind
 	// KindUser / KindAssistant / KindThinking: text content.
 	Content string
+	// Timestamp records when the message was created; used for display on KindUser messages.
+	Timestamp time.Time
 	// KindToolCall / KindToolResult: tool metadata.
 	ToolName   string
 	Args       string // JSON-encoded arguments (ToolCall)
@@ -42,15 +46,16 @@ type runnerMsg struct {
 }
 
 type commandResultMsg struct {
-	err        error
-	ack        string
-	cmd        string
-	sessionID  int64
-	setSession bool
-	hasSession bool
-	msgs       []*message.Message
-	models     []string
-	sessions   []agent.SessionMeta
+	err          error
+	ack          string
+	cmd          string
+	sessionID    int64
+	setSession   bool
+	hasSession   bool
+	msgs         []*message.Message
+	models       []string
+	sessions     []agent.SessionMeta
+	restoreInput string
 }
 
 type titleMsg struct {

@@ -16,11 +16,16 @@ import (
 )
 
 func ListProviderModels(ctx context.Context, cfg config.Config) ([]string, error) {
-	provider := strings.TrimSpace(cfg.Provider)
 	apiKey := strings.TrimSpace(cfg.APIKey)
 
-	switch provider {
-	case "openai":
+	// Resolve the API format for the active provider.
+	format := config.BuiltinFormat(cfg.Provider)
+	if pc := cfg.Stored.FindProvider(cfg.Provider); pc != nil && pc.Format != "" {
+		format = pc.Format
+	}
+
+	switch format {
+	case config.FormatOpenAI:
 		if apiKey == "" {
 			return nil, fmt.Errorf("agent models: OpenAI API key is required")
 		}
@@ -35,7 +40,7 @@ func ListProviderModels(ctx context.Context, cfg config.Config) ([]string, error
 		}
 		return uniqueSortedModels(models), nil
 
-	case "gemini":
+	case config.FormatGemini:
 		if apiKey == "" {
 			return nil, fmt.Errorf("agent models: Google API key is required")
 		}
@@ -58,7 +63,7 @@ func ListProviderModels(ctx context.Context, cfg config.Config) ([]string, error
 		}
 		return uniqueSortedModels(models), nil
 
-	default:
+	default: // FormatAnthropic
 		if apiKey == "" {
 			return nil, fmt.Errorf("agent models: Anthropic API key is required")
 		}

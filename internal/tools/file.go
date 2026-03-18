@@ -55,7 +55,7 @@ func (t *readFileTool) Run(_ context.Context, _ string, arguments string) (strin
 	if input.StartLine > 0 {
 		start = input.StartLine
 	}
-	if input.EndLine > 0 && input.EndLine < end {
+	if input.EndLine > 0 {
 		end = input.EndLine
 	}
 
@@ -67,6 +67,9 @@ func (t *readFileTool) Run(_ context.Context, _ string, arguments string) (strin
 	}
 	if end > len(lines) {
 		end = len(lines)
+	}
+	if end < start {
+		end = start
 	}
 
 	const maxLines = 2000

@@ -32,6 +32,7 @@ var systemPrompt string
 var planPrompt string
 
 // newLLM creates the appropriate LLM client based on the provider in cfg.
+// For custom providers, the API format is looked up from the stored config.
 func newLLM(ctx context.Context, cfg *config.Config) (model.LLM, string, error) {
 	provider := cfg.Provider
 	apiKey := cfg.APIKey
@@ -39,12 +40,14 @@ func newLLM(ctx context.Context, cfg *config.Config) (model.LLM, string, error) 
 		apiKey = providerAPIKey(provider)
 	}
 
-	switch provider {
-	case "openai":
+	format := providerFormat(cfg)
+
+	switch format {
+	case config.FormatOpenAI:
 		m := defaultModel(provider, cfg.Model)
 		return openai.New(apiKey, cfg.BaseURL, m), m, nil
 
-	case "gemini":
+	case config.FormatGemini:
 		m := defaultModel(provider, cfg.Model)
 		llm, err := gemini.New(ctx, apiKey, m)
 		if err != nil {
@@ -52,10 +55,20 @@ func newLLM(ctx context.Context, cfg *config.Config) (model.LLM, string, error) 
 		}
 		return llm, m, nil
 
-	default: // anthropic
-		m := defaultModel("anthropic", cfg.Model)
+	default: // FormatAnthropic
+		m := defaultModel(provider, cfg.Model)
 		return anthropic.New(apiKey, m), m, nil
 	}
+}
+
+// providerFormat resolves the API format for the active provider.
+// It looks up the provider's entry in the stored config; if not found it
+// falls back to the built-in format for the three canonical names.
+func providerFormat(cfg *config.Config) config.ProviderFormat {
+	if pc := cfg.Stored.FindProvider(cfg.Provider); pc != nil && pc.Format != "" {
+		return pc.Format
+	}
+	return config.BuiltinFormat(cfg.Provider)
 }
 
 func defaultModel(provider, configured string) string {
@@ -67,8 +80,10 @@ func defaultModel(provider, configured string) string {
 		return "gpt-4o"
 	case "gemini":
 		return "gemini-2.0-flash"
-	default:
+	case "anthropic":
 		return "claude-sonnet-4-5"
+	default:
+		return ""
 	}
 }
 

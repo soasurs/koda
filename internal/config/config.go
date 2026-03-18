@@ -10,17 +10,53 @@ import (
 
 const configFileName = "config.json"
 
-type ProviderSettings struct {
+// ProviderFormat identifies which API wire format a provider uses.
+type ProviderFormat string
+
+const (
+	FormatAnthropic ProviderFormat = "anthropic"
+	FormatOpenAI    ProviderFormat = "openai"
+	FormatGemini    ProviderFormat = "gemini"
+)
+
+// ModelConfig describes a single model entry inside a provider definition.
+type ModelConfig struct {
+	// ID is the model identifier sent to the API (e.g. "gpt-4o").
+	ID string `json:"id"`
+	// Name is a human-readable display name (e.g. "GPT-4o"). Optional.
+	Name string `json:"name,omitempty"`
+	// InputPrice is the cost per 1M input tokens in USD. Optional.
+	InputPrice float64 `json:"input_price,omitempty"`
+	// OutputPrice is the cost per 1M output tokens in USD. Optional.
+	OutputPrice float64 `json:"output_price,omitempty"`
+	// ContextLength is the maximum context window in tokens. Optional.
+	ContextLength int `json:"context_length,omitempty"`
+}
+
+// ProviderConfig holds the full configuration for one provider entry.
+type ProviderConfig struct {
+	// Name is the unique identifier for this provider (e.g. "anthropic", "my-openai").
+	Name string `json:"name"`
+	// Format specifies the API wire format: "anthropic", "openai", or "gemini".
+	Format ProviderFormat `json:"format"`
+	// APIKey is the authentication key for this provider.
 	APIKey string `json:"api_key,omitempty"`
+	// BaseURL overrides the default API endpoint. Required for OpenAI-compatible
+	// third-party providers.
+	BaseURL string `json:"base_url,omitempty"`
+	// Models is an optional list of models to expose for this provider.
+	// When non-empty, live model listing is skipped and this list is used instead.
+	Models []ModelConfig `json:"models,omitempty"`
 }
 
+// StoredConfig is the on-disk representation of ~/.koda/config.json.
 type StoredConfig struct {
-	Provider  string                      `json:"provider,omitempty"`
-	Model     string                      `json:"model,omitempty"`
-	BaseURL   string                      `json:"base_url,omitempty"`
-	Providers map[string]ProviderSettings `json:"providers,omitempty"`
+	Provider  string           `json:"provider,omitempty"`
+	Model     string           `json:"model,omitempty"`
+	Providers []ProviderConfig `json:"providers,omitempty"`
 }
 
+// Config is the runtime configuration resolved from flags, env vars, and the stored config.
 type Config struct {
 	Provider  string
 	Model     string
@@ -44,10 +80,19 @@ func Load() *Config {
 	}
 
 	model := getenv("KODA_MODEL", stored.Model)
-	baseURL := getenv("KODA_BASE_URL", stored.BaseURL)
-	apiKey := apiKey(provider)
-	if apiKey == "" {
-		apiKey = storedAPIKey(stored, provider)
+
+	pc := stored.FindProvider(provider)
+
+	// BaseURL: env var > provider config > (empty)
+	baseURL := getenv("KODA_BASE_URL", "")
+	if baseURL == "" && pc != nil {
+		baseURL = pc.BaseURL
+	}
+
+	// APIKey: env var for built-in providers > provider config > (empty)
+	apiKey := builtinEnvAPIKey(provider)
+	if apiKey == "" && pc != nil {
+		apiKey = strings.TrimSpace(pc.APIKey)
 	}
 
 	return &Config{
@@ -61,19 +106,78 @@ func Load() *Config {
 	}
 }
 
+// FindProvider returns the ProviderConfig for the given name, or nil if not found.
+func (s *StoredConfig) FindProvider(name string) *ProviderConfig {
+	for i := range s.Providers {
+		if s.Providers[i].Name == name {
+			return &s.Providers[i]
+		}
+	}
+	return nil
+}
+
+// upsertProvider updates an existing provider entry in-place or appends a new one.
+func (s *StoredConfig) upsertProvider(pc ProviderConfig) {
+	for i := range s.Providers {
+		if s.Providers[i].Name == pc.Name {
+			// Preserve existing models list if the update doesn't supply one.
+			if len(pc.Models) == 0 {
+				pc.Models = s.Providers[i].Models
+			}
+			s.Providers[i] = pc
+			return
+		}
+	}
+	s.Providers = append(s.Providers, pc)
+}
+
+// ensureBuiltins guarantees that the three built-in providers always have entries.
+// This means a fresh or legacy config will be populated on first save.
+func (s *StoredConfig) ensureBuiltins() {
+	builtins := []struct {
+		name   string
+		format ProviderFormat
+	}{
+		{"anthropic", FormatAnthropic},
+		{"openai", FormatOpenAI},
+		{"gemini", FormatGemini},
+	}
+	for _, b := range builtins {
+		if s.FindProvider(b.name) == nil {
+			s.Providers = append(s.Providers, ProviderConfig{
+				Name:   b.name,
+				Format: b.format,
+			})
+		}
+	}
+}
+
 func (c *Config) SaveProviderSelection(provider, apiKey string) error {
 	provider = strings.TrimSpace(provider)
 	if provider == "" {
 		return fmt.Errorf("config: provider is required")
 	}
-	if c.Stored.Providers == nil {
-		c.Stored.Providers = map[string]ProviderSettings{}
+
+	c.Stored.ensureBuiltins()
+
+	pc := c.Stored.FindProvider(provider)
+	if pc == nil {
+		// Unknown custom provider — create a minimal entry. Caller is expected
+		// to have set format via the chooser; we default to openai-compat here
+		// as a safe fallback.
+		c.Stored.upsertProvider(ProviderConfig{
+			Name:   provider,
+			Format: FormatOpenAI,
+			APIKey: strings.TrimSpace(apiKey),
+		})
+	} else {
+		updated := *pc
+		if strings.TrimSpace(apiKey) != "" {
+			updated.APIKey = strings.TrimSpace(apiKey)
+		}
+		c.Stored.upsertProvider(updated)
 	}
-	settings := c.Stored.Providers[provider]
-	if strings.TrimSpace(apiKey) != "" {
-		settings.APIKey = strings.TrimSpace(apiKey)
-	}
-	c.Stored.Providers[provider] = settings
+
 	c.Stored.Provider = provider
 	c.Stored.Model = ""
 	c.Provider = provider
@@ -94,8 +198,13 @@ func (c *Config) SaveModelSelection(model string) error {
 	return saveStoredConfig(c.Path, c.Stored)
 }
 
+// StoredAPIKey returns the stored API key for provider (used by the TUI to
+// pre-fill the key input when switching providers).
 func (c *Config) StoredAPIKey(provider string) string {
-	return storedAPIKey(c.Stored, provider)
+	if pc := c.Stored.FindProvider(provider); pc != nil {
+		return strings.TrimSpace(pc.APIKey)
+	}
+	return ""
 }
 
 func defaultConfigPath() string {
@@ -104,6 +213,20 @@ func defaultConfigPath() string {
 		return configFileName
 	}
 	return filepath.Join(home, ".koda", configFileName)
+}
+
+// rawStoredConfig is the on-disk format with both old (map) and new (array)
+// providers fields so we can migrate transparently.
+type rawStoredConfig struct {
+	Provider  string           `json:"provider,omitempty"`
+	Model     string           `json:"model,omitempty"`
+	Providers []ProviderConfig `json:"providers,omitempty"`
+
+	// LegacyProviders holds the old map[string]ProviderSettings format.
+	// It is read but never written; on the next save it is migrated to Providers.
+	LegacyProviders map[string]struct {
+		APIKey string `json:"api_key,omitempty"`
+	} `json:"_legacy_providers,omitempty"`
 }
 
 func loadStoredConfig(path string) (StoredConfig, error) {
@@ -115,20 +238,34 @@ func loadStoredConfig(path string) (StoredConfig, error) {
 		return StoredConfig{}, fmt.Errorf("config: read stored config: %w", err)
 	}
 
+	// Try new array format first.
 	var stored StoredConfig
 	if err := json.Unmarshal(data, &stored); err != nil {
 		return StoredConfig{}, fmt.Errorf("config: decode stored config: %w", err)
 	}
-	if stored.Providers == nil {
-		stored.Providers = map[string]ProviderSettings{}
+
+	// If providers is empty, try to migrate from the old map format.
+	if len(stored.Providers) == 0 {
+		var legacy struct {
+			Providers map[string]struct {
+				APIKey string `json:"api_key,omitempty"`
+			} `json:"providers,omitempty"`
+		}
+		if json.Unmarshal(data, &legacy) == nil {
+			for name, ps := range legacy.Providers {
+				stored.upsertProvider(ProviderConfig{
+					Name:   name,
+					Format: BuiltinFormat(name),
+					APIKey: ps.APIKey,
+				})
+			}
+		}
 	}
+
 	return stored, nil
 }
 
 func saveStoredConfig(path string, stored StoredConfig) error {
-	if stored.Providers == nil {
-		stored.Providers = map[string]ProviderSettings{}
-	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("config: create config dir: %w", err)
 	}
@@ -143,21 +280,31 @@ func saveStoredConfig(path string, stored StoredConfig) error {
 	return nil
 }
 
-func storedAPIKey(stored StoredConfig, provider string) string {
-	if stored.Providers == nil {
-		return ""
+// BuiltinFormat returns the default ProviderFormat for the three built-in
+// provider names; everything else defaults to openai (OpenAI-compatible).
+func BuiltinFormat(name string) ProviderFormat {
+	switch name {
+	case "anthropic":
+		return FormatAnthropic
+	case "gemini":
+		return FormatGemini
+	default:
+		return FormatOpenAI
 	}
-	return strings.TrimSpace(stored.Providers[provider].APIKey)
 }
 
-func apiKey(provider string) string {
+// builtinEnvAPIKey returns the API key from the standard environment variable
+// for a built-in provider name. Returns "" for unknown/custom providers.
+func builtinEnvAPIKey(provider string) string {
 	switch provider {
 	case "openai":
 		return os.Getenv("OPENAI_API_KEY")
 	case "gemini":
 		return os.Getenv("GEMINI_API_KEY")
-	default:
+	case "anthropic":
 		return os.Getenv("ANTHROPIC_API_KEY")
+	default:
+		return ""
 	}
 }
 

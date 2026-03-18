@@ -188,4 +188,9 @@ var (
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color("240")).
 			Padding(0, 1)
+
+	// ── message timestamp ─────────────────────────────────────────────────────
+	msgTimestampStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("240")).
+				Italic(true)
 )
