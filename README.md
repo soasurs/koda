@@ -32,9 +32,14 @@ Available today:
   cancellation-safe approval broker.
 - Proto/ADK multimodal input and event conversion, including structured tool
   outcomes and file diffs, plus a fake `TurnRunner` test seam.
+- A cached ADK agent factory for all registered provider adapters, with
+  provider-revision invalidation, Plan/Build tool sets, model-default
+  reasoning effort, and workspace `AGENTS.md` instructions.
+- Context-scoped approval/question adapters that preserve provider tool-call
+  metadata and convert Broker waits into transient Run frames.
 
-The next implementation slice is agent construction and caching that wires the
-tools and approval/question brokers into streamed Run handling. See
+The next implementation slice wires the cached runner and interaction adapters
+into live streamed Run handling, including completion and rollback semantics. See
 [AGENTS.md](AGENTS.md) for the current architecture decisions and development
 order.
 
@@ -56,10 +61,11 @@ internal/server/                          Connect handlers
 internal/store/                          SQLite lifecycle and session catalog
 internal/tools/                          Workspace-aware coding tools
 internal/permission/                     Session permission policy
+internal/agent/                          Cached ADK agents, prompts, and Run context
 buf.yaml / buf.gen.yaml                  lint and generation configuration
 ```
 
-Planned packages include `internal/agent` and `cmd/koda`.
+The planned process entry point is `cmd/koda`.
 
 ## API model
 
@@ -177,8 +183,8 @@ a successful snapshot expose only their explicit overrides. Catalog refreshes
 do not change the provider connection revision or invalidate cached LLM clients.
 
 Reasoning effort is model-specific. Model catalogs may advertise values such as
-`minimal`, `low`, `medium`, `high`, `xhigh`, `max`, or `ultra`; the future
-runtime will validate the selected value against the session's model.
+`minimal`, `low`, `medium`, `high`, `xhigh`, `max`, or `ultra`; the agent
+factory validates the selected value against the session's model.
 
 ## Development
 
@@ -219,8 +225,9 @@ under `gen/` are committed but must not be edited manually.
 
 The current implementation order is:
 
-1. Cached build/plan agents and approval/question interaction wiring.
-2. Streamed Run handling, process lifecycle, and end-to-end tests.
+1. Live streamed Run, including cached-runner use, interactions, completion,
+   cancellation, and rollback.
+2. Process lifecycle and end-to-end tests.
 
 ## License
 

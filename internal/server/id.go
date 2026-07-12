@@ -7,6 +7,14 @@ import (
 )
 
 func newSessionID() (string, error) {
+	return newID()
+}
+
+func newInteractionID() (string, error) {
+	return newID()
+}
+
+func newID() (string, error) {
 	var value [16]byte
 	if _, err := rand.Read(value[:]); err != nil {
 		return "", fmt.Errorf("generate session ID: %w", err)

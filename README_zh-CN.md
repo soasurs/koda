@@ -27,8 +27,12 @@ Protocol Buffer 契约、Connect RPC 和
 - Plan 和 Build agent 可用的 `ask_questions` 工具，包含类型化前端问题、答案校验和取消语义。
 - Session 级文件/Shell 权限契约，以及支持取消的进程内 approval broker。
 - Proto/ADK 多模态输入和事件转换，包含结构化工具结果/file diff，以及 fake `TurnRunner` test seam。
+- 覆盖全部已注册 Provider adapter 的缓存 ADK agent Factory，支持 Provider revision
+  失效、Plan/Build 工具集、Model 默认 reasoning effort 与 workspace `AGENTS.md` 指令。
+- 基于 Run context 的 approval/question adapter，会保留 Provider tool-call metadata，
+  并将 Broker 等待转换为瞬态 Run frame。
 
-下一阶段将构造并缓存 agent，把工具与 approval/question broker 接入流式 Run。
+下一阶段将把缓存 runner 和 interaction adapter 接入真实的流式 Run，补齐完成帧与回滚语义。
 当前架构决策和开发顺序见
 [AGENTS.md](AGENTS.md)。
 
@@ -50,10 +54,11 @@ internal/server/                          Connect handlers
 internal/store/                          SQLite 生命周期和 Session Catalog
 internal/tools/                           Workspace 感知的 coding tools
 internal/permission/                      Session 权限策略
+internal/agent/                           缓存 ADK agent、prompt 与 Run context
 buf.yaml / buf.gen.yaml                  lint 和代码生成配置
 ```
 
-计划中的包包括 `internal/agent` 和 `cmd/koda`。
+计划中的进程入口为 `cmd/koda`。
 
 ## API 模型
 
@@ -152,7 +157,7 @@ snapshot。自定义 endpoint 在没有成功 snapshot 时只暴露显式 overri
 不会改变 Provider 的连接 revision，也不会导致缓存的 LLM client 失效。
 
 Reasoning effort 属于具体 Model。模型目录可以声明 `minimal`、`low`、`medium`、
-`high`、`xhigh`、`max` 或 `ultra` 等值；未来 Runtime 会根据 Session 选择的模型进行
+`high`、`xhigh`、`max` 或 `ultra` 等值；agent Factory 会根据 Session 选择的模型进行
 校验。
 
 ## 开发
@@ -194,8 +199,8 @@ go test -cover ./...
 
 当前实现顺序：
 
-1. 可缓存的 build/plan agents，以及 approval/question interaction 的接入。
-2. 流式 Run、进程生命周期和端到端测试。
+1. 真实流式 Run：使用缓存 runner，接入 interaction，补齐完成、取消与回滚。
+2. 进程生命周期和端到端测试。
 
 ## License
 

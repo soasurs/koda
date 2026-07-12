@@ -3,6 +3,7 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -59,6 +60,13 @@ type Authorizer interface {
 
 // Approval describes an operation awaiting a user decision.
 type Approval struct {
+	// ToolCallID correlates this approval with the provider tool call that
+	// requested the operation.
+	ToolCallID string
+	// ToolName identifies the tool that requested the operation.
+	ToolName string
+	// Arguments contains the exact JSON arguments supplied by the model.
+	Arguments   json.RawMessage
 	Kind        permission.Kind
 	Scope       permission.Scope
 	TargetPaths []string
@@ -168,13 +176,19 @@ func (s service) authorize(ctx context.Context, kind permission.Kind, scope perm
 	if s.authorizer == nil {
 		return tool.NewHandledError(ErrApprovalRequired.Error())
 	}
-	err := s.authorizer.Authorize(ctx, Approval{
+	approval := Approval{
 		Kind:        kind,
 		Scope:       scope,
 		TargetPaths: append([]string(nil), targets...),
 		Summary:     summary,
 		FileChanges: append([]FileChange(nil), changes...),
-	})
+	}
+	if call, ok := toolCallFromContext(ctx); ok {
+		approval.ToolCallID = call.ID
+		approval.ToolName = call.Name
+		approval.Arguments = append(json.RawMessage(nil), call.Arguments...)
+	}
+	err := s.authorizer.Authorize(ctx, approval)
 	if errors.Is(err, ErrApprovalRejected) {
 		return tool.NewHandledError("tool approval rejected")
 	}
@@ -187,7 +201,11 @@ func NewReadOnly(config Config) ([]tool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	return s.readOnlyTools()
+	values, err := s.readOnlyTools()
+	if err != nil {
+		return nil, err
+	}
+	return withToolCallContext(values), nil
 }
 
 // NewBuild constructs the tools available in Build mode.
@@ -216,7 +234,7 @@ func NewBuild(config Config) ([]tool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(tools, writeFile, createFile, editFile, runShell), nil
+	return withToolCallContext(append(tools, writeFile, createFile, editFile, runShell)), nil
 }
 
 func (s service) readOnlyTools() ([]tool.Tool, error) {
@@ -245,4 +263,35 @@ func (s service) readOnlyTools() ([]tool.Tool, error) {
 		return nil, err
 	}
 	return []tool.Tool{readFile, listDirectory, searchText, findFiles, gitTool, askQuestions}, nil
+}
+
+type toolCallContextKey struct{}
+
+type toolCallContextTool struct {
+	tool.Tool
+}
+
+func (t toolCallContextTool) Run(ctx context.Context, call tool.Call) (*tool.Result, error) {
+	return t.Tool.Run(context.WithValue(ctx, toolCallContextKey{}, cloneToolCall(call)), call)
+}
+
+func withToolCallContext(values []tool.Tool) []tool.Tool {
+	result := make([]tool.Tool, len(values))
+	for index, value := range values {
+		result[index] = toolCallContextTool{Tool: value}
+	}
+	return result
+}
+
+func toolCallFromContext(ctx context.Context) (tool.Call, bool) {
+	if ctx == nil {
+		return tool.Call{}, false
+	}
+	call, ok := ctx.Value(toolCallContextKey{}).(tool.Call)
+	return call, ok
+}
+
+func cloneToolCall(call tool.Call) tool.Call {
+	call.Arguments = append(json.RawMessage(nil), call.Arguments...)
+	return call
 }

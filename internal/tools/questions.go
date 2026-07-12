@@ -14,6 +14,12 @@ import (
 
 const maxQuestions = 3
 
+var (
+	// ErrQuestionInteractionUnavailable indicates that an ask_questions call
+	// has no frontend interaction attached to its active Run.
+	ErrQuestionInteractionUnavailable = errors.New("question interaction is unavailable")
+)
+
 // Questioner publishes one batch of questions and waits for frontend-authored
 // answers. Implementations must observe context cancellation and clean up any
 // pending prompt.
@@ -113,6 +119,9 @@ func (t *askQuestionsTool) Run(ctx context.Context, call tool.Call) (*tool.Resul
 		Questions:  cloneQuestions(input.Questions),
 	})
 	if err != nil {
+		if errors.Is(err, ErrQuestionInteractionUnavailable) {
+			return nil, tool.NewHandledError("question interaction is unavailable")
+		}
 		return nil, fmt.Errorf("ask questions: %w", err)
 	}
 	if resolution.Canceled {

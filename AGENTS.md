@@ -33,12 +33,17 @@ Implemented today:
 - Proto/ADK multimodal input and event conversion, including structured tool
   outcomes and file diffs, with a fake TurnRunner test seam.
 - Event-history and undo Connect handlers with per-session serialization.
+- A cached ADK agent factory that maps every registered provider type, resolves
+  model-default reasoning effort, builds Plan/Build tool sets, and reloads
+  workspace `AGENTS.md` instructions when they change.
+- Context-scoped Approval/Question adapters that preserve provider tool-call
+  metadata and translate the existing brokers into transient Run frames.
 
 Not implemented yet:
 
-- LLM/agent construction and caching.
-- Tool prompts plus ADK approval/question interaction and streamed-Run wiring.
-- LLM-backed Run handling, completion framing, and rollback semantics.
+- LLM-backed Run handling: ADK session initialization, Factory integration,
+  streamed events/interactions, completion framing, session touching, and
+  rollback semantics.
 - HTTP server and `cmd/koda` entry point.
 - A runnable CLI or UI.
 
@@ -57,6 +62,7 @@ koda/
 ├── internal/store/                          # SQLite lifecycle + session catalog
 ├── internal/tools/                          # workspace-aware coding tools
 ├── internal/permission/                     # session permission policy
+├── internal/agent/                          # cached ADK agents, prompts, runtime context
 ├── buf.yaml
 ├── buf.gen.yaml
 ├── go.mod
@@ -115,8 +121,10 @@ their own domain types or ADK types rather than depending on `gen/koda/v1`.
   `shell_access`, and `workdir`.
 - `RunRequest` carries only `session_id`, multimodal input, and build/plan mode.
 - Reasoning effort is a provider/model-specific string, not a shared enum.
-- Future agent instances should be cached by provider ID, provider revision,
-  model ID, reasoning effort, and mode. Do not rebuild an agent on every turn.
+- Agent instances are cached by provider ID/revision, model ID, resolved
+  reasoning effort, mode, Session tool configuration, and the workspace
+  instruction fingerprint. Do not rebuild an agent on every turn merely to
+  inject Run metadata.
 
 Tool permission invariants:
 
@@ -147,9 +155,10 @@ Tool permission invariants:
   retain the provider tool-call ID. `QuestionPrompt` is transient; validated
   frontend answers are returned and persisted as the normal ToolResult. An
   explicit frontend cancellation is a model-visible handled failure.
-- The Run context must provide Session/Turn metadata and a concurrency-safe
-  outbound frame publisher when the Question Broker is wired into the runtime.
-  Do not rebuild cached agents or tools per Run to inject this metadata.
+- Cached tools resolve approval/question handlers from the Run context. The
+  live Run handler must provide Session/Turn metadata and a concurrency-safe
+  outbound frame publisher; it must not rebuild agents or tools per turn to
+  inject this metadata.
 
 Built-in Provider Registry entries:
 
@@ -211,10 +220,10 @@ Chat Completions adapter for `openai` and the Responses adapter for
 
 ## Recommended implementation order
 
-1. Implement the LLM factory and cached build/plan agents, including tool
-   prompts and Approval/Question Broker wiring.
-2. Implement streamed `Run`, cancellation, rollback, and completion semantics.
-3. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
+1. Implement the live streamed `Run`: initialize ADK sessions, obtain the
+   cached Factory runner, attach interactions, serialize outbound frames, and
+   enforce cancellation, rollback, completion, and session-touch semantics.
+2. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
 
 Review this order after each completed slice; do not build all layers at once.
 

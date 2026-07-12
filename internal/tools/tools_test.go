@@ -128,6 +128,38 @@ func TestBuildToolsRequireApprovalForWorkspaceWritesAndShell(t *testing.T) {
 	}
 }
 
+func TestApprovalPreservesProviderToolCallMetadata(t *testing.T) {
+	workspace := t.TempDir()
+	authorizer := newRecordingAuthorizer()
+	values, err := NewBuild(Config{
+		Workdir:     workspace,
+		FileAccess:  permission.FileAccessWorkspaceRead,
+		ShellAccess: permission.ShellAccessApprovalRequired,
+		Authorizer:  authorizer,
+	})
+	if err != nil {
+		t.Fatalf("NewBuild() error = %v", err)
+	}
+	arguments := json.RawMessage(`{"path":"new.txt","content":"hello"}`)
+	result, err := toolByName(t, values, "create_file").Run(t.Context(), tool.Call{
+		ID:        "call-1",
+		Name:      "create_file",
+		Arguments: arguments,
+	})
+	if err != nil || result == nil {
+		t.Fatalf("create_file.Run() = %v, %v", result, err)
+	}
+	requests := authorizer.requests()
+	if len(requests) != 1 || requests[0].ToolCallID != "call-1" || requests[0].ToolName != "create_file" ||
+		string(requests[0].Arguments) != string(arguments) {
+		t.Fatalf("approval requests = %+v", requests)
+	}
+	arguments[0] = 'x'
+	if string(requests[0].Arguments) != `{"path":"new.txt","content":"hello"}` {
+		t.Fatalf("approval arguments were not cloned: %q", requests[0].Arguments)
+	}
+}
+
 func TestSearchAndFindFilesExposeEditableMetadata(t *testing.T) {
 	if _, err := exec.LookPath("rg"); err != nil {
 		t.Skip("rg is not installed")
