@@ -21,7 +21,8 @@ type Handler struct {
 	approvals *ApprovalBroker
 	questions *QuestionBroker
 
-	newSessionID func() (string, error)
+	newSessionID      func() (string, error)
+	turnRunnerFactory turnRunnerFactory
 }
 
 // NewHandler constructs a Handler backed by registry, catalog, and store.

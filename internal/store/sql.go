@@ -4,18 +4,44 @@ package store
 // fixed during Store initialization, so it is assembled once rather than at
 // each call site. Runtime values are always passed as SQL parameters.
 type queries struct {
-	createSession string
-	getSession    string
-	countSessions string
-	listSessions  string
-	updateSession string
-	touchSession  string
-	deleteSession string
-	sessionExists string
+	createSession    string
+	getSession       string
+	countSessions    string
+	listSessions     string
+	updateSession    string
+	touchSession     string
+	deleteSession    string
+	sessionExists    string
+	countEvents      string
+	listEvents       string
+	latestUserEvent  string
+	deleteTurnEvents string
 }
 
 func newQueries(adkTablePrefix string) queries {
 	adkEventsTable := adkTablePrefix + "events"
+	const eventColumns = `
+		event_id,
+		session_id,
+		turn_id,
+		author,
+		role,
+		text,
+		reasoning_text,
+		tool_calls,
+		tool_result,
+		tool_call_id,
+		finish_reason,
+		parts,
+		prompt_tokens,
+		completion_tokens,
+		total_tokens,
+		usage_details,
+		created_at,
+		updated_at,
+		archived_at,
+		deleted_at
+	`
 	sessionSelect := `
 		SELECT
 			s.id,
@@ -96,6 +122,40 @@ func newQueries(adkTablePrefix string) queries {
 			SELECT 1
 			FROM koda_sessions
 			WHERE id = $1 AND deleted_at = 0
+		`,
+		countEvents: `
+			SELECT COUNT(*)
+			FROM ` + adkEventsTable + `
+			WHERE session_id = $1
+				AND deleted_at = 0
+				AND archived_at = 0
+		`,
+		listEvents: `
+			SELECT ` + eventColumns + `
+			FROM ` + adkEventsTable + `
+			WHERE session_id = $1
+				AND deleted_at = 0
+				AND archived_at = 0
+			ORDER BY created_at ASC, event_id ASC
+			LIMIT $2 OFFSET $3
+		`,
+		latestUserEvent: `
+			SELECT ` + eventColumns + `
+			FROM ` + adkEventsTable + `
+			WHERE session_id = $1
+				AND role = $2
+				AND deleted_at = 0
+				AND archived_at = 0
+			ORDER BY created_at DESC, event_id DESC
+			LIMIT 1
+		`,
+		deleteTurnEvents: `
+			UPDATE ` + adkEventsTable + `
+			SET deleted_at = $1
+			WHERE session_id = $2
+				AND turn_id = $3
+				AND deleted_at = 0
+				AND archived_at = 0
 		`,
 	}
 }

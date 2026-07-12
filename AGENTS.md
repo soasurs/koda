@@ -30,12 +30,15 @@ Implemented today:
   cancellation-safe in-process Question Broker and answer RPC.
 - Session-scoped filesystem and Shell permission types, structured file-diff
   protocol types, and a cancellation-safe in-process Approval Broker.
+- Proto/ADK multimodal input and event conversion, including structured tool
+  outcomes and file diffs, with a fake TurnRunner test seam.
+- Event-history and undo Connect handlers with per-session serialization.
 
 Not implemented yet:
 
 - LLM/agent construction and caching.
 - Tool prompts plus ADK approval/question interaction and streamed-Run wiring.
-- Event-history and agent-runtime Connect handlers.
+- LLM-backed Run handling, completion framing, and rollback semantics.
 - HTTP server and `cmd/koda` entry point.
 - A runnable CLI or UI.
 
@@ -208,11 +211,10 @@ Chat Completions adapter for `openai` and the Responses adapter for
 
 ## Recommended implementation order
 
-1. Add Proto/ADK input and event conversion plus a fake-LLM runtime test seam.
-2. Implement the LLM factory and cached build/plan agents, including tool
+1. Implement the LLM factory and cached build/plan agents, including tool
    prompts and Approval/Question Broker wiring.
-3. Implement streamed `Run`, cancellation, rollback, and completion semantics.
-4. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
+2. Implement streamed `Run`, cancellation, rollback, and completion semantics.
+3. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
 
 Review this order after each completed slice; do not build all layers at once.
 

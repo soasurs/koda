@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/soasurs/adk/model"
 	"github.com/soasurs/adk/session/event"
 	"github.com/soasurs/koda/internal/permission"
 )
@@ -224,6 +225,120 @@ func TestSessionEventCountIncludesOnlyActiveADKEvents(t *testing.T) {
 	}
 	if got.EventCount != 0 {
 		t.Fatalf("GetSession(after archive).EventCount = %d, want 0", got.EventCount)
+	}
+}
+
+func TestListEventsAndUndoLastMessage(t *testing.T) {
+	store := openTestStore(t)
+	createdAt := time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC)
+	store.now = func() time.Time { return createdAt.Add(time.Hour) }
+	if _, err := store.CreateSession(t.Context(), CreateSessionParams{
+		ID: "session-1", Workdir: "/workspace", ProviderID: "openai", ModelID: "gpt-5",
+	}); err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+	adkSession, err := store.EnsureADKSession(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("EnsureADKSession() error = %v", err)
+	}
+	events := []*event.Event{
+		{
+			EventID: 1, TurnID: "turn-1", Role: string(model.RoleUser),
+			Parts:     event.Parts{{Type: model.ContentPartTypeText, Text: "first question"}},
+			CreatedAt: createdAt.UnixMilli(), UpdatedAt: createdAt.UnixMilli(),
+		},
+		{
+			EventID: 2, TurnID: "turn-1", Role: string(model.RoleAssistant), Content: "first answer",
+			CreatedAt: createdAt.Add(time.Millisecond).UnixMilli(), UpdatedAt: createdAt.Add(time.Millisecond).UnixMilli(),
+		},
+		{
+			EventID: 3, TurnID: "turn-2", Role: string(model.RoleUser),
+			Parts: event.Parts{
+				{Type: model.ContentPartTypeText, Text: "second question"},
+				{Type: model.ContentPartTypeImageURL, ImageURL: "https://example.com/diagram.png", ImageDetail: model.ImageDetailHigh},
+			},
+			CreatedAt: createdAt.Add(2 * time.Millisecond).UnixMilli(), UpdatedAt: createdAt.Add(2 * time.Millisecond).UnixMilli(),
+		},
+		{
+			EventID: 4, TurnID: "turn-2", Role: string(model.RoleAssistant), Content: "second answer",
+			CreatedAt: createdAt.Add(3 * time.Millisecond).UnixMilli(), UpdatedAt: createdAt.Add(3 * time.Millisecond).UnixMilli(),
+		},
+	}
+	for _, event := range events {
+		if err := adkSession.CreateEvent(t.Context(), event); err != nil {
+			t.Fatalf("CreateEvent(%d) error = %v", event.EventID, err)
+		}
+	}
+
+	listed, total, err := store.ListEvents(t.Context(), "session-1", ListEventsParams{Limit: 2, Offset: 1})
+	if err != nil {
+		t.Fatalf("ListEvents() error = %v", err)
+	}
+	if total != 4 || len(listed) != 2 || listed[0].ID != 2 || listed[1].ID != 3 {
+		t.Fatalf("ListEvents() = %+v, total %d; want events 2 and 3 of 4", listed, total)
+	}
+
+	undone, err := store.UndoLastMessage(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("UndoLastMessage() error = %v", err)
+	}
+	if undone.TurnID != "turn-2" || undone.DeletedEventCount != 2 || len(undone.Input.Parts) != 2 ||
+		undone.Input.Parts[0].Text != "second question" || undone.Input.Parts[1].ImageURL != "https://example.com/diagram.png" {
+		t.Fatalf("UndoLastMessage() = %+v", undone)
+	}
+
+	listed, total, err = store.ListEvents(t.Context(), "session-1", ListEventsParams{})
+	if err != nil {
+		t.Fatalf("ListEvents(after undo) error = %v", err)
+	}
+	if total != 2 || len(listed) != 2 || listed[0].TurnID != "turn-1" || listed[1].TurnID != "turn-1" {
+		t.Fatalf("ListEvents(after undo) = %+v, total %d; want turn-1 only", listed, total)
+	}
+	updated, err := store.GetSession(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("GetSession(after undo) error = %v", err)
+	}
+	if updated.EventCount != 2 || !updated.UpdatedAt.Equal(createdAt.Add(time.Hour)) {
+		t.Fatalf("GetSession(after undo) = %+v", updated)
+	}
+
+	if _, err := store.UndoLastMessage(t.Context(), "session-1"); err != nil {
+		t.Fatalf("UndoLastMessage(second) error = %v", err)
+	}
+	undone, err = store.UndoLastMessage(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("UndoLastMessage(empty) error = %v", err)
+	}
+	if undone.TurnID != "" || undone.DeletedEventCount != 0 || len(undone.Input.Parts) != 0 {
+		t.Fatalf("UndoLastMessage(empty) = %+v, want empty result", undone)
+	}
+}
+
+func TestEventHistoryValidationAndEmptyLedger(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateSession(t.Context(), CreateSessionParams{
+		ID: "session-1", Workdir: "/workspace", ProviderID: "openai", ModelID: "gpt-5",
+	}); err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+	events, total, err := store.ListEvents(t.Context(), "session-1", ListEventsParams{})
+	if err != nil {
+		t.Fatalf("ListEvents(empty ledger) error = %v", err)
+	}
+	if total != 0 || len(events) != 0 {
+		t.Fatalf("ListEvents(empty ledger) = %+v, total %d", events, total)
+	}
+	if _, _, err := store.ListEvents(t.Context(), "session-1", ListEventsParams{Limit: -1}); err == nil {
+		t.Fatal("ListEvents(negative limit) error = nil, want error")
+	}
+	if _, _, err := store.ListEvents(t.Context(), "session-1", ListEventsParams{Offset: -1}); err == nil {
+		t.Fatal("ListEvents(negative offset) error = nil, want error")
+	}
+	if _, _, err := store.ListEvents(t.Context(), "missing", ListEventsParams{}); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("ListEvents(missing) error = %v, want ErrNotFound", err)
+	}
+	if _, err := store.UndoLastMessage(t.Context(), "missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("UndoLastMessage(missing) error = %v, want ErrNotFound", err)
 	}
 }
 

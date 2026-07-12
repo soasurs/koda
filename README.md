@@ -23,16 +23,18 @@ Available today:
 - A SQLite-backed Session Store for Koda metadata and ADK conversation history.
 - Provider and model Connect handlers with protocol-level tests.
 - Session CRUD Connect handlers with protocol-level tests.
+- Event-history and undo Connect handlers with protocol-level tests.
 - Workspace-aware file, search, Git, and Shell tool implementations, including
   Hashline editing and structured file diffs.
 - An `ask_questions` tool for Plan and Build agents, with typed frontend
   prompts, validated answers, and cancellation semantics.
 - Session-scoped filesystem and Shell permission contracts plus an in-process,
   cancellation-safe approval broker.
+- Proto/ADK multimodal input and event conversion, including structured tool
+  outcomes and file diffs, plus a fake `TurnRunner` test seam.
 
-The next implementation slice is Proto/ADK input and event conversion with a
-fake-runtime test seam, then agent construction that wires the tools and
-approval/question brokers into streamed Run handling. See
+The next implementation slice is agent construction and caching that wires the
+tools and approval/question brokers into streamed Run handling. See
 [AGENTS.md](AGENTS.md) for the current architecture decisions and development
 order.
 
@@ -217,9 +219,8 @@ under `gen/` are committed but must not be edited manually.
 
 The current implementation order is:
 
-1. Proto-to-ADK input/event conversion and runtime test seams.
-2. Cached build/plan agents and approval/question interaction wiring.
-3. Streamed Run handling, process lifecycle, and end-to-end tests.
+1. Cached build/plan agents and approval/question interaction wiring.
+2. Streamed Run handling, process lifecycle, and end-to-end tests.
 
 ## License
 

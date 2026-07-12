@@ -22,12 +22,14 @@ Protocol Buffer 契约、Connect RPC 和
 - 基于 SQLite 的 Session Store，负责 Koda session metadata 和 ADK 对话历史。
 - Provider 和 Model 的 Connect handlers，以及协议级测试。
 - Session CRUD Connect handlers，以及协议级测试。
+- 历史事件与 Undo Connect handlers，以及协议级测试。
 - 具备 workspace 感知能力的文件、搜索、Git 和 Shell 工具，实现了 Hashline 编辑和结构化文件 diff。
 - Plan 和 Build agent 可用的 `ask_questions` 工具，包含类型化前端问题、答案校验和取消语义。
 - Session 级文件/Shell 权限契约，以及支持取消的进程内 approval broker。
+- Proto/ADK 多模态输入和事件转换，包含结构化工具结果/file diff，以及 fake `TurnRunner` test seam。
 
-下一阶段将实现 Proto/ADK 输入和事件转换，以及 fake-runtime test seam；随后构造 agent，
-并将工具与 approval/question broker 接入流式 Run。当前架构决策和开发顺序见
+下一阶段将构造并缓存 agent，把工具与 approval/question broker 接入流式 Run。
+当前架构决策和开发顺序见
 [AGENTS.md](AGENTS.md)。
 
 ## 架构
@@ -192,9 +194,8 @@ go test -cover ./...
 
 当前实现顺序：
 
-1. Proto 与 ADK 之间的输入/事件转换，以及 Runtime 测试 seam。
-2. 可缓存的 build/plan agents，以及 approval/question interaction 的接入。
-3. 流式 Run、进程生命周期和端到端测试。
+1. 可缓存的 build/plan agents，以及 approval/question interaction 的接入。
+2. 流式 Run、进程生命周期和端到端测试。
 
 ## License
 
