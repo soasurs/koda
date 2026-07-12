@@ -39,8 +39,11 @@ service KodaService {
 
 // AgentMode selects the tool and instruction policy used for a turn.
 enum AgentMode {
+  // AGENT_MODE_UNSPECIFIED is invalid for Run.
   AGENT_MODE_UNSPECIFIED = 0;
+  // AGENT_MODE_BUILD allows both read-only and mutating coding tools.
   AGENT_MODE_BUILD = 1;
+  // AGENT_MODE_PLAN restricts the agent to read-only tools.
   AGENT_MODE_PLAN = 2;
 }
 
@@ -56,9 +59,13 @@ enum Role {
 // FinishReason identifies why a model generation ended.
 enum FinishReason {
   FINISH_REASON_UNSPECIFIED = 0;
+  // FINISH_REASON_STOP indicates a natural model stop or stop sequence.
   FINISH_REASON_STOP = 1;
+  // FINISH_REASON_LENGTH indicates that the model reached its output limit.
   FINISH_REASON_LENGTH = 2;
+  // FINISH_REASON_TOOL_CALLS indicates that the turn continues with tool execution.
   FINISH_REASON_TOOL_CALLS = 3;
+  // FINISH_REASON_CONTENT_FILTER indicates that provider policy stopped generation.
   FINISH_REASON_CONTENT_FILTER = 4;
 }
 
@@ -66,13 +73,15 @@ enum FinishReason {
 enum ProviderType {
   PROVIDER_TYPE_UNSPECIFIED = 0;
   PROVIDER_TYPE_ANTHROPIC = 1;
-  PROVIDER_TYPE_OPENAI = 2;
+  PROVIDER_TYPE_OPENAI_CHAT_COMPLETIONS = 2;
   PROVIDER_TYPE_GEMINI = 3;
   PROVIDER_TYPE_DEEPSEEK = 4;
+  PROVIDER_TYPE_OPENAI_RESPONSES = 5;
 }
 
 // ImageDetail controls the fidelity at which a model processes an image.
 enum ImageDetail {
+  // IMAGE_DETAIL_UNSPECIFIED is treated as IMAGE_DETAIL_AUTO.
   IMAGE_DETAIL_UNSPECIFIED = 0;
   IMAGE_DETAIL_AUTO = 1;
   IMAGE_DETAIL_LOW = 2;
@@ -81,32 +90,41 @@ enum ImageDetail {
 
 // RunRequest starts one user turn in an existing session.
 message RunRequest {
+  // session_id references Session.id.
   string session_id = 1;
+  // input must contain at least one part.
   Input input = 2;
+  // mode must be BUILD or PLAN.
   AgentMode mode = 3;
 }
 
 // RunResponse is one frame in a running turn.
 message RunResponse {
   oneof payload {
+    // event contains a transient partial event or a complete durable event.
     Event event = 1;
+    // approval blocks one mutating tool call until ResolveToolApproval is called.
     ToolApproval approval = 2;
+    // completed is emitted only after the full turn finishes successfully.
     RunCompleted completed = 3;
   }
 }
 
 // RunCompleted marks the successful end of a turn stream.
 message RunCompleted {
+  // turn_id identifies the committed turn shared by all of its events.
   string turn_id = 1;
 }
 
 // Input is the user-authored content that starts a turn.
 message Input {
+  // parts preserve their original order and must not be empty.
   repeated Part parts = 1;
 }
 
 // Part is one item in a multimodal user input.
 message Part {
+  // Exactly one content variant must be set.
   oneof content {
     string text = 1;
     Image image = 2;
@@ -116,27 +134,37 @@ message Part {
 // Image is an HTTPS URL or inline image payload.
 message Image {
   oneof source {
+    // url must be an HTTPS image URL accepted by the selected provider.
     string url = 1;
+    // data contains raw image bytes; Connect JSON represents it as base64.
     bytes data = 2;
   }
+  // mime_type is required when data is set and ignored for URL images.
   string mime_type = 3;
+  // detail defaults to AUTO when unspecified.
   ImageDetail detail = 4;
 }
 
 // ToolApproval describes a mutating tool call awaiting a decision.
 message ToolApproval {
+  // id is a koda-generated approval ID, distinct from the provider tool-call ID.
   string id = 1;
   string session_id = 2;
   string turn_id = 3;
+  // tool_call_id correlates this approval with ToolCall.id.
   string tool_call_id = 4;
   string tool_name = 5;
+  // summary is a short, display-safe description of the requested mutation.
   string summary = 6;
+  // arguments_json is the exact JSON object supplied by the model.
   string arguments_json = 7;
 }
 
 // ResolveToolApprovalRequest resolves one pending approval exactly once.
 message ResolveToolApprovalRequest {
+  // approval_id references ToolApproval.id and can be resolved only once.
   string approval_id = 1;
+  // approved=false returns a model-visible rejection instead of executing the tool.
   bool approved = 2;
 }
 
@@ -145,24 +173,36 @@ message ResolveToolApprovalResponse {}
 
 // Session contains metadata and execution settings for one coding session.
 message Session {
+  // id is the stable application-assigned session identifier.
   string id = 1;
   string title = 2;
+  // workdir is the base directory used to resolve relative tool paths.
   string workdir = 3;
+  // provider_id references Provider.id.
   string provider_id = 4;
+  // model_id references a Model.id registered for provider_id.
   string model_id = 5;
+  // reasoning_effort is provider-specific; empty uses the model default.
   string reasoning_effort = 6;
+  // safe_mode requires approval before mutating tools execute.
   bool safe_mode = 7;
+  // created_at and updated_at are Unix timestamps in milliseconds.
   int64 created_at = 8;
   int64 updated_at = 9;
+  // event_count counts active, non-archived events in the session.
   int64 event_count = 10;
 }
 
 // CreateSessionRequest creates a session with an initial execution configuration.
 message CreateSessionRequest {
+  // workdir becomes the base directory for all relative tool paths.
   string workdir = 1;
+  // provider_id and model_id select the initial execution backend.
   string provider_id = 2;
   string model_id = 3;
+  // reasoning_effort is provider-specific; empty uses the model default.
   string reasoning_effort = 4;
+  // safe_mode requires approval before mutating tools execute.
   bool safe_mode = 5;
 }
 
@@ -183,7 +223,9 @@ message GetSessionResponse {
 
 // ListSessionsRequest selects a page ordered by most recently updated first.
 message ListSessionsRequest {
+  // limit defaults to 50 when zero and is capped at 200.
   int32 limit = 1;
+  // offset is a zero-based offset into the updated-at-descending result set.
   int64 offset = 2;
 }
 
@@ -193,13 +235,16 @@ message ListSessionsResponse {
   int64 total = 2;
 }
 
-// UpdateSessionRequest updates fields that are present.
+// UpdateSessionRequest updates fields that are present; omitted fields keep
+// their current values.
 message UpdateSessionRequest {
   string session_id = 1;
   optional string title = 2;
   optional string workdir = 3;
+  // provider_id and model_id are validated together after applying the update.
   optional string provider_id = 4;
   optional string model_id = 5;
+  // An explicitly empty reasoning_effort restores the model default.
   optional string reasoning_effort = 6;
   optional bool safe_mode = 7;
 }
@@ -219,14 +264,21 @@ message DeleteSessionResponse {}
 
 // Event is an agent-runtime event exposed to clients.
 message Event {
+  // id is the decimal string form of the durable ADK event ID; partial events have no ID.
   string id = 1;
   string session_id = 2;
+  // turn_id groups the user input, model messages, and tool results from one Run.
   string turn_id = 3;
+  // author is display metadata and is not forwarded to the model.
   string author = 4;
   Message message = 5;
+  // finish_reason is meaningful only for complete assistant events.
   FinishReason finish_reason = 6;
+  // usage is present only when the provider reports token accounting.
   TokenUsage usage = 7;
+  // partial events contain text/reasoning deltas, are transient, and are not persisted.
   bool partial = 8;
+  // Timestamps are Unix milliseconds and are zero for transient partial events.
   int64 created_at = 9;
   int64 updated_at = 10;
 }
@@ -234,24 +286,32 @@ message Event {
 // Message is the provider-neutral content carried by an event.
 message Message {
   Role role = 1;
+  // text is the plain-text payload; parts take precedence when non-empty.
   string text = 2;
+  // parts contains ordered multimodal user content.
   repeated Part parts = 3;
+  // reasoning contains provider-reported reasoning content when available.
   string reasoning = 4;
   repeated ToolCall tool_calls = 5;
+  // tool_response is set only for ROLE_TOOL messages.
   ToolResponse tool_response = 6;
 }
 
 // ToolCall is one model-requested tool invocation.
 message ToolCall {
+  // id is assigned by the provider and correlates with ToolResponse.tool_call_id.
   string id = 1;
   string name = 2;
+  // arguments_json is a JSON object containing the model-supplied arguments.
   string arguments_json = 3;
 }
 
 // ToolResponse is the completed outcome of one tool invocation.
 message ToolResponse {
+  // tool_call_id references ToolCall.id.
   string tool_call_id = 1;
   string name = 2;
+  // Exactly one completed outcome must be set.
   oneof outcome {
     ToolResult result = 3;
     ToolError error = 4;
@@ -260,13 +320,17 @@ message ToolResponse {
 
 // ToolResult contains a successful tool outcome.
 message ToolResult {
+  // content is the plain-text fallback sent to providers without structured results.
   string content = 1;
+  // structured_content_json is an optional raw JSON value.
   string structured_content_json = 2;
 }
 
 // ToolError contains a model-visible handled tool failure.
 message ToolError {
+  // content is safe to expose to both the model and the client.
   string content = 1;
+  // structured_content_json is an optional raw JSON error payload.
   string structured_content_json = 2;
 }
 
@@ -294,7 +358,9 @@ message TokenUsageDetails {
 // ListEventsRequest selects a page of active events in conversation order.
 message ListEventsRequest {
   string session_id = 1;
+  // limit defaults to 50 when zero and is capped at 200.
   int32 limit = 2;
+  // offset is a zero-based offset into active events ordered oldest first.
   int64 offset = 3;
 }
 
@@ -311,26 +377,39 @@ message UndoLastMessageRequest {
 
 // UndoLastMessageResponse describes the removed user turn.
 message UndoLastMessageResponse {
+  // turn_id identifies the removed turn, or is empty when there was no user turn.
   string turn_id = 1;
+  // deleted_event_count includes the user event and all later events in that turn.
   int64 deleted_event_count = 2;
+  // input contains the removed user content so a client can restore its editor.
   Input input = 3;
 }
 
 // Provider describes one built-in or user-defined model provider.
 message Provider {
+  // id is the stable registry key referenced by Session.provider_id.
   string id = 1;
+  // name is the user-facing display name.
   string name = 2;
+  // type selects the ADK model adapter.
   ProviderType type = 3;
+  // base_url is empty for the adapter default and may point to a compatible endpoint.
   string base_url = 4;
+  // configured reports whether the registry resolved a non-empty API key.
   bool configured = 5;
+  // builtin providers cannot be deleted or changed to another type.
   bool builtin = 6;
 }
 
 // Model describes one model exposed by a provider.
 message Model {
+  // id is the exact model identifier sent to the provider API.
   string id = 1;
+  // name is the user-facing display name and defaults to id when omitted.
   string name = 2;
+  // reasoning_efforts contains provider-specific values such as high, max, or ultra.
   repeated string reasoning_efforts = 3;
+  // default_reasoning_effort is empty when the provider should choose the default.
   string default_reasoning_effort = 4;
 }
 
@@ -346,9 +425,13 @@ message ListProvidersResponse {
 message SaveProviderRequest {
   string id = 1;
   string name = 2;
+  // Built-in providers must retain their predefined type.
   ProviderType type = 3;
+  // An empty base_url restores the adapter default.
   string base_url = 4;
+  // An omitted api_key preserves the stored key; an explicitly empty value clears it.
   optional string api_key = 5;
+  // models replaces the provider's complete stored model catalog.
   repeated Model models = 6;
 }
 

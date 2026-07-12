@@ -25,9 +25,12 @@ const (
 type AgentMode int32
 
 const (
+	// AGENT_MODE_UNSPECIFIED is invalid for Run.
 	AgentMode_AGENT_MODE_UNSPECIFIED AgentMode = 0
-	AgentMode_AGENT_MODE_BUILD       AgentMode = 1
-	AgentMode_AGENT_MODE_PLAN        AgentMode = 2
+	// AGENT_MODE_BUILD allows both read-only and mutating coding tools.
+	AgentMode_AGENT_MODE_BUILD AgentMode = 1
+	// AGENT_MODE_PLAN restricts the agent to read-only tools.
+	AgentMode_AGENT_MODE_PLAN AgentMode = 2
 )
 
 // Enum value maps for AgentMode.
@@ -131,10 +134,14 @@ func (Role) EnumDescriptor() ([]byte, []int) {
 type FinishReason int32
 
 const (
-	FinishReason_FINISH_REASON_UNSPECIFIED    FinishReason = 0
-	FinishReason_FINISH_REASON_STOP           FinishReason = 1
-	FinishReason_FINISH_REASON_LENGTH         FinishReason = 2
-	FinishReason_FINISH_REASON_TOOL_CALLS     FinishReason = 3
+	FinishReason_FINISH_REASON_UNSPECIFIED FinishReason = 0
+	// FINISH_REASON_STOP indicates a natural model stop or stop sequence.
+	FinishReason_FINISH_REASON_STOP FinishReason = 1
+	// FINISH_REASON_LENGTH indicates that the model reached its output limit.
+	FinishReason_FINISH_REASON_LENGTH FinishReason = 2
+	// FINISH_REASON_TOOL_CALLS indicates that the turn continues with tool execution.
+	FinishReason_FINISH_REASON_TOOL_CALLS FinishReason = 3
+	// FINISH_REASON_CONTENT_FILTER indicates that provider policy stopped generation.
 	FinishReason_FINISH_REASON_CONTENT_FILTER FinishReason = 4
 )
 
@@ -187,11 +194,12 @@ func (FinishReason) EnumDescriptor() ([]byte, []int) {
 type ProviderType int32
 
 const (
-	ProviderType_PROVIDER_TYPE_UNSPECIFIED ProviderType = 0
-	ProviderType_PROVIDER_TYPE_ANTHROPIC   ProviderType = 1
-	ProviderType_PROVIDER_TYPE_OPENAI      ProviderType = 2
-	ProviderType_PROVIDER_TYPE_GEMINI      ProviderType = 3
-	ProviderType_PROVIDER_TYPE_DEEPSEEK    ProviderType = 4
+	ProviderType_PROVIDER_TYPE_UNSPECIFIED             ProviderType = 0
+	ProviderType_PROVIDER_TYPE_ANTHROPIC               ProviderType = 1
+	ProviderType_PROVIDER_TYPE_OPENAI_CHAT_COMPLETIONS ProviderType = 2
+	ProviderType_PROVIDER_TYPE_GEMINI                  ProviderType = 3
+	ProviderType_PROVIDER_TYPE_DEEPSEEK                ProviderType = 4
+	ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES        ProviderType = 5
 )
 
 // Enum value maps for ProviderType.
@@ -199,16 +207,18 @@ var (
 	ProviderType_name = map[int32]string{
 		0: "PROVIDER_TYPE_UNSPECIFIED",
 		1: "PROVIDER_TYPE_ANTHROPIC",
-		2: "PROVIDER_TYPE_OPENAI",
+		2: "PROVIDER_TYPE_OPENAI_CHAT_COMPLETIONS",
 		3: "PROVIDER_TYPE_GEMINI",
 		4: "PROVIDER_TYPE_DEEPSEEK",
+		5: "PROVIDER_TYPE_OPENAI_RESPONSES",
 	}
 	ProviderType_value = map[string]int32{
-		"PROVIDER_TYPE_UNSPECIFIED": 0,
-		"PROVIDER_TYPE_ANTHROPIC":   1,
-		"PROVIDER_TYPE_OPENAI":      2,
-		"PROVIDER_TYPE_GEMINI":      3,
-		"PROVIDER_TYPE_DEEPSEEK":    4,
+		"PROVIDER_TYPE_UNSPECIFIED":             0,
+		"PROVIDER_TYPE_ANTHROPIC":               1,
+		"PROVIDER_TYPE_OPENAI_CHAT_COMPLETIONS": 2,
+		"PROVIDER_TYPE_GEMINI":                  3,
+		"PROVIDER_TYPE_DEEPSEEK":                4,
+		"PROVIDER_TYPE_OPENAI_RESPONSES":        5,
 	}
 )
 
@@ -243,6 +253,7 @@ func (ProviderType) EnumDescriptor() ([]byte, []int) {
 type ImageDetail int32
 
 const (
+	// IMAGE_DETAIL_UNSPECIFIED is treated as IMAGE_DETAIL_AUTO.
 	ImageDetail_IMAGE_DETAIL_UNSPECIFIED ImageDetail = 0
 	ImageDetail_IMAGE_DETAIL_AUTO        ImageDetail = 1
 	ImageDetail_IMAGE_DETAIL_LOW         ImageDetail = 2
@@ -294,10 +305,13 @@ func (ImageDetail) EnumDescriptor() ([]byte, []int) {
 
 // RunRequest starts one user turn in an existing session.
 type RunRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Input         *Input                 `protobuf:"bytes,2,opt,name=input,proto3" json:"input,omitempty"`
-	Mode          AgentMode              `protobuf:"varint,3,opt,name=mode,proto3,enum=koda.v1.AgentMode" json:"mode,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// session_id references Session.id.
+	SessionId string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// input must contain at least one part.
+	Input *Input `protobuf:"bytes,2,opt,name=input,proto3" json:"input,omitempty"`
+	// mode must be BUILD or PLAN.
+	Mode          AgentMode `protobuf:"varint,3,opt,name=mode,proto3,enum=koda.v1.AgentMode" json:"mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -435,14 +449,17 @@ type isRunResponse_Payload interface {
 }
 
 type RunResponse_Event struct {
+	// event contains a transient partial event or a complete durable event.
 	Event *Event `protobuf:"bytes,1,opt,name=event,proto3,oneof"`
 }
 
 type RunResponse_Approval struct {
+	// approval blocks one mutating tool call until ResolveToolApproval is called.
 	Approval *ToolApproval `protobuf:"bytes,2,opt,name=approval,proto3,oneof"`
 }
 
 type RunResponse_Completed struct {
+	// completed is emitted only after the full turn finishes successfully.
 	Completed *RunCompleted `protobuf:"bytes,3,opt,name=completed,proto3,oneof"`
 }
 
@@ -454,8 +471,9 @@ func (*RunResponse_Completed) isRunResponse_Payload() {}
 
 // RunCompleted marks the successful end of a turn stream.
 type RunCompleted struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TurnId        string                 `protobuf:"bytes,1,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// turn_id identifies the committed turn shared by all of its events.
+	TurnId        string `protobuf:"bytes,1,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -499,8 +517,9 @@ func (x *RunCompleted) GetTurnId() string {
 
 // Input is the user-authored content that starts a turn.
 type Input struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Parts         []*Part                `protobuf:"bytes,1,rep,name=parts,proto3" json:"parts,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// parts preserve their original order and must not be empty.
+	Parts         []*Part `protobuf:"bytes,1,rep,name=parts,proto3" json:"parts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -545,6 +564,8 @@ func (x *Input) GetParts() []*Part {
 // Part is one item in a multimodal user input.
 type Part struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// Exactly one content variant must be set.
+	//
 	// Types that are valid to be assigned to Content:
 	//
 	//	*Part_Text
@@ -632,9 +653,11 @@ type Image struct {
 	//
 	//	*Image_Url
 	//	*Image_Data
-	Source        isImage_Source `protobuf_oneof:"source"`
-	MimeType      string         `protobuf:"bytes,3,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
-	Detail        ImageDetail    `protobuf:"varint,4,opt,name=detail,proto3,enum=koda.v1.ImageDetail" json:"detail,omitempty"`
+	Source isImage_Source `protobuf_oneof:"source"`
+	// mime_type is required when data is set and ignored for URL images.
+	MimeType string `protobuf:"bytes,3,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
+	// detail defaults to AUTO when unspecified.
+	Detail        ImageDetail `protobuf:"varint,4,opt,name=detail,proto3,enum=koda.v1.ImageDetail" json:"detail,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -713,10 +736,12 @@ type isImage_Source interface {
 }
 
 type Image_Url struct {
+	// url must be an HTTPS image URL accepted by the selected provider.
 	Url string `protobuf:"bytes,1,opt,name=url,proto3,oneof"`
 }
 
 type Image_Data struct {
+	// data contains raw image bytes; Connect JSON represents it as base64.
 	Data []byte `protobuf:"bytes,2,opt,name=data,proto3,oneof"`
 }
 
@@ -726,14 +751,18 @@ func (*Image_Data) isImage_Source() {}
 
 // ToolApproval describes a mutating tool call awaiting a decision.
 type ToolApproval struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	TurnId        string                 `protobuf:"bytes,3,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
-	ToolCallId    string                 `protobuf:"bytes,4,opt,name=tool_call_id,json=toolCallId,proto3" json:"tool_call_id,omitempty"`
-	ToolName      string                 `protobuf:"bytes,5,opt,name=tool_name,json=toolName,proto3" json:"tool_name,omitempty"`
-	Summary       string                 `protobuf:"bytes,6,opt,name=summary,proto3" json:"summary,omitempty"`
-	ArgumentsJson string                 `protobuf:"bytes,7,opt,name=arguments_json,json=argumentsJson,proto3" json:"arguments_json,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// id is a koda-generated approval ID, distinct from the provider tool-call ID.
+	Id        string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	SessionId string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	TurnId    string `protobuf:"bytes,3,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
+	// tool_call_id correlates this approval with ToolCall.id.
+	ToolCallId string `protobuf:"bytes,4,opt,name=tool_call_id,json=toolCallId,proto3" json:"tool_call_id,omitempty"`
+	ToolName   string `protobuf:"bytes,5,opt,name=tool_name,json=toolName,proto3" json:"tool_name,omitempty"`
+	// summary is a short, display-safe description of the requested mutation.
+	Summary string `protobuf:"bytes,6,opt,name=summary,proto3" json:"summary,omitempty"`
+	// arguments_json is the exact JSON object supplied by the model.
+	ArgumentsJson string `protobuf:"bytes,7,opt,name=arguments_json,json=argumentsJson,proto3" json:"arguments_json,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -819,9 +848,11 @@ func (x *ToolApproval) GetArgumentsJson() string {
 
 // ResolveToolApprovalRequest resolves one pending approval exactly once.
 type ResolveToolApprovalRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ApprovalId    string                 `protobuf:"bytes,1,opt,name=approval_id,json=approvalId,proto3" json:"approval_id,omitempty"`
-	Approved      bool                   `protobuf:"varint,2,opt,name=approved,proto3" json:"approved,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// approval_id references ToolApproval.id and can be resolved only once.
+	ApprovalId string `protobuf:"bytes,1,opt,name=approval_id,json=approvalId,proto3" json:"approval_id,omitempty"`
+	// approved=false returns a model-visible rejection instead of executing the tool.
+	Approved      bool `protobuf:"varint,2,opt,name=approved,proto3" json:"approved,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -909,19 +940,27 @@ func (*ResolveToolApprovalResponse) Descriptor() ([]byte, []int) {
 
 // Session contains metadata and execution settings for one coding session.
 type Session struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Title           string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Workdir         string                 `protobuf:"bytes,3,opt,name=workdir,proto3" json:"workdir,omitempty"`
-	ProviderId      string                 `protobuf:"bytes,4,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	ModelId         string                 `protobuf:"bytes,5,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
-	ReasoningEffort string                 `protobuf:"bytes,6,opt,name=reasoning_effort,json=reasoningEffort,proto3" json:"reasoning_effort,omitempty"`
-	SafeMode        bool                   `protobuf:"varint,7,opt,name=safe_mode,json=safeMode,proto3" json:"safe_mode,omitempty"`
-	CreatedAt       int64                  `protobuf:"varint,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt       int64                  `protobuf:"varint,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	EventCount      int64                  `protobuf:"varint,10,opt,name=event_count,json=eventCount,proto3" json:"event_count,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// id is the stable application-assigned session identifier.
+	Id    string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	// workdir is the base directory used to resolve relative tool paths.
+	Workdir string `protobuf:"bytes,3,opt,name=workdir,proto3" json:"workdir,omitempty"`
+	// provider_id references Provider.id.
+	ProviderId string `protobuf:"bytes,4,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
+	// model_id references a Model.id registered for provider_id.
+	ModelId string `protobuf:"bytes,5,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
+	// reasoning_effort is provider-specific; empty uses the model default.
+	ReasoningEffort string `protobuf:"bytes,6,opt,name=reasoning_effort,json=reasoningEffort,proto3" json:"reasoning_effort,omitempty"`
+	// safe_mode requires approval before mutating tools execute.
+	SafeMode bool `protobuf:"varint,7,opt,name=safe_mode,json=safeMode,proto3" json:"safe_mode,omitempty"`
+	// created_at and updated_at are Unix timestamps in milliseconds.
+	CreatedAt int64 `protobuf:"varint,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt int64 `protobuf:"varint,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// event_count counts active, non-archived events in the session.
+	EventCount    int64 `protobuf:"varint,10,opt,name=event_count,json=eventCount,proto3" json:"event_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Session) Reset() {
@@ -1026,14 +1065,18 @@ func (x *Session) GetEventCount() int64 {
 
 // CreateSessionRequest creates a session with an initial execution configuration.
 type CreateSessionRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Workdir         string                 `protobuf:"bytes,1,opt,name=workdir,proto3" json:"workdir,omitempty"`
-	ProviderId      string                 `protobuf:"bytes,2,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	ModelId         string                 `protobuf:"bytes,3,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
-	ReasoningEffort string                 `protobuf:"bytes,4,opt,name=reasoning_effort,json=reasoningEffort,proto3" json:"reasoning_effort,omitempty"`
-	SafeMode        bool                   `protobuf:"varint,5,opt,name=safe_mode,json=safeMode,proto3" json:"safe_mode,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// workdir becomes the base directory for all relative tool paths.
+	Workdir string `protobuf:"bytes,1,opt,name=workdir,proto3" json:"workdir,omitempty"`
+	// provider_id and model_id select the initial execution backend.
+	ProviderId string `protobuf:"bytes,2,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
+	ModelId    string `protobuf:"bytes,3,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
+	// reasoning_effort is provider-specific; empty uses the model default.
+	ReasoningEffort string `protobuf:"bytes,4,opt,name=reasoning_effort,json=reasoningEffort,proto3" json:"reasoning_effort,omitempty"`
+	// safe_mode requires approval before mutating tools execute.
+	SafeMode      bool `protobuf:"varint,5,opt,name=safe_mode,json=safeMode,proto3" json:"safe_mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateSessionRequest) Reset() {
@@ -1238,9 +1281,11 @@ func (x *GetSessionResponse) GetSession() *Session {
 
 // ListSessionsRequest selects a page ordered by most recently updated first.
 type ListSessionsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int64                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// limit defaults to 50 when zero and is capped at 200.
+	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
+	// offset is a zero-based offset into the updated-at-descending result set.
+	Offset        int64 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1342,16 +1387,19 @@ func (x *ListSessionsResponse) GetTotal() int64 {
 	return 0
 }
 
-// UpdateSessionRequest updates fields that are present.
+// UpdateSessionRequest updates fields that are present; omitted fields keep
+// their current values.
 type UpdateSessionRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	SessionId       string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Title           *string                `protobuf:"bytes,2,opt,name=title,proto3,oneof" json:"title,omitempty"`
-	Workdir         *string                `protobuf:"bytes,3,opt,name=workdir,proto3,oneof" json:"workdir,omitempty"`
-	ProviderId      *string                `protobuf:"bytes,4,opt,name=provider_id,json=providerId,proto3,oneof" json:"provider_id,omitempty"`
-	ModelId         *string                `protobuf:"bytes,5,opt,name=model_id,json=modelId,proto3,oneof" json:"model_id,omitempty"`
-	ReasoningEffort *string                `protobuf:"bytes,6,opt,name=reasoning_effort,json=reasoningEffort,proto3,oneof" json:"reasoning_effort,omitempty"`
-	SafeMode        *bool                  `protobuf:"varint,7,opt,name=safe_mode,json=safeMode,proto3,oneof" json:"safe_mode,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Title     *string                `protobuf:"bytes,2,opt,name=title,proto3,oneof" json:"title,omitempty"`
+	Workdir   *string                `protobuf:"bytes,3,opt,name=workdir,proto3,oneof" json:"workdir,omitempty"`
+	// provider_id and model_id are validated together after applying the update.
+	ProviderId *string `protobuf:"bytes,4,opt,name=provider_id,json=providerId,proto3,oneof" json:"provider_id,omitempty"`
+	ModelId    *string `protobuf:"bytes,5,opt,name=model_id,json=modelId,proto3,oneof" json:"model_id,omitempty"`
+	// An explicitly empty reasoning_effort restores the model default.
+	ReasoningEffort *string `protobuf:"bytes,6,opt,name=reasoning_effort,json=reasoningEffort,proto3,oneof" json:"reasoning_effort,omitempty"`
+	SafeMode        *bool   `protobuf:"varint,7,opt,name=safe_mode,json=safeMode,proto3,oneof" json:"safe_mode,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1564,17 +1612,24 @@ func (*DeleteSessionResponse) Descriptor() ([]byte, []int) {
 
 // Event is an agent-runtime event exposed to clients.
 type Event struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	TurnId        string                 `protobuf:"bytes,3,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
-	Author        string                 `protobuf:"bytes,4,opt,name=author,proto3" json:"author,omitempty"`
-	Message       *Message               `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
-	FinishReason  FinishReason           `protobuf:"varint,6,opt,name=finish_reason,json=finishReason,proto3,enum=koda.v1.FinishReason" json:"finish_reason,omitempty"`
-	Usage         *TokenUsage            `protobuf:"bytes,7,opt,name=usage,proto3" json:"usage,omitempty"`
-	Partial       bool                   `protobuf:"varint,8,opt,name=partial,proto3" json:"partial,omitempty"`
-	CreatedAt     int64                  `protobuf:"varint,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     int64                  `protobuf:"varint,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// id is the decimal string form of the durable ADK event ID; partial events have no ID.
+	Id        string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	SessionId string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// turn_id groups the user input, model messages, and tool results from one Run.
+	TurnId string `protobuf:"bytes,3,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
+	// author is display metadata and is not forwarded to the model.
+	Author  string   `protobuf:"bytes,4,opt,name=author,proto3" json:"author,omitempty"`
+	Message *Message `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
+	// finish_reason is meaningful only for complete assistant events.
+	FinishReason FinishReason `protobuf:"varint,6,opt,name=finish_reason,json=finishReason,proto3,enum=koda.v1.FinishReason" json:"finish_reason,omitempty"`
+	// usage is present only when the provider reports token accounting.
+	Usage *TokenUsage `protobuf:"bytes,7,opt,name=usage,proto3" json:"usage,omitempty"`
+	// partial events contain text/reasoning deltas, are transient, and are not persisted.
+	Partial bool `protobuf:"varint,8,opt,name=partial,proto3" json:"partial,omitempty"`
+	// Timestamps are Unix milliseconds and are zero for transient partial events.
+	CreatedAt     int64 `protobuf:"varint,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     int64 `protobuf:"varint,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1681,13 +1736,17 @@ func (x *Event) GetUpdatedAt() int64 {
 
 // Message is the provider-neutral content carried by an event.
 type Message struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Role          Role                   `protobuf:"varint,1,opt,name=role,proto3,enum=koda.v1.Role" json:"role,omitempty"`
-	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	Parts         []*Part                `protobuf:"bytes,3,rep,name=parts,proto3" json:"parts,omitempty"`
-	Reasoning     string                 `protobuf:"bytes,4,opt,name=reasoning,proto3" json:"reasoning,omitempty"`
-	ToolCalls     []*ToolCall            `protobuf:"bytes,5,rep,name=tool_calls,json=toolCalls,proto3" json:"tool_calls,omitempty"`
-	ToolResponse  *ToolResponse          `protobuf:"bytes,6,opt,name=tool_response,json=toolResponse,proto3" json:"tool_response,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Role  Role                   `protobuf:"varint,1,opt,name=role,proto3,enum=koda.v1.Role" json:"role,omitempty"`
+	// text is the plain-text payload; parts take precedence when non-empty.
+	Text string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	// parts contains ordered multimodal user content.
+	Parts []*Part `protobuf:"bytes,3,rep,name=parts,proto3" json:"parts,omitempty"`
+	// reasoning contains provider-reported reasoning content when available.
+	Reasoning string      `protobuf:"bytes,4,opt,name=reasoning,proto3" json:"reasoning,omitempty"`
+	ToolCalls []*ToolCall `protobuf:"bytes,5,rep,name=tool_calls,json=toolCalls,proto3" json:"tool_calls,omitempty"`
+	// tool_response is set only for ROLE_TOOL messages.
+	ToolResponse  *ToolResponse `protobuf:"bytes,6,opt,name=tool_response,json=toolResponse,proto3" json:"tool_response,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1766,10 +1825,12 @@ func (x *Message) GetToolResponse() *ToolResponse {
 
 // ToolCall is one model-requested tool invocation.
 type ToolCall struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	ArgumentsJson string                 `protobuf:"bytes,3,opt,name=arguments_json,json=argumentsJson,proto3" json:"arguments_json,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// id is assigned by the provider and correlates with ToolResponse.tool_call_id.
+	Id   string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// arguments_json is a JSON object containing the model-supplied arguments.
+	ArgumentsJson string `protobuf:"bytes,3,opt,name=arguments_json,json=argumentsJson,proto3" json:"arguments_json,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1827,9 +1888,12 @@ func (x *ToolCall) GetArgumentsJson() string {
 
 // ToolResponse is the completed outcome of one tool invocation.
 type ToolResponse struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	ToolCallId string                 `protobuf:"bytes,1,opt,name=tool_call_id,json=toolCallId,proto3" json:"tool_call_id,omitempty"`
-	Name       string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// tool_call_id references ToolCall.id.
+	ToolCallId string `protobuf:"bytes,1,opt,name=tool_call_id,json=toolCallId,proto3" json:"tool_call_id,omitempty"`
+	Name       string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Exactly one completed outcome must be set.
+	//
 	// Types that are valid to be assigned to Outcome:
 	//
 	//	*ToolResponse_Result
@@ -1926,9 +1990,11 @@ func (*ToolResponse_Error) isToolResponse_Outcome() {}
 
 // ToolResult contains a successful tool outcome.
 type ToolResult struct {
-	state                 protoimpl.MessageState `protogen:"open.v1"`
-	Content               string                 `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
-	StructuredContentJson string                 `protobuf:"bytes,2,opt,name=structured_content_json,json=structuredContentJson,proto3" json:"structured_content_json,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// content is the plain-text fallback sent to providers without structured results.
+	Content string `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	// structured_content_json is an optional raw JSON value.
+	StructuredContentJson string `protobuf:"bytes,2,opt,name=structured_content_json,json=structuredContentJson,proto3" json:"structured_content_json,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -1979,9 +2045,11 @@ func (x *ToolResult) GetStructuredContentJson() string {
 
 // ToolError contains a model-visible handled tool failure.
 type ToolError struct {
-	state                 protoimpl.MessageState `protogen:"open.v1"`
-	Content               string                 `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
-	StructuredContentJson string                 `protobuf:"bytes,2,opt,name=structured_content_json,json=structuredContentJson,proto3" json:"structured_content_json,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// content is safe to expose to both the model and the client.
+	Content string `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	// structured_content_json is an optional raw JSON error payload.
+	StructuredContentJson string `protobuf:"bytes,2,opt,name=structured_content_json,json=structuredContentJson,proto3" json:"structured_content_json,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -2210,10 +2278,12 @@ func (x *TokenUsageDetails) GetRejectedPredictionTokens() int64 {
 
 // ListEventsRequest selects a page of active events in conversation order.
 type ListEventsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int64                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// limit defaults to 50 when zero and is capped at 200.
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// offset is a zero-based offset into active events ordered oldest first.
+	Offset        int64 `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2369,12 +2439,15 @@ func (x *UndoLastMessageRequest) GetSessionId() string {
 
 // UndoLastMessageResponse describes the removed user turn.
 type UndoLastMessageResponse struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	TurnId            string                 `protobuf:"bytes,1,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
-	DeletedEventCount int64                  `protobuf:"varint,2,opt,name=deleted_event_count,json=deletedEventCount,proto3" json:"deleted_event_count,omitempty"`
-	Input             *Input                 `protobuf:"bytes,3,opt,name=input,proto3" json:"input,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// turn_id identifies the removed turn, or is empty when there was no user turn.
+	TurnId string `protobuf:"bytes,1,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
+	// deleted_event_count includes the user event and all later events in that turn.
+	DeletedEventCount int64 `protobuf:"varint,2,opt,name=deleted_event_count,json=deletedEventCount,proto3" json:"deleted_event_count,omitempty"`
+	// input contains the removed user content so a client can restore its editor.
+	Input         *Input `protobuf:"bytes,3,opt,name=input,proto3" json:"input,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UndoLastMessageResponse) Reset() {
@@ -2430,13 +2503,19 @@ func (x *UndoLastMessageResponse) GetInput() *Input {
 
 // Provider describes one built-in or user-defined model provider.
 type Provider struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Type          ProviderType           `protobuf:"varint,3,opt,name=type,proto3,enum=koda.v1.ProviderType" json:"type,omitempty"`
-	BaseUrl       string                 `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
-	Configured    bool                   `protobuf:"varint,5,opt,name=configured,proto3" json:"configured,omitempty"`
-	Builtin       bool                   `protobuf:"varint,6,opt,name=builtin,proto3" json:"builtin,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// id is the stable registry key referenced by Session.provider_id.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// name is the user-facing display name.
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// type selects the ADK model adapter.
+	Type ProviderType `protobuf:"varint,3,opt,name=type,proto3,enum=koda.v1.ProviderType" json:"type,omitempty"`
+	// base_url is empty for the adapter default and may point to a compatible endpoint.
+	BaseUrl string `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
+	// configured reports whether the registry resolved a non-empty API key.
+	Configured bool `protobuf:"varint,5,opt,name=configured,proto3" json:"configured,omitempty"`
+	// builtin providers cannot be deleted or changed to another type.
+	Builtin       bool `protobuf:"varint,6,opt,name=builtin,proto3" json:"builtin,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2515,11 +2594,15 @@ func (x *Provider) GetBuiltin() bool {
 
 // Model describes one model exposed by a provider.
 type Model struct {
-	state                  protoimpl.MessageState `protogen:"open.v1"`
-	Id                     string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name                   string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	ReasoningEfforts       []string               `protobuf:"bytes,3,rep,name=reasoning_efforts,json=reasoningEfforts,proto3" json:"reasoning_efforts,omitempty"`
-	DefaultReasoningEffort string                 `protobuf:"bytes,4,opt,name=default_reasoning_effort,json=defaultReasoningEffort,proto3" json:"default_reasoning_effort,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// id is the exact model identifier sent to the provider API.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// name is the user-facing display name and defaults to id when omitted.
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// reasoning_efforts contains provider-specific values such as high, max, or ultra.
+	ReasoningEfforts []string `protobuf:"bytes,3,rep,name=reasoning_efforts,json=reasoningEfforts,proto3" json:"reasoning_efforts,omitempty"`
+	// default_reasoning_effort is empty when the provider should choose the default.
+	DefaultReasoningEffort string `protobuf:"bytes,4,opt,name=default_reasoning_effort,json=defaultReasoningEffort,proto3" json:"default_reasoning_effort,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -2666,13 +2749,17 @@ func (x *ListProvidersResponse) GetProviders() []*Provider {
 
 // SaveProviderRequest creates or replaces a provider. An omitted API key is preserved.
 type SaveProviderRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Type          ProviderType           `protobuf:"varint,3,opt,name=type,proto3,enum=koda.v1.ProviderType" json:"type,omitempty"`
-	BaseUrl       string                 `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
-	ApiKey        *string                `protobuf:"bytes,5,opt,name=api_key,json=apiKey,proto3,oneof" json:"api_key,omitempty"`
-	Models        []*Model               `protobuf:"bytes,6,rep,name=models,proto3" json:"models,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Built-in providers must retain their predefined type.
+	Type ProviderType `protobuf:"varint,3,opt,name=type,proto3,enum=koda.v1.ProviderType" json:"type,omitempty"`
+	// An empty base_url restores the adapter default.
+	BaseUrl string `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
+	// An omitted api_key preserves the stored key; an explicitly empty value clears it.
+	ApiKey *string `protobuf:"bytes,5,opt,name=api_key,json=apiKey,proto3,oneof" json:"api_key,omitempty"`
+	// models replaces the provider's complete stored model catalog.
+	Models        []*Model `protobuf:"bytes,6,rep,name=models,proto3" json:"models,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3310,13 +3397,14 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\x12FINISH_REASON_STOP\x10\x01\x12\x18\n" +
 	"\x14FINISH_REASON_LENGTH\x10\x02\x12\x1c\n" +
 	"\x18FINISH_REASON_TOOL_CALLS\x10\x03\x12 \n" +
-	"\x1cFINISH_REASON_CONTENT_FILTER\x10\x04*\x9a\x01\n" +
+	"\x1cFINISH_REASON_CONTENT_FILTER\x10\x04*\xcf\x01\n" +
 	"\fProviderType\x12\x1d\n" +
 	"\x19PROVIDER_TYPE_UNSPECIFIED\x10\x00\x12\x1b\n" +
-	"\x17PROVIDER_TYPE_ANTHROPIC\x10\x01\x12\x18\n" +
-	"\x14PROVIDER_TYPE_OPENAI\x10\x02\x12\x18\n" +
+	"\x17PROVIDER_TYPE_ANTHROPIC\x10\x01\x12)\n" +
+	"%PROVIDER_TYPE_OPENAI_CHAT_COMPLETIONS\x10\x02\x12\x18\n" +
 	"\x14PROVIDER_TYPE_GEMINI\x10\x03\x12\x1a\n" +
-	"\x16PROVIDER_TYPE_DEEPSEEK\x10\x04*o\n" +
+	"\x16PROVIDER_TYPE_DEEPSEEK\x10\x04\x12\"\n" +
+	"\x1ePROVIDER_TYPE_OPENAI_RESPONSES\x10\x05*o\n" +
 	"\vImageDetail\x12\x1c\n" +
 	"\x18IMAGE_DETAIL_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11IMAGE_DETAIL_AUTO\x10\x01\x12\x14\n" +
