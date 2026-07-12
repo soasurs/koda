@@ -2758,10 +2758,10 @@ type SaveProviderRequest struct {
 	BaseUrl string `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
 	// An omitted api_key preserves the stored key; an explicitly empty value clears it.
 	ApiKey *string `protobuf:"bytes,5,opt,name=api_key,json=apiKey,proto3,oneof" json:"api_key,omitempty"`
-	// models replaces the provider's complete stored model catalog.
-	Models        []*Model `protobuf:"bytes,6,rep,name=models,proto3" json:"models,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// model_overrides add custom models or override bundled/discovered metadata by ID.
+	ModelOverrides []*Model `protobuf:"bytes,6,rep,name=model_overrides,json=modelOverrides,proto3" json:"model_overrides,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SaveProviderRequest) Reset() {
@@ -2829,9 +2829,9 @@ func (x *SaveProviderRequest) GetApiKey() string {
 	return ""
 }
 
-func (x *SaveProviderRequest) GetModels() []*Model {
+func (x *SaveProviderRequest) GetModelOverrides() []*Model {
 	if x != nil {
-		return x.Models
+		return x.ModelOverrides
 	}
 	return nil
 }
@@ -3010,9 +3010,12 @@ func (x *ListModelsRequest) GetProviderId() string {
 
 // ListModelsResponse returns known models for a provider.
 type ListModelsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ProviderId    string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	Models        []*Model               `protobuf:"bytes,2,rep,name=models,proto3" json:"models,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	ProviderId string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
+	Models     []*Model               `protobuf:"bytes,2,rep,name=models,proto3" json:"models,omitempty"`
+	// refreshed_at is the Unix timestamp in milliseconds of the last successful
+	// provider API discovery, or zero when no discovery snapshot exists.
+	RefreshedAt   int64 `protobuf:"varint,3,opt,name=refreshed_at,json=refreshedAt,proto3" json:"refreshed_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3059,6 +3062,13 @@ func (x *ListModelsResponse) GetModels() []*Model {
 		return x.Models
 	}
 	return nil
+}
+
+func (x *ListModelsResponse) GetRefreshedAt() int64 {
+	if x != nil {
+		return x.RefreshedAt
+	}
+	return 0
 }
 
 // RefreshModelsRequest refreshes models for a provider.
@@ -3108,9 +3118,11 @@ func (x *RefreshModelsRequest) GetProviderId() string {
 
 // RefreshModelsResponse returns the refreshed model list.
 type RefreshModelsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ProviderId    string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	Models        []*Model               `protobuf:"bytes,2,rep,name=models,proto3" json:"models,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	ProviderId string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
+	Models     []*Model               `protobuf:"bytes,2,rep,name=models,proto3" json:"models,omitempty"`
+	// refreshed_at is the Unix timestamp in milliseconds of this successful refresh.
+	RefreshedAt   int64 `protobuf:"varint,3,opt,name=refreshed_at,json=refreshedAt,proto3" json:"refreshed_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3157,6 +3169,13 @@ func (x *RefreshModelsResponse) GetModels() []*Model {
 		return x.Models
 	}
 	return nil
+}
+
+func (x *RefreshModelsResponse) GetRefreshedAt() int64 {
+	if x != nil {
+		return x.RefreshedAt
+	}
+	return 0
 }
 
 var File_koda_v1_service_proto protoreflect.FileDescriptor
@@ -3352,14 +3371,14 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\x18default_reasoning_effort\x18\x04 \x01(\tR\x16defaultReasoningEffort\"\x16\n" +
 	"\x14ListProvidersRequest\"H\n" +
 	"\x15ListProvidersResponse\x12/\n" +
-	"\tproviders\x18\x01 \x03(\v2\x11.koda.v1.ProviderR\tproviders\"\xd1\x01\n" +
+	"\tproviders\x18\x01 \x03(\v2\x11.koda.v1.ProviderR\tproviders\"\xe2\x01\n" +
 	"\x13SaveProviderRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12)\n" +
 	"\x04type\x18\x03 \x01(\x0e2\x15.koda.v1.ProviderTypeR\x04type\x12\x19\n" +
 	"\bbase_url\x18\x04 \x01(\tR\abaseUrl\x12\x1c\n" +
-	"\aapi_key\x18\x05 \x01(\tH\x00R\x06apiKey\x88\x01\x01\x12&\n" +
-	"\x06models\x18\x06 \x03(\v2\x0e.koda.v1.ModelR\x06modelsB\n" +
+	"\aapi_key\x18\x05 \x01(\tH\x00R\x06apiKey\x88\x01\x01\x127\n" +
+	"\x0fmodel_overrides\x18\x06 \x03(\v2\x0e.koda.v1.ModelR\x0emodelOverridesB\n" +
 	"\n" +
 	"\b_api_key\"E\n" +
 	"\x14SaveProviderResponse\x12-\n" +
@@ -3370,18 +3389,20 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\x16DeleteProviderResponse\"4\n" +
 	"\x11ListModelsRequest\x12\x1f\n" +
 	"\vprovider_id\x18\x01 \x01(\tR\n" +
-	"providerId\"]\n" +
+	"providerId\"\x80\x01\n" +
 	"\x12ListModelsResponse\x12\x1f\n" +
 	"\vprovider_id\x18\x01 \x01(\tR\n" +
 	"providerId\x12&\n" +
-	"\x06models\x18\x02 \x03(\v2\x0e.koda.v1.ModelR\x06models\"7\n" +
+	"\x06models\x18\x02 \x03(\v2\x0e.koda.v1.ModelR\x06models\x12!\n" +
+	"\frefreshed_at\x18\x03 \x01(\x03R\vrefreshedAt\"7\n" +
 	"\x14RefreshModelsRequest\x12\x1f\n" +
 	"\vprovider_id\x18\x01 \x01(\tR\n" +
-	"providerId\"`\n" +
+	"providerId\"\x83\x01\n" +
 	"\x15RefreshModelsResponse\x12\x1f\n" +
 	"\vprovider_id\x18\x01 \x01(\tR\n" +
 	"providerId\x12&\n" +
-	"\x06models\x18\x02 \x03(\v2\x0e.koda.v1.ModelR\x06models*R\n" +
+	"\x06models\x18\x02 \x03(\v2\x0e.koda.v1.ModelR\x06models\x12!\n" +
+	"\frefreshed_at\x18\x03 \x01(\x03R\vrefreshedAt*R\n" +
 	"\tAgentMode\x12\x1a\n" +
 	"\x16AGENT_MODE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10AGENT_MODE_BUILD\x10\x01\x12\x13\n" +
@@ -3523,7 +3544,7 @@ var file_koda_v1_service_proto_depIdxs = []int32{
 	3,  // 24: koda.v1.Provider.type:type_name -> koda.v1.ProviderType
 	37, // 25: koda.v1.ListProvidersResponse.providers:type_name -> koda.v1.Provider
 	3,  // 26: koda.v1.SaveProviderRequest.type:type_name -> koda.v1.ProviderType
-	38, // 27: koda.v1.SaveProviderRequest.models:type_name -> koda.v1.Model
+	38, // 27: koda.v1.SaveProviderRequest.model_overrides:type_name -> koda.v1.Model
 	37, // 28: koda.v1.SaveProviderResponse.provider:type_name -> koda.v1.Provider
 	38, // 29: koda.v1.ListModelsResponse.models:type_name -> koda.v1.Model
 	38, // 30: koda.v1.RefreshModelsResponse.models:type_name -> koda.v1.Model

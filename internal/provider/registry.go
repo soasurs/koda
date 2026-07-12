@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -20,15 +21,20 @@ var (
 	// ErrBuiltinProvider indicates that an operation cannot be applied to a
 	// built-in provider.
 	ErrBuiltinProvider = errors.New("built-in provider cannot be deleted")
+	// ErrProviderChanged indicates that a long-running operation used stale
+	// provider connection settings.
+	ErrProviderChanged = errors.New("provider connection changed")
 )
 
 type storedProvider struct {
-	ID      string  `json:"id"`
-	Name    string  `json:"name"`
-	Type    Type    `json:"type"`
-	APIKey  string  `json:"api_key,omitempty"`
-	BaseURL string  `json:"base_url,omitempty"`
-	Models  []Model `json:"models,omitempty"`
+	ID                string  `json:"id"`
+	Name              string  `json:"name"`
+	Type              Type    `json:"type"`
+	APIKey            string  `json:"api_key,omitempty"`
+	BaseURL           string  `json:"base_url,omitempty"`
+	ModelOverrides    []Model `json:"model_overrides,omitempty"`
+	DiscoveredModels  []Model `json:"discovered_models,omitempty"`
+	ModelsRefreshedAt int64   `json:"models_refreshed_at,omitempty"`
 }
 
 type storedRegistry struct {
@@ -41,6 +47,7 @@ type Registry struct {
 	mu           sync.RWMutex
 	path         string
 	providers    map[string]Provider
+	snapshots    map[string]ModelSnapshot
 	nextRevision uint64
 }
 
@@ -72,6 +79,7 @@ func Open(path string) (*Registry, error) {
 	r := &Registry{
 		path:         path,
 		providers:    make(map[string]Provider),
+		snapshots:    make(map[string]ModelSnapshot),
 		nextRevision: 2,
 	}
 	if err := r.load(); err != nil {
@@ -106,8 +114,9 @@ func (r *Registry) List(ctx context.Context) ([]Provider, error) {
 	return result, nil
 }
 
-// Get returns one provider with its resolved credential and a cloned model
-// list. Built-in environment variables take precedence over stored API keys.
+// Get returns one provider with its resolved credential and cloned model
+// overrides. Built-in environment variables take precedence over stored API
+// keys.
 func (r *Registry) Get(ctx context.Context, id string) (Provider, error) {
 	if err := ctx.Err(); err != nil {
 		return Provider{}, err
@@ -139,33 +148,70 @@ func (r *Registry) Save(ctx context.Context, p Provider, apiKey *string) (Provid
 	return r.saveLocked(ctx, p, apiKey)
 }
 
-// SetModels replaces and persists the known models for id.
-func (r *Registry) SetModels(ctx context.Context, id string, models []Model) ([]Model, error) {
+// SetModelSnapshot replaces the last successfully discovered model list for
+// id when providerRevision still matches. It does not change the provider
+// connection revision.
+func (r *Registry) SetModelSnapshot(
+	ctx context.Context,
+	id string,
+	providerRevision uint64,
+	snapshot ModelSnapshot,
+) (ModelSnapshot, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return ModelSnapshot{}, err
 	}
 	id = strings.TrimSpace(id)
-	models, err := normalizeModels(models)
+	models, err := normalizeModels(snapshot.Models)
 	if err != nil {
-		return nil, fmt.Errorf("provider registry: set models: %w", err)
+		return ModelSnapshot{}, fmt.Errorf("provider registry: set model snapshot: %w", err)
 	}
+	if snapshot.RefreshedAt.IsZero() {
+		return ModelSnapshot{}, fmt.Errorf("provider registry: set model snapshot: refreshed time must not be zero")
+	}
+	snapshot.Models = models
+	snapshot.RefreshedAt = snapshot.RefreshedAt.UTC()
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	p, ok := r.providers[id]
+	nextProviders := cloneProviderMap(r.providers)
+	current, ok := r.providers[id]
 	if !ok {
-		var builtin bool
-		p, builtin = builtinProvider(id)
-		if !builtin {
-			return nil, fmt.Errorf("provider registry: set models for %q: %w", id, ErrNotFound)
+		builtin, ok := builtinProvider(id)
+		if !ok {
+			return ModelSnapshot{}, fmt.Errorf("provider registry: set model snapshot for %q: %w", id, ErrNotFound)
+		}
+		builtin.revision = 1
+		current = builtin
+		nextProviders[id] = builtin
+	}
+	if current.revision != providerRevision {
+		return ModelSnapshot{}, fmt.Errorf("provider registry: set model snapshot for %q: %w", id, ErrProviderChanged)
+	}
+	nextSnapshots := cloneSnapshotMap(r.snapshots)
+	nextSnapshots[id] = cloneSnapshot(snapshot)
+	if err := r.persist(ctx, nextProviders, nextSnapshots); err != nil {
+		return ModelSnapshot{}, err
+	}
+	r.providers = nextProviders
+	r.snapshots = nextSnapshots
+	return cloneSnapshot(snapshot), nil
+}
+
+// ModelSnapshot returns the last successfully discovered model list for id.
+// It returns a zero snapshot when the provider has never been refreshed.
+func (r *Registry) ModelSnapshot(ctx context.Context, id string) (ModelSnapshot, error) {
+	if err := ctx.Err(); err != nil {
+		return ModelSnapshot{}, err
+	}
+	id = strings.TrimSpace(id)
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if _, ok := r.providers[id]; !ok {
+		if _, builtin := builtinProvider(id); !builtin {
+			return ModelSnapshot{}, fmt.Errorf("provider registry: get model snapshot for %q: %w", id, ErrNotFound)
 		}
 	}
-	p.Models = models
-	saved, err := r.saveLocked(ctx, p, nil)
-	if err != nil {
-		return nil, err
-	}
-	return cloneModels(saved.Models), nil
+	return cloneSnapshot(r.snapshots[id]), nil
 }
 
 // Delete removes a user-defined provider. Built-in providers cannot be
@@ -186,10 +232,13 @@ func (r *Registry) Delete(ctx context.Context, id string) error {
 	}
 	next := cloneProviderMap(r.providers)
 	delete(next, id)
-	if err := r.persist(ctx, next); err != nil {
+	nextSnapshots := cloneSnapshotMap(r.snapshots)
+	delete(nextSnapshots, id)
+	if err := r.persist(ctx, next, nextSnapshots); err != nil {
 		return err
 	}
 	r.providers = next
+	r.snapshots = nextSnapshots
 	return nil
 }
 
@@ -217,11 +266,11 @@ func (r *Registry) load() error {
 
 	for _, item := range stored.Providers {
 		p, err := normalizeProvider(Provider{
-			ID:      item.ID,
-			Name:    item.Name,
-			Type:    item.Type,
-			BaseURL: item.BaseURL,
-			Models:  item.Models,
+			ID:             item.ID,
+			Name:           item.Name,
+			Type:           item.Type,
+			BaseURL:        item.BaseURL,
+			ModelOverrides: item.ModelOverrides,
 		})
 		if err != nil {
 			return fmt.Errorf("provider registry: load %q: %w", item.ID, err)
@@ -240,9 +289,27 @@ func (r *Registry) load() error {
 			p.builtin = true
 		}
 		p.apiKey = strings.TrimSpace(item.APIKey)
-		p.revision = r.nextRevision
-		r.nextRevision++
+		if p.builtin && p.BaseURL == "" && p.apiKey == "" {
+			p.revision = 1
+		} else {
+			p.revision = r.nextRevision
+			r.nextRevision++
+		}
 		r.providers[p.ID] = p
+
+		discovered, err := normalizeModels(item.DiscoveredModels)
+		if err != nil {
+			return fmt.Errorf("provider registry: load %q model snapshot: %w", item.ID, err)
+		}
+		if len(discovered) > 0 || item.ModelsRefreshedAt != 0 {
+			if item.ModelsRefreshedAt <= 0 {
+				return fmt.Errorf("provider registry: load %q model snapshot: refreshed time must be positive", item.ID)
+			}
+			r.snapshots[p.ID] = ModelSnapshot{
+				Models:      discovered,
+				RefreshedAt: time.UnixMilli(item.ModelsRefreshedAt).UTC(),
+			}
+		}
 	}
 	return nil
 }
@@ -258,23 +325,41 @@ func (r *Registry) saveLocked(ctx context.Context, p Provider, apiKey *string) (
 		}
 		p.builtin = true
 	}
+	current, exists := r.providers[p.ID]
 	key := ""
-	if current, ok := r.providers[p.ID]; ok {
+	if exists {
 		key = current.apiKey
 	}
 	if apiKey != nil {
 		key = strings.TrimSpace(*apiKey)
 	}
 	p.apiKey = key
-	p.revision = r.nextRevision
+	if !exists {
+		if builtin, ok := builtinProvider(p.ID); ok {
+			current = builtin
+			current.revision = 1
+			exists = true
+		}
+	}
+	connectionChanged := !exists || current.Type != p.Type || current.BaseURL != p.BaseURL || current.apiKey != p.apiKey
+	if connectionChanged {
+		p.revision = r.nextRevision
+	} else {
+		p.revision = current.revision
+		if p.revision == 0 {
+			p.revision = 1
+		}
+	}
 
 	next := cloneProviderMap(r.providers)
 	next[p.ID] = cloneProvider(p)
-	if err := r.persist(ctx, next); err != nil {
+	if err := r.persist(ctx, next, r.snapshots); err != nil {
 		return Provider{}, err
 	}
 	r.providers = next
-	r.nextRevision++
+	if connectionChanged {
+		r.nextRevision++
+	}
 	return r.resolveLocked(p.ID), nil
 }
 
@@ -294,7 +379,7 @@ func (r *Registry) resolveLocked(id string) Provider {
 	return cloneProvider(p)
 }
 
-func (r *Registry) persist(ctx context.Context, providers map[string]Provider) error {
+func (r *Registry) persist(ctx context.Context, providers map[string]Provider, snapshots map[string]ModelSnapshot) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -314,13 +399,20 @@ func (r *Registry) persist(ctx context.Context, providers map[string]Provider) e
 	stored := storedRegistry{Providers: make([]storedProvider, 0, len(ids))}
 	for _, id := range ids {
 		p := providers[id]
+		snapshot := snapshots[id]
+		refreshedAt := int64(0)
+		if !snapshot.RefreshedAt.IsZero() {
+			refreshedAt = snapshot.RefreshedAt.UnixMilli()
+		}
 		stored.Providers = append(stored.Providers, storedProvider{
-			ID:      p.ID,
-			Name:    p.Name,
-			Type:    p.Type,
-			APIKey:  p.apiKey,
-			BaseURL: p.BaseURL,
-			Models:  cloneModels(p.Models),
+			ID:                p.ID,
+			Name:              p.Name,
+			Type:              p.Type,
+			APIKey:            p.apiKey,
+			BaseURL:           p.BaseURL,
+			ModelOverrides:    cloneModels(p.ModelOverrides),
+			DiscoveredModels:  cloneModels(snapshot.Models),
+			ModelsRefreshedAt: refreshedAt,
 		})
 	}
 	data, err := json.MarshalIndent(stored, "", "  ")
@@ -378,6 +470,14 @@ func cloneProviderMap(providers map[string]Provider) map[string]Provider {
 	result := make(map[string]Provider, len(providers))
 	for id, p := range providers {
 		result[id] = cloneProvider(p)
+	}
+	return result
+}
+
+func cloneSnapshotMap(snapshots map[string]ModelSnapshot) map[string]ModelSnapshot {
+	result := make(map[string]ModelSnapshot, len(snapshots))
+	for id, snapshot := range snapshots {
+		result[id] = cloneSnapshot(snapshot)
 	}
 	return result
 }

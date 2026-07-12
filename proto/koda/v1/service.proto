@@ -431,8 +431,8 @@ message SaveProviderRequest {
   string base_url = 4;
   // An omitted api_key preserves the stored key; an explicitly empty value clears it.
   optional string api_key = 5;
-  // models replaces the provider's complete stored model catalog.
-  repeated Model models = 6;
+  // model_overrides add custom models or override bundled/discovered metadata by ID.
+  repeated Model model_overrides = 6;
 }
 
 // SaveProviderResponse returns the saved provider without its API key.
@@ -457,6 +457,9 @@ message ListModelsRequest {
 message ListModelsResponse {
   string provider_id = 1;
   repeated Model models = 2;
+  // refreshed_at is the Unix timestamp in milliseconds of the last successful
+  // provider API discovery, or zero when no discovery snapshot exists.
+  int64 refreshed_at = 3;
 }
 
 // RefreshModelsRequest refreshes models for a provider.
@@ -468,4 +471,6 @@ message RefreshModelsRequest {
 message RefreshModelsResponse {
   string provider_id = 1;
   repeated Model models = 2;
+  // refreshed_at is the Unix timestamp in milliseconds of this successful refresh.
+  int64 refreshed_at = 3;
 }

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 )
 
 // Type identifies the adapter used to communicate with a provider.
@@ -30,20 +31,30 @@ var providerIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
 // Model describes one model exposed by a provider.
 type Model struct {
 	ID                     string   `json:"id"`
-	Name                   string   `json:"name"`
+	Name                   string   `json:"name,omitempty"`
 	ReasoningEfforts       []string `json:"reasoning_efforts,omitempty"`
 	DefaultReasoningEffort string   `json:"default_reasoning_effort,omitempty"`
+}
+
+// ModelSnapshot is the last model list successfully discovered from a
+// provider API. A zero RefreshedAt means that no discovery has succeeded.
+type ModelSnapshot struct {
+	// Models contains the exact entries returned by discovery before bundled
+	// metadata and user overrides are applied.
+	Models []Model
+	// RefreshedAt records when discovery completed successfully.
+	RefreshedAt time.Time
 }
 
 // Provider describes one built-in or user-defined model provider.
 // Credentials and internal registry metadata are deliberately excluded from
 // JSON serialization.
 type Provider struct {
-	ID      string  `json:"id"`
-	Name    string  `json:"name"`
-	Type    Type    `json:"type"`
-	BaseURL string  `json:"base_url,omitempty"`
-	Models  []Model `json:"models,omitempty"`
+	ID             string  `json:"id"`
+	Name           string  `json:"name"`
+	Type           Type    `json:"type"`
+	BaseURL        string  `json:"base_url,omitempty"`
+	ModelOverrides []Model `json:"model_overrides,omitempty"`
 
 	apiKey   string
 	builtin  bool
@@ -66,8 +77,9 @@ func (p Provider) Builtin() bool {
 	return p.builtin
 }
 
-// Revision changes whenever p's stored definition changes. Runtime caches can
-// include it in their keys to avoid reusing stale clients.
+// Revision changes whenever p's stored adapter type, Base URL, or credential
+// changes. Runtime caches can include it in their keys to avoid reusing stale
+// clients. Display names and model catalog changes do not affect it.
 func (p Provider) Revision() uint64 {
 	return p.revision
 }
@@ -116,11 +128,11 @@ func normalizeProvider(p Provider) (Provider, error) {
 		}
 	}
 
-	models, err := normalizeModels(p.Models)
+	models, err := normalizeModels(p.ModelOverrides)
 	if err != nil {
 		return Provider{}, err
 	}
-	p.Models = models
+	p.ModelOverrides = models
 	return p, nil
 }
 
@@ -138,11 +150,10 @@ func normalizeModels(models []Model) ([]Model, error) {
 			return nil, fmt.Errorf("provider: duplicate model id %q", model.ID)
 		}
 		seenModels[model.ID] = struct{}{}
-		if model.Name == "" {
-			model.Name = model.ID
+		var efforts []string
+		if model.ReasoningEfforts != nil {
+			efforts = make([]string, 0, len(model.ReasoningEfforts))
 		}
-
-		efforts := make([]string, 0, len(model.ReasoningEfforts))
 		seenEfforts := make(map[string]struct{}, len(model.ReasoningEfforts))
 		for _, effort := range model.ReasoningEfforts {
 			effort = strings.TrimSpace(effort)
@@ -178,8 +189,13 @@ func validType(providerType Type) bool {
 }
 
 func cloneProvider(p Provider) Provider {
-	p.Models = cloneModels(p.Models)
+	p.ModelOverrides = cloneModels(p.ModelOverrides)
 	return p
+}
+
+func cloneSnapshot(snapshot ModelSnapshot) ModelSnapshot {
+	snapshot.Models = cloneModels(snapshot.Models)
+	return snapshot
 }
 
 func cloneModels(models []Model) []Model {

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestRegistryListsBuiltinsAndResolvesEnvironmentKeys(t *testing.T) {
@@ -44,8 +45,8 @@ func TestRegistryListsBuiltinsAndResolvesEnvironmentKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Save(openai) error = %v", err)
 	}
-	if updated.Revision() <= beforeRevision {
-		t.Fatalf("updated revision = %d, want greater than %d", updated.Revision(), beforeRevision)
+	if updated.Revision() != beforeRevision {
+		t.Fatalf("updated revision = %d, want unchanged %d", updated.Revision(), beforeRevision)
 	}
 }
 
@@ -61,7 +62,7 @@ func TestRegistrySavesAndReopensCustomProvider(t *testing.T) {
 		Name:    "OpenRouter",
 		Type:    TypeOpenAIChatCompletions,
 		BaseURL: "https://openrouter.example/v1",
-		Models: []Model{{
+		ModelOverrides: []Model{{
 			ID:                     "example/model",
 			ReasoningEfforts:       []string{"low", "high", "max", "ultra"},
 			DefaultReasoningEffort: "high",
@@ -73,8 +74,8 @@ func TestRegistrySavesAndReopensCustomProvider(t *testing.T) {
 	if saved.Name != "OpenRouter" || saved.Builtin() || !saved.Configured() {
 		t.Fatalf("Save() = %+v, want configured custom provider", saved)
 	}
-	if saved.Models[0].Name != "example/model" {
-		t.Fatalf("model name = %q, want defaulted ID", saved.Models[0].Name)
+	if saved.ModelOverrides[0].Name != "" {
+		t.Fatalf("override model name = %q, want empty", saved.ModelOverrides[0].Name)
 	}
 	encoded, err := json.Marshal(saved)
 	if err != nil {
@@ -95,7 +96,7 @@ func TestRegistrySavesAndReopensCustomProvider(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
-	if got.APIKey() != key || got.BaseURL != saved.BaseURL || len(got.Models) != 1 {
+	if got.APIKey() != key || got.BaseURL != saved.BaseURL || len(got.ModelOverrides) != 1 {
 		t.Fatalf("reopened provider = %+v, want persisted provider", got)
 	}
 
@@ -106,8 +107,8 @@ func TestRegistrySavesAndReopensCustomProvider(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Save(preserve key) error = %v", err)
 	}
-	if updated.Revision() <= previousRevision {
-		t.Fatalf("updated revision = %d, want greater than %d", updated.Revision(), previousRevision)
+	if updated.Revision() != previousRevision {
+		t.Fatalf("updated revision = %d, want unchanged %d", updated.Revision(), previousRevision)
 	}
 	got, err = reopened.Get(t.Context(), "openrouter")
 	if err != nil {
@@ -124,6 +125,9 @@ func TestRegistrySavesAndReopensCustomProvider(t *testing.T) {
 	}
 	if got.Configured() {
 		t.Fatalf("Configured() = true after clearing key")
+	}
+	if got.Revision() <= previousRevision {
+		t.Fatalf("revision after clearing key = %d, want greater than %d", got.Revision(), previousRevision)
 	}
 }
 
@@ -169,7 +173,7 @@ func TestRegistryDoesNotPersistBuiltinEnvironmentKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get(deepseek) error = %v", err)
 	}
-	deepseek.Models = []Model{{ID: "deepseek-v4-pro", ReasoningEfforts: []string{"high", "max"}}}
+	deepseek.ModelOverrides = []Model{{ID: "deepseek-v4-pro", ReasoningEfforts: []string{"high", "max"}}}
 	if _, err := r.Save(t.Context(), deepseek, nil); err != nil {
 		t.Fatalf("Save(deepseek) error = %v", err)
 	}
@@ -182,7 +186,7 @@ func TestRegistryDoesNotPersistBuiltinEnvironmentKey(t *testing.T) {
 	}
 }
 
-func TestRegistrySetModelsPersistsAndReturnsClones(t *testing.T) {
+func TestRegistryModelSnapshotPersistsReturnsClonesAndPreservesRevision(t *testing.T) {
 	r := openTestRegistry(t)
 	key := "key"
 	if _, err := r.Save(t.Context(), Provider{
@@ -193,30 +197,81 @@ func TestRegistrySetModelsPersistsAndReturnsClones(t *testing.T) {
 		t.Fatalf("Save() error = %v", err)
 	}
 
-	models, err := r.SetModels(t.Context(), "custom", []Model{{
-		ID:                     "custom-model",
-		ReasoningEfforts:       []string{"high", "ultra"},
-		DefaultReasoningEffort: "ultra",
-	}})
-	if err != nil {
-		t.Fatalf("SetModels() error = %v", err)
-	}
-	models[0].ReasoningEfforts[0] = "mutated"
-
-	got, err := r.Get(t.Context(), "custom")
+	providerBefore, err := r.Get(t.Context(), "custom")
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
-	if got.Models[0].ReasoningEfforts[0] != "high" {
-		t.Fatalf("stored reasoning efforts were mutated: %v", got.Models[0].ReasoningEfforts)
+	refreshedAt := time.Date(2026, 7, 12, 10, 30, 0, 0, time.UTC)
+	snapshot, err := r.SetModelSnapshot(t.Context(), "custom", providerBefore.Revision(), ModelSnapshot{
+		Models: []Model{{
+			ID:                     "custom-model",
+			ReasoningEfforts:       []string{"high", "ultra"},
+			DefaultReasoningEffort: "ultra",
+		}},
+		RefreshedAt: refreshedAt,
+	})
+	if err != nil {
+		t.Fatalf("SetModelSnapshot() error = %v", err)
+	}
+	snapshot.Models[0].ReasoningEfforts[0] = "mutated"
+
+	providerAfter, err := r.Get(t.Context(), "custom")
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	if providerAfter.Revision() != providerBefore.Revision() {
+		t.Fatalf("provider revision changed from %d to %d", providerBefore.Revision(), providerAfter.Revision())
+	}
+	got, err := r.ModelSnapshot(t.Context(), "custom")
+	if err != nil {
+		t.Fatalf("ModelSnapshot() error = %v", err)
+	}
+	if got.RefreshedAt != refreshedAt || got.Models[0].ReasoningEfforts[0] != "high" {
+		t.Fatalf("ModelSnapshot() = %+v", got)
 	}
 	got.Models[0].ReasoningEfforts[0] = "mutated-again"
-	gotAgain, err := r.Get(t.Context(), "custom")
+	gotAgain, err := r.ModelSnapshot(t.Context(), "custom")
 	if err != nil {
-		t.Fatalf("Get() second error = %v", err)
+		t.Fatalf("ModelSnapshot() second error = %v", err)
 	}
 	if gotAgain.Models[0].ReasoningEfforts[0] != "high" {
-		t.Fatalf("Get() returned registry-owned model data")
+		t.Fatalf("ModelSnapshot() returned registry-owned model data")
+	}
+
+	reopened, err := Open(r.path)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	reopenedSnapshot, err := reopened.ModelSnapshot(t.Context(), "custom")
+	if err != nil {
+		t.Fatalf("reopened ModelSnapshot() error = %v", err)
+	}
+	if reopenedSnapshot.RefreshedAt != refreshedAt || len(reopenedSnapshot.Models) != 1 {
+		t.Fatalf("reopened snapshot = %+v", reopenedSnapshot)
+	}
+}
+
+func TestRegistryPersistsEmptyModelSnapshot(t *testing.T) {
+	r := openTestRegistry(t)
+	p, err := r.Get(t.Context(), "gemini")
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	refreshedAt := time.Date(2026, 7, 12, 11, 0, 0, 0, time.UTC)
+	if _, err := r.SetModelSnapshot(t.Context(), "gemini", p.Revision(), ModelSnapshot{RefreshedAt: refreshedAt}); err != nil {
+		t.Fatalf("SetModelSnapshot() error = %v", err)
+	}
+
+	reopened, err := Open(r.path)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	got, err := reopened.ModelSnapshot(t.Context(), "gemini")
+	if err != nil {
+		t.Fatalf("ModelSnapshot() error = %v", err)
+	}
+	if got.RefreshedAt != refreshedAt || len(got.Models) != 0 {
+		t.Fatalf("ModelSnapshot() = %+v", got)
 	}
 }
 
@@ -248,11 +303,11 @@ func TestRegistryRejectsInvalidProviders(t *testing.T) {
 		{name: "URL credentials", provider: Provider{ID: "valid", Name: "Valid", Type: TypeOpenAIChatCompletions, BaseURL: "https://user:secret@example.com"}},
 		{name: "duplicate models", provider: Provider{
 			ID: "valid", Name: "Valid", Type: TypeOpenAIChatCompletions,
-			Models: []Model{{ID: "same"}, {ID: "same"}},
+			ModelOverrides: []Model{{ID: "same"}, {ID: "same"}},
 		}},
 		{name: "unsupported default effort", provider: Provider{
 			ID: "valid", Name: "Valid", Type: TypeOpenAIChatCompletions,
-			Models: []Model{{ID: "model", ReasoningEfforts: []string{"low"}, DefaultReasoningEffort: "high"}},
+			ModelOverrides: []Model{{ID: "model", ReasoningEfforts: []string{"low"}, DefaultReasoningEffort: "high"}},
 		}},
 	}
 
