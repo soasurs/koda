@@ -20,12 +20,15 @@ Implemented today:
   durable last-known-good model snapshots.
 - A SQLite-backed Session Store with Koda session metadata, ADK history schema
   initialization, lazy ADK ledger creation, and per-session run locking.
+- Provider and model Connect handlers with protocol-level tests and explicit
+  error-code mapping.
 
 Not implemented yet:
 
 - LLM/agent construction and caching.
 - Coding tools, prompts, Safe-mode hooks, and approval broker.
-- Connect handlers, HTTP server, and `cmd/koda` entry point.
+- Session, event-history, and agent-runtime Connect handlers.
+- HTTP server and `cmd/koda` entry point.
 - A runnable CLI or UI.
 
 Do not document or present roadmap items as working features.
@@ -39,6 +42,7 @@ koda/
 │   ├── service.pb.go
 │   └── kodav1connect/service.connect.go
 ├── internal/provider/                       # provider registry + model catalog
+├── internal/server/                          # Connect handlers
 ├── internal/store/                          # SQLite lifecycle + session catalog
 ├── buf.yaml
 ├── buf.gen.yaml
@@ -52,7 +56,7 @@ Expected future packages:
 ```text
 internal/agent/   # LLM factory, prompts, runtime, agent cache
 internal/tools/   # file, search, shell, and git tools
-internal/server/  # Proto conversion, Connect handlers, approval broker
+internal/server/  # Proto conversion, remaining Connect handlers, approval broker
 cmd/koda/         # process lifecycle and HTTP server
 ```
 
@@ -162,8 +166,7 @@ Chat Completions adapter for `openai` and the Responses adapter for
 
 ## Recommended implementation order
 
-1. Implement provider, model, and session Connect handlers that do not require
-   an LLM.
+1. Implement session Connect handlers that do not require an LLM.
 2. Add Proto/ADK input and event conversion plus a fake-LLM runtime test seam.
 3. Implement the LLM factory and cached build/plan agents.
 4. Implement read-only tools, then mutating tools and Safe-mode approval.

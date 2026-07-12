@@ -92,6 +92,13 @@ var builtinProviders = []Provider{
 	{ID: "deepseek", Name: "DeepSeek", Type: TypeDeepSeek, builtin: true},
 }
 
+// ValidateProvider checks whether p is suitable for storage in a Registry.
+// It does not validate built-in provider type immutability or credentials.
+func ValidateProvider(p Provider) error {
+	_, err := normalizeProvider(p)
+	return err
+}
+
 func builtinProvider(id string) (Provider, bool) {
 	for _, p := range builtinProviders {
 		if p.ID == id {

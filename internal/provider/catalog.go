@@ -67,6 +67,12 @@ func NewCatalog(registry *Registry, discoverer Discoverer) (*Catalog, error) {
 	}, nil
 }
 
+// Registry returns the Registry used to resolve provider definitions and
+// persist successful model discovery snapshots.
+func (c *Catalog) Registry() *Registry {
+	return c.registry
+}
+
 // List returns the effective local model catalog without accessing the
 // network.
 func (c *Catalog) List(ctx context.Context, providerID string) (ModelCatalog, error) {

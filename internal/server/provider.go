@@ -1,0 +1,225 @@
+package server
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"slices"
+	"strings"
+	"time"
+
+	"connectrpc.com/connect"
+	v1 "github.com/soasurs/koda/gen/koda/v1"
+	"github.com/soasurs/koda/internal/provider"
+)
+
+// ListProviders returns every configured and built-in provider.
+func (h *Handler) ListProviders(ctx context.Context, _ *v1.ListProvidersRequest) (*v1.ListProvidersResponse, error) {
+	providers, err := h.registry.List(ctx)
+	if err != nil {
+		return nil, providerError(err)
+	}
+	return &v1.ListProvidersResponse{Providers: providersToProto(providers)}, nil
+}
+
+// SaveProvider creates or replaces a provider configuration.
+func (h *Handler) SaveProvider(ctx context.Context, request *v1.SaveProviderRequest) (*v1.SaveProviderResponse, error) {
+	p, err := providerFromProto(request)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if current, err := h.registry.Get(ctx, p.ID); err == nil {
+		if current.Builtin() && current.Type != p.Type {
+			return nil, connect.NewError(
+				connect.CodeInvalidArgument,
+				fmt.Errorf("built-in provider %q must retain type %q", p.ID, current.Type),
+			)
+		}
+	} else if !errors.Is(err, provider.ErrNotFound) {
+		return nil, providerError(err)
+	}
+
+	var apiKey *string
+	if request.ApiKey != nil {
+		value := *request.ApiKey
+		apiKey = &value
+	}
+	saved, err := h.registry.Save(ctx, p, apiKey)
+	if err != nil {
+		return nil, providerError(err)
+	}
+	return &v1.SaveProviderResponse{Provider: providerToProto(saved)}, nil
+}
+
+// DeleteProvider deletes one user-defined provider.
+func (h *Handler) DeleteProvider(ctx context.Context, request *v1.DeleteProviderRequest) (*v1.DeleteProviderResponse, error) {
+	if request == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("delete provider request must not be nil"))
+	}
+	providerID, err := providerIDFromRequest(request.ProviderId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if err := h.registry.Delete(ctx, providerID); err != nil {
+		return nil, providerError(err)
+	}
+	return &v1.DeleteProviderResponse{}, nil
+}
+
+// ListModels returns the local effective model catalog for one provider.
+func (h *Handler) ListModels(ctx context.Context, request *v1.ListModelsRequest) (*v1.ListModelsResponse, error) {
+	if request == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("list models request must not be nil"))
+	}
+	providerID, err := providerIDFromRequest(request.ProviderId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	catalog, err := h.catalog.List(ctx, providerID)
+	if err != nil {
+		return nil, providerError(err)
+	}
+	return &v1.ListModelsResponse{
+		ProviderId:  providerID,
+		Models:      modelsToProto(catalog.Models),
+		RefreshedAt: unixMilli(catalog.RefreshedAt),
+	}, nil
+}
+
+// RefreshModels discovers and persists the effective model catalog for one provider.
+func (h *Handler) RefreshModels(ctx context.Context, request *v1.RefreshModelsRequest) (*v1.RefreshModelsResponse, error) {
+	if request == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("refresh models request must not be nil"))
+	}
+	providerID, err := providerIDFromRequest(request.ProviderId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	catalog, err := h.catalog.Refresh(ctx, providerID)
+	if err != nil {
+		return nil, refreshError(err)
+	}
+	return &v1.RefreshModelsResponse{
+		ProviderId:  providerID,
+		Models:      modelsToProto(catalog.Models),
+		RefreshedAt: unixMilli(catalog.RefreshedAt),
+	}, nil
+}
+
+func providerFromProto(request *v1.SaveProviderRequest) (provider.Provider, error) {
+	if request == nil {
+		return provider.Provider{}, errors.New("save provider request must not be nil")
+	}
+	providerType, err := providerTypeFromProto(request.Type)
+	if err != nil {
+		return provider.Provider{}, err
+	}
+	models := make([]provider.Model, len(request.ModelOverrides))
+	for i, model := range request.ModelOverrides {
+		if model == nil {
+			return provider.Provider{}, fmt.Errorf("model override %d must not be nil", i)
+		}
+		models[i] = modelFromProto(model)
+	}
+	p := provider.Provider{
+		ID:             request.Id,
+		Name:           request.Name,
+		Type:           providerType,
+		BaseURL:        request.BaseUrl,
+		ModelOverrides: models,
+	}
+	if err := provider.ValidateProvider(p); err != nil {
+		return provider.Provider{}, err
+	}
+	return p, nil
+}
+
+func providerIDFromRequest(id string) (string, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return "", errors.New("provider ID must not be empty")
+	}
+	return id, nil
+}
+
+func providerToProto(p provider.Provider) *v1.Provider {
+	return &v1.Provider{
+		Id:         p.ID,
+		Name:       p.Name,
+		Type:       providerTypeToProto(p.Type),
+		BaseUrl:    p.BaseURL,
+		Configured: p.Configured(),
+		Builtin:    p.Builtin(),
+	}
+}
+
+func providersToProto(providers []provider.Provider) []*v1.Provider {
+	result := make([]*v1.Provider, len(providers))
+	for i, p := range providers {
+		result[i] = providerToProto(p)
+	}
+	return result
+}
+
+func modelFromProto(model *v1.Model) provider.Model {
+	return provider.Model{
+		ID:                     model.Id,
+		Name:                   model.Name,
+		ReasoningEfforts:       slices.Clone(model.ReasoningEfforts),
+		DefaultReasoningEffort: model.DefaultReasoningEffort,
+	}
+}
+
+func modelsToProto(models []provider.Model) []*v1.Model {
+	result := make([]*v1.Model, len(models))
+	for i, model := range models {
+		result[i] = &v1.Model{
+			Id:                     model.ID,
+			Name:                   model.Name,
+			ReasoningEfforts:       slices.Clone(model.ReasoningEfforts),
+			DefaultReasoningEffort: model.DefaultReasoningEffort,
+		}
+	}
+	return result
+}
+
+func providerTypeFromProto(providerType v1.ProviderType) (provider.Type, error) {
+	switch providerType {
+	case v1.ProviderType_PROVIDER_TYPE_ANTHROPIC:
+		return provider.TypeAnthropic, nil
+	case v1.ProviderType_PROVIDER_TYPE_OPENAI_CHAT_COMPLETIONS:
+		return provider.TypeOpenAIChatCompletions, nil
+	case v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES:
+		return provider.TypeOpenAIResponses, nil
+	case v1.ProviderType_PROVIDER_TYPE_GEMINI:
+		return provider.TypeGemini, nil
+	case v1.ProviderType_PROVIDER_TYPE_DEEPSEEK:
+		return provider.TypeDeepSeek, nil
+	default:
+		return "", fmt.Errorf("unsupported provider type %q", providerType)
+	}
+}
+
+func providerTypeToProto(providerType provider.Type) v1.ProviderType {
+	switch providerType {
+	case provider.TypeAnthropic:
+		return v1.ProviderType_PROVIDER_TYPE_ANTHROPIC
+	case provider.TypeOpenAIChatCompletions:
+		return v1.ProviderType_PROVIDER_TYPE_OPENAI_CHAT_COMPLETIONS
+	case provider.TypeOpenAIResponses:
+		return v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES
+	case provider.TypeGemini:
+		return v1.ProviderType_PROVIDER_TYPE_GEMINI
+	case provider.TypeDeepSeek:
+		return v1.ProviderType_PROVIDER_TYPE_DEEPSEEK
+	default:
+		return v1.ProviderType_PROVIDER_TYPE_UNSPECIFIED
+	}
+}
+
+func unixMilli(value time.Time) int64 {
+	if value.IsZero() {
+		return 0
+	}
+	return value.UnixMilli()
+}

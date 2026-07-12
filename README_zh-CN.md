@@ -20,8 +20,9 @@ Protocol Buffer 契约、Connect RPC 和
 - 内置模型目录，以及 Anthropic、OpenAI-compatible、Gemini 和 DeepSeek
   的远程模型发现与 last-known-good snapshot。
 - 基于 SQLite 的 Session Store，负责 Koda session metadata 和 ADK 对话历史。
+- Provider 和 Model 的 Connect handlers，以及协议级测试。
 
-下一阶段将实现不依赖 LLM 的 Provider、Model 和 Session Connect handlers。当前架构决策和开发顺序见
+下一阶段将实现不依赖 LLM 的 Session Connect handlers。当前架构决策和开发顺序见
 [AGENTS.md](AGENTS.md)。
 
 ## 架构
@@ -38,12 +39,12 @@ Tools + Prompts ───┘
 proto/koda/v1/service.proto              API 契约源文件
 gen/koda/v1/                             生成的 Go/Connect bindings
 internal/provider/                       Provider Registry 和模型目录
+internal/server/                          Connect handlers
 internal/store/                          SQLite 生命周期和 Session Catalog
 buf.yaml / buf.gen.yaml                  lint 和代码生成配置
 ```
 
-计划中的包包括 `internal/agent`、`internal/tools`、`internal/server` 和
-`cmd/koda`。
+计划中的包包括 `internal/agent`、`internal/tools` 和 `cmd/koda`。
 
 ## API 模型
 
@@ -160,7 +161,7 @@ go test ./...
 
 当前实现顺序：
 
-1. Provider、Session 和 Model Connect handlers。
+1. Session Connect handlers。
 2. Proto 与 ADK 之间的输入/事件转换，以及 Runtime 测试 seam。
 3. 可缓存的 build/plan agents、coding tools 和 Safe-mode approval。
 4. 流式 Run、进程生命周期和端到端测试。
