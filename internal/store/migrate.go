@@ -42,7 +42,7 @@ func applyMigration(ctx context.Context, db *sqlx.DB, version int) error {
 		WHERE version = $1
 	`, version)
 	if err == nil {
-		return nil
+		return tx.Rollback()
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return err

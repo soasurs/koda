@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -30,6 +31,7 @@ type Store struct {
 	runLocker   *runLocker
 	queries     queries
 	now         func() time.Time
+	closed      atomic.Bool
 }
 
 // DefaultPath returns the default local Koda database path.
@@ -107,14 +109,23 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	}, nil
 }
 
-// Close closes the underlying database. It must not be called while a Store
-// operation or ADK runner is still using the Store.
+// Close prevents new operations from starting and then closes the underlying
+// database. Ongoing operations that started before Close will complete; the
+// call is safe to retry after the first invocation.
 func (s *Store) Close() error {
 	if s == nil || s.db == nil {
 		return nil
 	}
+	s.closed.Store(true)
 	if err := s.db.Close(); err != nil {
 		return fmt.Errorf("store: close database: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) checkClosed() error {
+	if s.closed.Load() {
+		return errors.New("store is closed")
 	}
 	return nil
 }

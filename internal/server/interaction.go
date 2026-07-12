@@ -67,8 +67,8 @@ func (a brokerAuthorizer) Authorize(ctx context.Context, approval tools.Approval
 		Scope:         approvalScopeToProto(approval.Scope),
 		TargetPaths:   append([]string(nil), approval.TargetPaths...),
 	}
-	accepted, err := a.broker.Await(ctx, request, func(value *v1.ToolApproval) error {
-		return a.publish(&v1.RunResponse{Payload: &v1.RunResponse_Approval{Approval: value}})
+	accepted, err := a.broker.Await(ctx, request, func(v *v1.ToolApproval) error {
+		return a.publish(&v1.RunResponse{Payload: &v1.RunResponse_Approval{Approval: v}})
 	})
 	if err != nil {
 		return fmt.Errorf("server: await tool approval: %w", err)

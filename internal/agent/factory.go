@@ -122,10 +122,11 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 	}
 
 	f.mu.Lock()
-	defer f.mu.Unlock()
 	if cached := f.cache[key]; cached != nil {
+		f.mu.Unlock()
 		return cached, nil
 	}
+	f.mu.Unlock()
 
 	llm, err := f.newModel(ctx, value, session.ModelID, reasoningEffort)
 	if err != nil {
@@ -157,6 +158,12 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 	result, err := runner.New(llmAgent, f.sessions)
 	if err != nil {
 		return nil, fmt.Errorf("agent: construct runner: %w", err)
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if cached := f.cache[key]; cached != nil {
+		return cached, nil
 	}
 	f.evictSupersededLocked(key)
 	f.cache[key] = result

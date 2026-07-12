@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 )
@@ -100,7 +101,7 @@ func (d *HTTPDiscoverer) discoverAnthropic(ctx context.Context, p Provider) ([]M
 	models := make([]Model, 0)
 	seen := make(map[string]struct{})
 	afterID := ""
-	for page := 0; page < maxDiscoveryPages; page++ {
+	for range maxDiscoveryPages {
 		pageURL, err := withQuery(endpoint, map[string]string{"limit": "1000", "after_id": afterID})
 		if err != nil {
 			return nil, err
@@ -147,7 +148,7 @@ func (d *HTTPDiscoverer) discoverGemini(ctx context.Context, p Provider) ([]Mode
 	models := make([]Model, 0)
 	seen := make(map[string]struct{})
 	pageToken := ""
-	for page := 0; page < maxDiscoveryPages; page++ {
+	for range maxDiscoveryPages {
 		pageURL, err := withQuery(endpoint, map[string]string{"pageSize": "1000", "pageToken": pageToken})
 		if err != nil {
 			return nil, err
@@ -207,6 +208,7 @@ func (d *HTTPDiscoverer) getJSON(ctx context.Context, endpoint string, headers h
 		return fmt.Errorf("provider model discovery: read response: %w", err)
 	}
 	if len(body) > maxDiscoveryBodyBytes {
+		io.Copy(io.Discard, resp.Body)
 		return fmt.Errorf("provider model discovery: response exceeds %d bytes", maxDiscoveryBodyBytes)
 	}
 	if err := json.Unmarshal(body, target); err != nil {
@@ -267,12 +269,7 @@ func appendDiscoveredModel(models *[]Model, seen map[string]struct{}, model Mode
 }
 
 func containsString(values []string, want string) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, want)
 }
 
 var _ Discoverer = (*HTTPDiscoverer)(nil)

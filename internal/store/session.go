@@ -89,6 +89,9 @@ func (s *Store) CreateSession(ctx context.Context, params CreateSessionParams) (
 	if err := ctx.Err(); err != nil {
 		return Session{}, err
 	}
+	if err := s.checkClosed(); err != nil {
+		return Session{}, err
+	}
 	params, err := normalizeCreateParams(params)
 	if err != nil {
 		return Session{}, err
@@ -164,6 +167,9 @@ func (s *Store) UpdateSession(ctx context.Context, id string, params UpdateSessi
 	if err := ctx.Err(); err != nil {
 		return Session{}, err
 	}
+	if err := s.checkClosed(); err != nil {
+		return Session{}, err
+	}
 	id, err := normalizeSessionID(id)
 	if err != nil {
 		return Session{}, err
@@ -228,6 +234,9 @@ func (s *Store) DeleteSession(ctx context.Context, id string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	if err := s.checkClosed(); err != nil {
+		return err
+	}
 	id, err := normalizeSessionID(id)
 	if err != nil {
 		return err
@@ -245,9 +254,6 @@ func (s *Store) DeleteSession(ctx context.Context, id string) error {
 	if !exists {
 		return fmt.Errorf("store: delete session %q: %w", id, ErrNotFound)
 	}
-	if err := s.adkSessions.DeleteSession(ctx, id); err != nil {
-		return fmt.Errorf("store: delete ADK session %q: %w", id, err)
-	}
 	result, err := s.db.ExecContext(ctx, s.queries.deleteSession, s.now().UTC().UnixMilli(), id)
 	if err != nil {
 		return fmt.Errorf("store: delete session %q: %w", id, err)
@@ -258,6 +264,9 @@ func (s *Store) DeleteSession(ctx context.Context, id string) error {
 	}
 	if deleted == 0 {
 		return fmt.Errorf("store: delete session %q: %w", id, ErrNotFound)
+	}
+	if err := s.adkSessions.DeleteSession(ctx, id); err != nil {
+		return fmt.Errorf("store: delete ADK session %q: %w", id, err)
 	}
 	return nil
 }

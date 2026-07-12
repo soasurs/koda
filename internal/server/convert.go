@@ -39,7 +39,11 @@ func inputFromProto(input *v1.Input) (model.Content, error) {
 
 func inputToProto(content model.Content) (*v1.Input, error) {
 	if len(content.Parts) == 0 {
-		return &v1.Input{Parts: []*v1.Part{{Content: &v1.Part_Text{Text: content.Content}}}}, nil
+		text := strings.TrimSpace(content.Content)
+		if text == "" {
+			return nil, errors.New("input must contain at least one part")
+		}
+		return &v1.Input{Parts: []*v1.Part{{Content: &v1.Part_Text{Text: text}}}}, nil
 	}
 	parts, err := partsToProto(content.Parts)
 	if err != nil {

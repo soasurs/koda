@@ -125,9 +125,9 @@ func (h *Handler) UpdateSession(ctx context.Context, request *v1.UpdateSessionRe
 		if err != nil {
 			return nil, err
 		}
-		params.ProviderID = stringPointer(configuration.providerID)
-		params.ModelID = stringPointer(configuration.modelID)
-		params.ReasoningEffort = stringPointer(configuration.reasoningEffort)
+		params.ProviderID = new(configuration.providerID)
+		params.ModelID = new(configuration.modelID)
+		params.ReasoningEffort = new(configuration.reasoningEffort)
 	}
 	session, err := h.store.UpdateSession(ctx, id, params)
 	if err != nil {
@@ -310,8 +310,9 @@ func sessionsToProto(sessions []store.Session) []*v1.Session {
 	return result
 }
 
+//go:fix inline
 func stringPointer(value string) *string {
-	return &value
+	return new(value)
 }
 
 func fileAccessFromProto(value v1.FileAccess) (permission.FileAccess, error) {

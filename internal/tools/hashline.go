@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	anchorHashBytes   = 3
+	anchorHashBytes   = 4
 	revisionHashBytes = 12
 )
 
@@ -87,7 +87,10 @@ func (f textFile) anchoredLines(start, end int, maxChars int) ([]anchoredLine, b
 	result := make([]anchoredLine, 0, end-start+1)
 	used := 0
 	for line := start; line <= end; line++ {
-		anchor, _ := f.anchor(line)
+		anchor, err := f.anchor(line)
+		if err != nil {
+			return nil, false, 0
+		}
 		entry := anchoredLine{Number: line, Anchor: anchor, Content: f.lines[line-1]}
 		entryChars := len([]rune(anchor)) + len([]rune(entry.Content)) + 3
 		if len(result) > 0 && used+entryChars > maxChars {

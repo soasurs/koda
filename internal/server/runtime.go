@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"iter"
 
 	"connectrpc.com/connect"
@@ -41,6 +42,6 @@ func runtimeError(err error) error {
 	case errors.Is(err, context.DeadlineExceeded):
 		return connect.NewError(connect.CodeDeadlineExceeded, err)
 	default:
-		return connect.NewError(connect.CodeInternal, errors.New("agent runtime failed"))
+		return connect.NewError(connect.CodeInternal, fmt.Errorf("agent runtime failed: %w", err))
 	}
 }

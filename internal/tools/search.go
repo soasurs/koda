@@ -159,8 +159,15 @@ func (s service) searchText(ctx context.Context, input searchTextInput) (searchT
 			_ = command.Wait()
 			return searchTextOutput{}, handled(errors.New("rg returned an invalid line number"))
 		}
-		anchor, _ := file.anchor(message.Data.LineNumber)
 		content := file.lines[message.Data.LineNumber-1]
+		rgContent := strings.TrimSuffix(message.Data.Lines.Text, "\n")
+		if content != rgContent {
+			continue
+		}
+		anchor, err := file.anchor(message.Data.LineNumber)
+		if err != nil {
+			continue
+		}
 		entryChars := len([]rune(path.display)) + len([]rune(anchor)) + len([]rune(content)) + 16
 		if len(output.Matches) == limit || (len(output.Matches) > 0 && used+entryChars > maxChars) {
 			output.Truncated = true
