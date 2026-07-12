@@ -11,6 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	v1 "github.com/soasurs/koda/gen/koda/v1"
+	"github.com/soasurs/koda/internal/permission"
 	"github.com/soasurs/koda/internal/store"
 )
 
@@ -27,6 +28,14 @@ func (h *Handler) CreateSession(ctx context.Context, request *v1.CreateSessionRe
 	if err != nil {
 		return nil, err
 	}
+	fileAccess, err := fileAccessFromProto(request.FileAccess)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	shellAccess, err := shellAccessFromProto(request.ShellAccess)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	id, err := h.newSessionID()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.New("generate session ID"))
@@ -37,7 +46,8 @@ func (h *Handler) CreateSession(ctx context.Context, request *v1.CreateSessionRe
 		ProviderID:      configuration.providerID,
 		ModelID:         configuration.modelID,
 		ReasoningEffort: configuration.reasoningEffort,
-		SafeMode:        request.SafeMode,
+		FileAccess:      fileAccess,
+		ShellAccess:     shellAccess,
 	})
 	if err != nil {
 		return nil, sessionError(err)
@@ -226,10 +236,21 @@ func updateSessionParams(request *v1.UpdateSessionRequest, current store.Session
 		params.ReasoningEffort = &value
 		candidate.ReasoningEffort = value
 	}
-	if request.SafeMode != nil {
-		value := *request.SafeMode
-		params.SafeMode = &value
-		candidate.SafeMode = value
+	if request.FileAccess != nil {
+		value, err := fileAccessFromProto(*request.FileAccess)
+		if err != nil {
+			return store.UpdateSessionParams{}, store.Session{}, false, err
+		}
+		params.FileAccess = &value
+		candidate.FileAccess = value
+	}
+	if request.ShellAccess != nil {
+		value, err := shellAccessFromProto(*request.ShellAccess)
+		if err != nil {
+			return store.UpdateSessionParams{}, store.Session{}, false, err
+		}
+		params.ShellAccess = &value
+		candidate.ShellAccess = value
 	}
 	return params, candidate, validateConfiguration, nil
 }
@@ -250,7 +271,11 @@ func normalizeWorkdir(workdir string) (string, error) {
 	if !info.IsDir() {
 		return "", errors.New("workdir must be a directory")
 	}
-	return filepath.Clean(abs), nil
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return "", fmt.Errorf("resolve workdir symlinks: %w", err)
+	}
+	return filepath.Clean(resolved), nil
 }
 
 func sessionIDFromRequest(id string) (string, error) {
@@ -269,7 +294,8 @@ func sessionToProto(session store.Session) *v1.Session {
 		ProviderId:      session.ProviderID,
 		ModelId:         session.ModelID,
 		ReasoningEffort: session.ReasoningEffort,
-		SafeMode:        session.SafeMode,
+		FileAccess:      fileAccessToProto(session.FileAccess),
+		ShellAccess:     shellAccessToProto(session.ShellAccess),
 		CreatedAt:       session.CreatedAt.UnixMilli(),
 		UpdatedAt:       session.UpdatedAt.UnixMilli(),
 		EventCount:      session.EventCount,
@@ -286,4 +312,46 @@ func sessionsToProto(sessions []store.Session) []*v1.Session {
 
 func stringPointer(value string) *string {
 	return &value
+}
+
+func fileAccessFromProto(value v1.FileAccess) (permission.FileAccess, error) {
+	switch value {
+	case v1.FileAccess_FILE_ACCESS_UNSPECIFIED, v1.FileAccess_FILE_ACCESS_WORKSPACE_READ:
+		return permission.FileAccessWorkspaceRead, nil
+	case v1.FileAccess_FILE_ACCESS_WORKSPACE_WRITE:
+		return permission.FileAccessWorkspaceWrite, nil
+	case v1.FileAccess_FILE_ACCESS_UNRESTRICTED:
+		return permission.FileAccessUnrestricted, nil
+	default:
+		return "", fmt.Errorf("invalid file access %q", value)
+	}
+}
+
+func fileAccessToProto(value permission.FileAccess) v1.FileAccess {
+	switch value {
+	case permission.FileAccessWorkspaceWrite:
+		return v1.FileAccess_FILE_ACCESS_WORKSPACE_WRITE
+	case permission.FileAccessUnrestricted:
+		return v1.FileAccess_FILE_ACCESS_UNRESTRICTED
+	default:
+		return v1.FileAccess_FILE_ACCESS_WORKSPACE_READ
+	}
+}
+
+func shellAccessFromProto(value v1.ShellAccess) (permission.ShellAccess, error) {
+	switch value {
+	case v1.ShellAccess_SHELL_ACCESS_UNSPECIFIED, v1.ShellAccess_SHELL_ACCESS_APPROVAL_REQUIRED:
+		return permission.ShellAccessApprovalRequired, nil
+	case v1.ShellAccess_SHELL_ACCESS_UNRESTRICTED:
+		return permission.ShellAccessUnrestricted, nil
+	default:
+		return "", fmt.Errorf("invalid shell access %q", value)
+	}
+}
+
+func shellAccessToProto(value permission.ShellAccess) v1.ShellAccess {
+	if value == permission.ShellAccessUnrestricted {
+		return v1.ShellAccess_SHELL_ACCESS_UNRESTRICTED
+	}
+	return v1.ShellAccess_SHELL_ACCESS_APPROVAL_REQUIRED
 }

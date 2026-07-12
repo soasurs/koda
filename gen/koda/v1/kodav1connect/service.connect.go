@@ -38,6 +38,9 @@ const (
 	// KodaServiceResolveToolApprovalProcedure is the fully-qualified name of the KodaService's
 	// ResolveToolApproval RPC.
 	KodaServiceResolveToolApprovalProcedure = "/koda.v1.KodaService/ResolveToolApproval"
+	// KodaServiceSubmitQuestionAnswersProcedure is the fully-qualified name of the KodaService's
+	// SubmitQuestionAnswers RPC.
+	KodaServiceSubmitQuestionAnswersProcedure = "/koda.v1.KodaService/SubmitQuestionAnswers"
 	// KodaServiceCreateSessionProcedure is the fully-qualified name of the KodaService's CreateSession
 	// RPC.
 	KodaServiceCreateSessionProcedure = "/koda.v1.KodaService/CreateSession"
@@ -77,8 +80,11 @@ const (
 type KodaServiceClient interface {
 	// Run executes one agent turn and streams its observable state.
 	Run(context.Context, *v1.RunRequest) (*connect.ServerStreamForClient[v1.RunResponse], error)
-	// ResolveToolApproval approves or rejects a pending mutating tool call.
+	// ResolveToolApproval approves or rejects a pending tool call.
 	ResolveToolApproval(context.Context, *v1.ResolveToolApprovalRequest) (*v1.ResolveToolApprovalResponse, error)
+	// SubmitQuestionAnswers returns frontend-authored answers to a pending
+	// ask_questions tool call.
+	SubmitQuestionAnswers(context.Context, *v1.SubmitQuestionAnswersRequest) (*v1.SubmitQuestionAnswersResponse, error)
 	// CreateSession creates a new coding session.
 	CreateSession(context.Context, *v1.CreateSessionRequest) (*v1.CreateSessionResponse, error)
 	// GetSession returns one coding session.
@@ -126,6 +132,12 @@ func NewKodaServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+KodaServiceResolveToolApprovalProcedure,
 			connect.WithSchema(kodaServiceMethods.ByName("ResolveToolApproval")),
+			connect.WithClientOptions(opts...),
+		),
+		submitQuestionAnswers: connect.NewClient[v1.SubmitQuestionAnswersRequest, v1.SubmitQuestionAnswersResponse](
+			httpClient,
+			baseURL+KodaServiceSubmitQuestionAnswersProcedure,
+			connect.WithSchema(kodaServiceMethods.ByName("SubmitQuestionAnswers")),
 			connect.WithClientOptions(opts...),
 		),
 		createSession: connect.NewClient[v1.CreateSessionRequest, v1.CreateSessionResponse](
@@ -205,20 +217,21 @@ func NewKodaServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // kodaServiceClient implements KodaServiceClient.
 type kodaServiceClient struct {
-	run                 *connect.Client[v1.RunRequest, v1.RunResponse]
-	resolveToolApproval *connect.Client[v1.ResolveToolApprovalRequest, v1.ResolveToolApprovalResponse]
-	createSession       *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
-	getSession          *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
-	listSessions        *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
-	updateSession       *connect.Client[v1.UpdateSessionRequest, v1.UpdateSessionResponse]
-	deleteSession       *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
-	listEvents          *connect.Client[v1.ListEventsRequest, v1.ListEventsResponse]
-	undoLastMessage     *connect.Client[v1.UndoLastMessageRequest, v1.UndoLastMessageResponse]
-	listProviders       *connect.Client[v1.ListProvidersRequest, v1.ListProvidersResponse]
-	saveProvider        *connect.Client[v1.SaveProviderRequest, v1.SaveProviderResponse]
-	deleteProvider      *connect.Client[v1.DeleteProviderRequest, v1.DeleteProviderResponse]
-	listModels          *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
-	refreshModels       *connect.Client[v1.RefreshModelsRequest, v1.RefreshModelsResponse]
+	run                   *connect.Client[v1.RunRequest, v1.RunResponse]
+	resolveToolApproval   *connect.Client[v1.ResolveToolApprovalRequest, v1.ResolveToolApprovalResponse]
+	submitQuestionAnswers *connect.Client[v1.SubmitQuestionAnswersRequest, v1.SubmitQuestionAnswersResponse]
+	createSession         *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
+	getSession            *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
+	listSessions          *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
+	updateSession         *connect.Client[v1.UpdateSessionRequest, v1.UpdateSessionResponse]
+	deleteSession         *connect.Client[v1.DeleteSessionRequest, v1.DeleteSessionResponse]
+	listEvents            *connect.Client[v1.ListEventsRequest, v1.ListEventsResponse]
+	undoLastMessage       *connect.Client[v1.UndoLastMessageRequest, v1.UndoLastMessageResponse]
+	listProviders         *connect.Client[v1.ListProvidersRequest, v1.ListProvidersResponse]
+	saveProvider          *connect.Client[v1.SaveProviderRequest, v1.SaveProviderResponse]
+	deleteProvider        *connect.Client[v1.DeleteProviderRequest, v1.DeleteProviderResponse]
+	listModels            *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
+	refreshModels         *connect.Client[v1.RefreshModelsRequest, v1.RefreshModelsResponse]
 }
 
 // Run calls koda.v1.KodaService.Run.
@@ -229,6 +242,15 @@ func (c *kodaServiceClient) Run(ctx context.Context, req *v1.RunRequest) (*conne
 // ResolveToolApproval calls koda.v1.KodaService.ResolveToolApproval.
 func (c *kodaServiceClient) ResolveToolApproval(ctx context.Context, req *v1.ResolveToolApprovalRequest) (*v1.ResolveToolApprovalResponse, error) {
 	response, err := c.resolveToolApproval.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// SubmitQuestionAnswers calls koda.v1.KodaService.SubmitQuestionAnswers.
+func (c *kodaServiceClient) SubmitQuestionAnswers(ctx context.Context, req *v1.SubmitQuestionAnswersRequest) (*v1.SubmitQuestionAnswersResponse, error) {
+	response, err := c.submitQuestionAnswers.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -347,8 +369,11 @@ func (c *kodaServiceClient) RefreshModels(ctx context.Context, req *v1.RefreshMo
 type KodaServiceHandler interface {
 	// Run executes one agent turn and streams its observable state.
 	Run(context.Context, *v1.RunRequest, *connect.ServerStream[v1.RunResponse]) error
-	// ResolveToolApproval approves or rejects a pending mutating tool call.
+	// ResolveToolApproval approves or rejects a pending tool call.
 	ResolveToolApproval(context.Context, *v1.ResolveToolApprovalRequest) (*v1.ResolveToolApprovalResponse, error)
+	// SubmitQuestionAnswers returns frontend-authored answers to a pending
+	// ask_questions tool call.
+	SubmitQuestionAnswers(context.Context, *v1.SubmitQuestionAnswersRequest) (*v1.SubmitQuestionAnswersResponse, error)
 	// CreateSession creates a new coding session.
 	CreateSession(context.Context, *v1.CreateSessionRequest) (*v1.CreateSessionResponse, error)
 	// GetSession returns one coding session.
@@ -392,6 +417,12 @@ func NewKodaServiceHandler(svc KodaServiceHandler, opts ...connect.HandlerOption
 		KodaServiceResolveToolApprovalProcedure,
 		svc.ResolveToolApproval,
 		connect.WithSchema(kodaServiceMethods.ByName("ResolveToolApproval")),
+		connect.WithHandlerOptions(opts...),
+	)
+	kodaServiceSubmitQuestionAnswersHandler := connect.NewUnaryHandlerSimple(
+		KodaServiceSubmitQuestionAnswersProcedure,
+		svc.SubmitQuestionAnswers,
+		connect.WithSchema(kodaServiceMethods.ByName("SubmitQuestionAnswers")),
 		connect.WithHandlerOptions(opts...),
 	)
 	kodaServiceCreateSessionHandler := connect.NewUnaryHandlerSimple(
@@ -472,6 +503,8 @@ func NewKodaServiceHandler(svc KodaServiceHandler, opts ...connect.HandlerOption
 			kodaServiceRunHandler.ServeHTTP(w, r)
 		case KodaServiceResolveToolApprovalProcedure:
 			kodaServiceResolveToolApprovalHandler.ServeHTTP(w, r)
+		case KodaServiceSubmitQuestionAnswersProcedure:
+			kodaServiceSubmitQuestionAnswersHandler.ServeHTTP(w, r)
 		case KodaServiceCreateSessionProcedure:
 			kodaServiceCreateSessionHandler.ServeHTTP(w, r)
 		case KodaServiceGetSessionProcedure:
@@ -511,6 +544,10 @@ func (UnimplementedKodaServiceHandler) Run(context.Context, *v1.RunRequest, *con
 
 func (UnimplementedKodaServiceHandler) ResolveToolApproval(context.Context, *v1.ResolveToolApprovalRequest) (*v1.ResolveToolApprovalResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.ResolveToolApproval is not implemented"))
+}
+
+func (UnimplementedKodaServiceHandler) SubmitQuestionAnswers(context.Context, *v1.SubmitQuestionAnswersRequest) (*v1.SubmitQuestionAnswersResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.SubmitQuestionAnswers is not implemented"))
 }
 
 func (UnimplementedKodaServiceHandler) CreateSession(context.Context, *v1.CreateSessionRequest) (*v1.CreateSessionResponse, error) {

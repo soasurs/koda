@@ -6,8 +6,11 @@ package koda.v1;
 service KodaService {
   // Run executes one agent turn and streams its observable state.
   rpc Run(RunRequest) returns (stream RunResponse);
-  // ResolveToolApproval approves or rejects a pending mutating tool call.
+  // ResolveToolApproval approves or rejects a pending tool call.
   rpc ResolveToolApproval(ResolveToolApprovalRequest) returns (ResolveToolApprovalResponse);
+  // SubmitQuestionAnswers returns frontend-authored answers to a pending
+  // ask_questions tool call.
+  rpc SubmitQuestionAnswers(SubmitQuestionAnswersRequest) returns (SubmitQuestionAnswersResponse);
 
   // CreateSession creates a new coding session.
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
@@ -88,6 +91,68 @@ enum ImageDetail {
   IMAGE_DETAIL_HIGH = 3;
 }
 
+// FileAccess controls which filesystem operations are automatically allowed
+// for a session. Operations not covered by the selected level require a
+// per-call approval.
+enum FileAccess {
+  // FILE_ACCESS_UNSPECIFIED is treated as FILE_ACCESS_WORKSPACE_READ.
+  FILE_ACCESS_UNSPECIFIED = 0;
+  // FILE_ACCESS_WORKSPACE_READ automatically permits reads inside workdir.
+  // Writes inside workdir and all access outside workdir require approval.
+  FILE_ACCESS_WORKSPACE_READ = 1;
+  // FILE_ACCESS_WORKSPACE_WRITE automatically permits reads and writes inside
+  // workdir. All access outside workdir requires approval.
+  FILE_ACCESS_WORKSPACE_WRITE = 2;
+  // FILE_ACCESS_UNRESTRICTED automatically permits filesystem reads and
+  // writes both inside and outside workdir.
+  FILE_ACCESS_UNRESTRICTED = 3;
+}
+
+// ShellAccess controls whether arbitrary shell commands require approval.
+enum ShellAccess {
+  // SHELL_ACCESS_UNSPECIFIED is treated as SHELL_ACCESS_APPROVAL_REQUIRED.
+  SHELL_ACCESS_UNSPECIFIED = 0;
+  // SHELL_ACCESS_APPROVAL_REQUIRED requires approval for every shell command.
+  SHELL_ACCESS_APPROVAL_REQUIRED = 1;
+  // SHELL_ACCESS_UNRESTRICTED permits arbitrary shell commands. This grants
+  // effective unrestricted filesystem and process access.
+  SHELL_ACCESS_UNRESTRICTED = 2;
+}
+
+// ToolApprovalKind identifies the capability requested by a pending approval.
+enum ToolApprovalKind {
+  TOOL_APPROVAL_KIND_UNSPECIFIED = 0;
+  TOOL_APPROVAL_KIND_FILE_READ = 1;
+  TOOL_APPROVAL_KIND_FILE_WRITE = 2;
+  TOOL_APPROVAL_KIND_SHELL = 3;
+}
+
+// ToolApprovalScope identifies the widest affected location of a request.
+enum ToolApprovalScope {
+  TOOL_APPROVAL_SCOPE_UNSPECIFIED = 0;
+  TOOL_APPROVAL_SCOPE_WORKSPACE = 1;
+  TOOL_APPROVAL_SCOPE_OUTSIDE_WORKSPACE = 2;
+  // TOOL_APPROVAL_SCOPE_GLOBAL covers commands whose filesystem effects cannot
+  // be determined before execution.
+  TOOL_APPROVAL_SCOPE_GLOBAL = 3;
+}
+
+// FileChangeKind identifies the filesystem effect represented by a diff.
+enum FileChangeKind {
+  FILE_CHANGE_KIND_UNSPECIFIED = 0;
+  FILE_CHANGE_KIND_CREATE = 1;
+  FILE_CHANGE_KIND_UPDATE = 2;
+  FILE_CHANGE_KIND_DELETE = 3;
+}
+
+// DiffLineKind identifies how one displayed line participates in a diff hunk.
+enum DiffLineKind {
+  DIFF_LINE_KIND_UNSPECIFIED = 0;
+  DIFF_LINE_KIND_CONTEXT = 1;
+  DIFF_LINE_KIND_ADDED = 2;
+  DIFF_LINE_KIND_REMOVED = 3;
+}
+
 // RunRequest starts one user turn in an existing session.
 message RunRequest {
   // session_id references Session.id.
@@ -103,10 +168,13 @@ message RunResponse {
   oneof payload {
     // event contains a transient partial event or a complete durable event.
     Event event = 1;
-    // approval blocks one mutating tool call until ResolveToolApproval is called.
+    // approval blocks one tool call until ResolveToolApproval is called.
     ToolApproval approval = 2;
     // completed is emitted only after the full turn finishes successfully.
     RunCompleted completed = 3;
+    // question_prompt blocks one ask_questions tool call until the frontend
+    // submits answers or cancels the prompt.
+    QuestionPrompt question_prompt = 4;
   }
 }
 
@@ -145,7 +213,7 @@ message Image {
   ImageDetail detail = 4;
 }
 
-// ToolApproval describes a mutating tool call awaiting a decision.
+// ToolApproval describes a tool call awaiting a decision.
 message ToolApproval {
   // id is a koda-generated approval ID, distinct from the provider tool-call ID.
   string id = 1;
@@ -154,10 +222,17 @@ message ToolApproval {
   // tool_call_id correlates this approval with ToolCall.id.
   string tool_call_id = 4;
   string tool_name = 5;
-  // summary is a short, display-safe description of the requested mutation.
+  // summary is a short, display-safe description of the requested operation.
   string summary = 6;
   // arguments_json is the exact JSON object supplied by the model.
   string arguments_json = 7;
+  // file_changes is a proposed diff for predictable file mutations. It is
+  // empty for requests such as shell commands whose effects are unknown.
+  repeated FileChange file_changes = 8;
+  ToolApprovalKind kind = 9;
+  ToolApprovalScope scope = 10;
+  // target_paths contains normalized absolute paths when they can be known.
+  repeated string target_paths = 11;
 }
 
 // ResolveToolApprovalRequest resolves one pending approval exactly once.
@@ -170,6 +245,66 @@ message ResolveToolApprovalRequest {
 
 // ResolveToolApprovalResponse acknowledges a recorded decision.
 message ResolveToolApprovalResponse {}
+
+// QuestionPrompt is a transient request for frontend-authored input. The
+// prompt itself is not persisted; submitted answers become the tool result.
+message QuestionPrompt {
+  // id is generated by koda and resolves exactly once.
+  string id = 1;
+  string session_id = 2;
+  string turn_id = 3;
+  // tool_call_id correlates this prompt with the ask_questions ToolCall.
+  string tool_call_id = 4;
+  // questions contains between one and three items.
+  repeated Question questions = 5;
+}
+
+// Question is one input requested by the model.
+message Question {
+  // id is model-authored and unique within its QuestionPrompt.
+  string id = 1;
+  string header = 2;
+  string prompt = 3;
+  repeated QuestionOption options = 4;
+  // multiple permits selecting more than one option.
+  bool multiple = 5;
+  // allow_freeform permits an answer not represented by an option.
+  bool allow_freeform = 6;
+}
+
+// QuestionOption is one frontend-selectable answer.
+message QuestionOption {
+  // id is model-authored and unique within its Question.
+  string id = 1;
+  string label = 2;
+  string description = 3;
+}
+
+// SubmitQuestionAnswersRequest resolves one pending QuestionPrompt.
+message SubmitQuestionAnswersRequest {
+  string prompt_id = 1;
+  oneof resolution {
+    QuestionAnswers answers = 2;
+    // canceled must be true when selected. Cancellation becomes a
+    // model-visible handled tool failure rather than aborting the Run.
+    bool canceled = 3;
+  }
+}
+
+// SubmitQuestionAnswersResponse acknowledges a recorded resolution.
+message SubmitQuestionAnswersResponse {}
+
+// QuestionAnswers contains one validated answer for every requested question.
+message QuestionAnswers {
+  repeated QuestionAnswer answers = 1;
+}
+
+// QuestionAnswer is one frontend-authored tool result item.
+message QuestionAnswer {
+  string question_id = 1;
+  repeated string selected_option_ids = 2;
+  string freeform = 3;
+}
 
 // Session contains metadata and execution settings for one coding session.
 message Session {
@@ -184,13 +319,16 @@ message Session {
   string model_id = 5;
   // reasoning_effort is provider-specific; empty uses the model default.
   string reasoning_effort = 6;
-  // safe_mode requires approval before mutating tools execute.
-  bool safe_mode = 7;
+  // file_access determines which filesystem operations execute without a
+  // per-call approval.
+  FileAccess file_access = 7;
   // created_at and updated_at are Unix timestamps in milliseconds.
   int64 created_at = 8;
   int64 updated_at = 9;
   // event_count counts active, non-archived events in the session.
   int64 event_count = 10;
+  // shell_access determines whether arbitrary shell commands need approval.
+  ShellAccess shell_access = 11;
 }
 
 // CreateSessionRequest creates a session with an initial execution configuration.
@@ -202,8 +340,10 @@ message CreateSessionRequest {
   string model_id = 3;
   // reasoning_effort is provider-specific; empty uses the model default.
   string reasoning_effort = 4;
-  // safe_mode requires approval before mutating tools execute.
-  bool safe_mode = 5;
+  // file_access defaults to FILE_ACCESS_WORKSPACE_READ when unspecified.
+  FileAccess file_access = 5;
+  // shell_access defaults to SHELL_ACCESS_APPROVAL_REQUIRED when unspecified.
+  ShellAccess shell_access = 6;
 }
 
 // CreateSessionResponse returns the created session.
@@ -246,7 +386,10 @@ message UpdateSessionRequest {
   optional string model_id = 5;
   // An explicitly empty reasoning_effort restores the model default.
   optional string reasoning_effort = 6;
-  optional bool safe_mode = 7;
+  // file_access changes the automatically allowed filesystem capability.
+  optional FileAccess file_access = 7;
+  // shell_access changes whether arbitrary shell commands need approval.
+  optional ShellAccess shell_access = 8;
 }
 
 // UpdateSessionResponse returns the updated session.
@@ -324,6 +467,37 @@ message ToolResult {
   string content = 1;
   // structured_content_json is an optional raw JSON value.
   string structured_content_json = 2;
+  // file_changes contains the actual diff applied by a file mutation.
+  repeated FileChange file_changes = 3;
+}
+
+// FileChange is a display-oriented change to one file. It is used for both a
+// proposed ToolApproval diff and a completed ToolResult diff.
+message FileChange {
+  string path = 1;
+  FileChangeKind kind = 2;
+  repeated DiffHunk hunks = 3;
+  // truncated indicates that display limits omitted one or more hunks or lines.
+  bool truncated = 4;
+}
+
+// DiffHunk groups nearby changed lines with a small amount of context.
+message DiffHunk {
+  // old_start and new_start are 1-based line numbers for their respective
+  // file versions. A zero value means that side has no corresponding line.
+  int32 old_start = 1;
+  int32 new_start = 2;
+  repeated DiffLine lines = 3;
+}
+
+// DiffLine is one display line in a diff hunk.
+message DiffLine {
+  DiffLineKind kind = 1;
+  // old_line and new_line are 1-based. Zero means the line is absent on that
+  // side of the change.
+  int32 old_line = 2;
+  int32 new_line = 3;
+  string content = 4;
 }
 
 // ToolError contains a model-visible handled tool failure.

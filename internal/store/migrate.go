@@ -74,7 +74,8 @@ func migrationSQL(version int) []string {
 					provider_id       TEXT NOT NULL,
 					model_id          TEXT NOT NULL,
 					reasoning_effort  TEXT NOT NULL DEFAULT '',
-					safe_mode         INTEGER NOT NULL,
+					file_access       TEXT NOT NULL,
+					shell_access      TEXT NOT NULL,
 					created_at        BIGINT NOT NULL,
 					updated_at        BIGINT NOT NULL,
 					deleted_at        BIGINT NOT NULL DEFAULT 0

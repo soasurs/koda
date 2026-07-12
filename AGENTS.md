@@ -24,11 +24,17 @@ Implemented today:
   error-code mapping.
 - Session CRUD Connect handlers with local provider/model validation and
   per-session update serialization.
+- Workspace-aware coding tools: Hashline file editing, directory listing,
+  ripgrep-backed search and filename discovery, read-only Git, and Shell.
+- A typed `ask_questions` tool shared by Plan and Build agents, plus a
+  cancellation-safe in-process Question Broker and answer RPC.
+- Session-scoped filesystem and Shell permission types, structured file-diff
+  protocol types, and a cancellation-safe in-process Approval Broker.
 
 Not implemented yet:
 
 - LLM/agent construction and caching.
-- Coding tools, prompts, Safe-mode hooks, and approval broker.
+- Tool prompts plus ADK approval/question interaction and streamed-Run wiring.
 - Event-history and agent-runtime Connect handlers.
 - HTTP server and `cmd/koda` entry point.
 - A runnable CLI or UI.
@@ -46,6 +52,8 @@ koda/
 ├── internal/provider/                       # provider registry + model catalog
 ├── internal/server/                          # Connect handlers
 ├── internal/store/                          # SQLite lifecycle + session catalog
+├── internal/tools/                          # workspace-aware coding tools
+├── internal/permission/                     # session permission policy
 ├── buf.yaml
 ├── buf.gen.yaml
 ├── go.mod
@@ -57,7 +65,6 @@ Expected future packages:
 
 ```text
 internal/agent/   # LLM factory, prompts, runtime, agent cache
-internal/tools/   # file, search, shell, and git tools
 internal/server/  # Proto conversion, event/runtime handlers, approval broker
 cmd/koda/         # process lifecycle and HTTP server
 ```
@@ -70,8 +77,8 @@ their own domain types or ADK types rather than depending on `gen/koda/v1`.
 ### API and turn lifecycle
 
 - Connect uses the generated `simple` handler signatures.
-- `Run` is server-streaming and emits exactly three frame kinds:
-  `Event`, `ToolApproval`, and `RunCompleted`.
+- `Run` is server-streaming and emits exactly four frame kinds: `Event`,
+  `ToolApproval`, `QuestionPrompt`, and `RunCompleted`.
 - One turn starts with one user input and includes every assistant tool-call
   message, tool result, and subsequent model invocation until the final
   assistant response has a finish reason other than `tool_calls`.
@@ -101,12 +108,45 @@ their own domain types or ADK types rather than depending on `gen/koda/v1`.
 - There is no global active provider/model configuration.
 - The global Provider Registry stores connection definitions, credentials,
   model overrides, and the last successful discovery snapshots.
-- Sessions store `provider_id`, `model_id`, `reasoning_effort`, `safe_mode`, and
-  `workdir`.
+- Sessions store `provider_id`, `model_id`, `reasoning_effort`, `file_access`,
+  `shell_access`, and `workdir`.
 - `RunRequest` carries only `session_id`, multimodal input, and build/plan mode.
 - Reasoning effort is a provider/model-specific string, not a shared enum.
 - Future agent instances should be cached by provider ID, provider revision,
   model ID, reasoning effort, and mode. Do not rebuild an agent on every turn.
+
+Tool permission invariants:
+
+- `FileAccessWorkspaceRead` automatically permits only reads inside `workdir`.
+  Workspace writes and every outside-workspace access require approval.
+- `FileAccessWorkspaceWrite` automatically permits workspace reads and writes;
+  every outside-workspace access still requires approval.
+- `FileAccessUnrestricted` automatically permits filesystem reads and writes
+  everywhere.
+- Shell approval is independent. `ShellAccessUnrestricted` intentionally grants
+  arbitrary process execution and effective unrestricted filesystem access.
+- All file paths are resolved relative to `workdir`; existing paths and the
+  closest existing ancestor of new paths are symlink-resolved before scope is
+  classified. An internal symlink to an external target is external.
+- Plan agents receive only `read_file`, `list_directory`, `search_text`,
+  `find_files`, read-only allowlisted `git`, and `ask_questions`. Build agents
+  additionally receive `write_file`, `create_file`, Hashline `edit_file`, and
+  `run_shell`.
+- `read_file` and `search_text` expose a content revision plus `LINE:HASH`
+  anchors. `edit_file` requires the revision, verifies all anchors, rejects
+  stale input, applies a non-overlapping batch atomically, and returns fresh
+  anchors plus structured file changes.
+- ToolApproval may cover external reads as well as writes. It carries the
+  capability kind, widest scope, resolved targets, and a proposed `FileChange`
+  diff where the operation is predictable. `ToolResult` carries the actual
+  applied changes.
+- `ask_questions` blocks inside its custom `tool.Tool` implementation so it can
+  retain the provider tool-call ID. `QuestionPrompt` is transient; validated
+  frontend answers are returned and persisted as the normal ToolResult. An
+  explicit frontend cancellation is a model-visible handled failure.
+- The Run context must provide Session/Turn metadata and a concurrency-safe
+  outbound frame publisher when the Question Broker is wired into the runtime.
+  Do not rebuild cached agents or tools per Run to inject this metadata.
 
 Built-in Provider Registry entries:
 
@@ -169,10 +209,10 @@ Chat Completions adapter for `openai` and the Responses adapter for
 ## Recommended implementation order
 
 1. Add Proto/ADK input and event conversion plus a fake-LLM runtime test seam.
-2. Implement the LLM factory and cached build/plan agents.
-3. Implement read-only tools, then mutating tools and Safe-mode approval.
-4. Implement streamed `Run`, cancellation, rollback, and completion semantics.
-5. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
+2. Implement the LLM factory and cached build/plan agents, including tool
+   prompts and Approval/Question Broker wiring.
+3. Implement streamed `Run`, cancellation, rollback, and completion semantics.
+4. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
 
 Review this order after each completed slice; do not build all layers at once.
 
@@ -191,6 +231,7 @@ buf generate
 go build ./...
 go vet ./...
 go test ./...
+go test -cover ./...
 ```
 
 Generation uses Go tool dependencies pinned in `go.mod`:
@@ -212,6 +253,7 @@ gofmt -w .
 go build ./...
 go vet ./...
 go test ./...
+go test -cover ./...
 go test -race ./...
 git diff --check
 ```
@@ -220,6 +262,7 @@ Focused tests are encouraged before the full pipeline:
 
 ```bash
 go test ./internal/provider/...
+go test -cover ./internal/provider/...
 go test -race ./internal/provider/...
 ```
 

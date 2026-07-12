@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/soasurs/adk/session/event"
+	"github.com/soasurs/koda/internal/permission"
 )
 
 func TestOpenInitializesSchemasAndSecuresDatabase(t *testing.T) {
@@ -64,12 +65,15 @@ func TestStoreSessionLifecycle(t *testing.T) {
 		ProviderID:      "openai",
 		ModelID:         "gpt-5",
 		ReasoningEffort: " high ",
-		SafeMode:        true,
+		FileAccess:      permission.FileAccessWorkspaceWrite,
+		ShellAccess:     permission.ShellAccessUnrestricted,
 	})
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
-	if created.Title != "First session" || created.Workdir != "/workspace/b" || !created.SafeMode {
+	if created.Title != "First session" || created.Workdir != "/workspace/b" ||
+		created.FileAccess != permission.FileAccessWorkspaceWrite ||
+		created.ShellAccess != permission.ShellAccessUnrestricted {
 		t.Fatalf("CreateSession() = %+v, want normalized values", created)
 	}
 	if created.EventCount != 0 {
@@ -99,20 +103,23 @@ func TestStoreSessionLifecycle(t *testing.T) {
 	providerID := "openai-responses"
 	modelID := "gpt-5.1"
 	emptyEffort := ""
-	safeMode := false
+	fileAccess := permission.FileAccessUnrestricted
+	shellAccess := permission.ShellAccessApprovalRequired
 	updated, err := store.UpdateSession(t.Context(), "session-b", UpdateSessionParams{
 		Title:           &title,
 		Workdir:         &workdir,
 		ProviderID:      &providerID,
 		ModelID:         &modelID,
 		ReasoningEffort: &emptyEffort,
-		SafeMode:        &safeMode,
+		FileAccess:      &fileAccess,
+		ShellAccess:     &shellAccess,
 	})
 	if err != nil {
 		t.Fatalf("UpdateSession() error = %v", err)
 	}
 	if updated.Title != title || updated.Workdir != workdir || updated.ProviderID != providerID ||
-		updated.ModelID != modelID || updated.ReasoningEffort != "" || updated.SafeMode {
+		updated.ModelID != modelID || updated.ReasoningEffort != "" ||
+		updated.FileAccess != fileAccess || updated.ShellAccess != shellAccess {
 		t.Fatalf("UpdateSession() = %+v, want updated values", updated)
 	}
 	if !updated.UpdatedAt.After(created.UpdatedAt) {

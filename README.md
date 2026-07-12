@@ -23,10 +23,18 @@ Available today:
 - A SQLite-backed Session Store for Koda metadata and ADK conversation history.
 - Provider and model Connect handlers with protocol-level tests.
 - Session CRUD Connect handlers with protocol-level tests.
+- Workspace-aware file, search, Git, and Shell tool implementations, including
+  Hashline editing and structured file diffs.
+- An `ask_questions` tool for Plan and Build agents, with typed frontend
+  prompts, validated answers, and cancellation semantics.
+- Session-scoped filesystem and Shell permission contracts plus an in-process,
+  cancellation-safe approval broker.
 
 The next implementation slice is Proto/ADK input and event conversion with a
-fake-runtime test seam. See [AGENTS.md](AGENTS.md) for the current architecture
-decisions and development order.
+fake-runtime test seam, then agent construction that wires the tools and
+approval/question brokers into streamed Run handling. See
+[AGENTS.md](AGENTS.md) for the current architecture decisions and development
+order.
 
 ## Architecture
 
@@ -44,10 +52,12 @@ gen/koda/v1/                             generated Go/Connect bindings
 internal/provider/                       Provider Registry and model catalog
 internal/server/                          Connect handlers
 internal/store/                          SQLite lifecycle and session catalog
+internal/tools/                          Workspace-aware coding tools
+internal/permission/                     Session permission policy
 buf.yaml / buf.gen.yaml                  lint and generation configuration
 ```
 
-Planned packages include `internal/agent`, `internal/tools`, and `cmd/koda`.
+Planned packages include `internal/agent` and `cmd/koda`.
 
 ## API model
 
@@ -56,7 +66,8 @@ Planned packages include `internal/agent`, `internal/tools`, and `cmd/koda`.
 `Run` executes one user turn as a server stream. A stream may contain:
 
 - `Event`: partial text/reasoning deltas or complete durable events.
-- `ToolApproval`: a mutating tool call waiting for approval.
+- `ToolApproval`: a file, Git, or Shell operation waiting for approval.
+- `QuestionPrompt`: an `ask_questions` call waiting for frontend-authored input.
 - `RunCompleted`: the successful terminal frame for the turn.
 
 A turn starts with one multimodal user input and includes all model tool calls,
@@ -73,16 +84,17 @@ stores:
 
 - provider and model IDs;
 - provider-specific reasoning effort;
-- Safe-mode state;
+- filesystem access level;
+- Shell access level;
 - working directory;
 - title and timestamps.
 
 `RunRequest` carries only the session ID, input, and build/plan mode.
 
-Session workdirs are normalized to existing absolute directories when a session
-is created or updated. Provider, model, and reasoning-effort selections are
-validated from the local model catalog; the validation never performs network
-discovery.
+Session workdirs are normalized to existing, symlink-resolved absolute
+directories when a session is created or updated. Provider, model, and
+reasoning-effort selections are validated from the local model catalog; the
+validation never performs network discovery.
 
 ### Session Store
 
@@ -93,12 +105,34 @@ created immediately before the first Run, which keeps metadata creation atomic
 without duplicating ADK's storage writes. Complete runs share a context-aware,
 per-session in-process lock.
 
-### Tool approval
+### Tools and approval
 
-Safe mode may synchronously pause a mutating tool call. The server emits a
-`ToolApproval` frame, and the client resolves it through `ResolveToolApproval`.
-Pending approvals are intended to be in-process and bound to the active Run,
-which matches koda's single-machine deployment model.
+File access is session-scoped and has three automatic permission levels:
+
+| Level | Workspace read | Workspace write | Outside-workspace access |
+|---|---:|---:|---:|
+| `WORKSPACE_READ` | allowed | approval | approval |
+| `WORKSPACE_WRITE` | allowed | allowed | approval |
+| `UNRESTRICTED` | allowed | allowed | allowed |
+
+Shell access is independent: it requires approval by default, while its
+unrestricted level intentionally grants arbitrary process and effective
+filesystem access.
+
+Plan agents receive `read_file`, `list_directory`, `search_text`,
+`find_files`, a read-only allowlisted `git` tool, and `ask_questions`. Build
+agents additionally receive `write_file`, `create_file`, Hashline-based
+`edit_file`, and `run_shell`. File tools resolve symlinks before classifying
+their location.
+`read_file` and `search_text` return a file revision and `LINE:HASH` anchors;
+`edit_file` verifies both before applying a batch atomically.
+
+An approval may synchronously pause a tool call. The future Run runtime emits a
+`ToolApproval` frame with a proposed structured diff where it is predictable;
+the client resolves it through `ResolveToolApproval`. Pending approvals are
+in-process, run-scoped, cancellation-safe, and discarded after resolution.
+`ask_questions` blocks inside the tool itself; submitted frontend answers become
+the normal persisted ToolResult, while the QuestionPrompt frame is transient.
 
 ## Provider Registry
 
@@ -159,6 +193,7 @@ buf build
 go build ./...
 go vet ./...
 go test ./...
+go test -cover ./...
 go test -race ./...
 ```
 
@@ -172,6 +207,7 @@ buf generate
 go build ./...
 go vet ./...
 go test ./...
+go test -cover ./...
 ```
 
 The generators are pinned as Go tool dependencies in `go.mod`. Generated files
@@ -182,7 +218,7 @@ under `gen/` are committed but must not be edited manually.
 The current implementation order is:
 
 1. Proto-to-ADK input/event conversion and runtime test seams.
-2. Cached build/plan agents, coding tools, and Safe-mode approval.
+2. Cached build/plan agents and approval/question interaction wiring.
 3. Streamed Run handling, process lifecycle, and end-to-end tests.
 
 ## License

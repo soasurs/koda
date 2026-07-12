@@ -24,7 +24,8 @@ func newQueries(adkTablePrefix string) queries {
 			s.provider_id,
 			s.model_id,
 			s.reasoning_effort,
-			s.safe_mode,
+			s.file_access,
+			s.shell_access,
 			s.created_at,
 			s.updated_at,
 			COUNT(e.event_id) AS event_count
@@ -41,7 +42,8 @@ func newQueries(adkTablePrefix string) queries {
 		s.provider_id,
 		s.model_id,
 		s.reasoning_effort,
-		s.safe_mode,
+		s.file_access,
+		s.shell_access,
 		s.created_at,
 		s.updated_at
 	`
@@ -50,9 +52,9 @@ func newQueries(adkTablePrefix string) queries {
 		createSession: `
 			INSERT INTO koda_sessions (
 				id, title, workdir, provider_id, model_id, reasoning_effort,
-				safe_mode, created_at, updated_at, deleted_at
+				file_access, shell_access, created_at, updated_at, deleted_at
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0)
 		`,
 		getSession: sessionSelect + `
 			WHERE s.id = $1 AND s.deleted_at = 0
@@ -75,9 +77,10 @@ func newQueries(adkTablePrefix string) queries {
 				provider_id = $3,
 				model_id = $4,
 				reasoning_effort = $5,
-				safe_mode = $6,
-				updated_at = $7
-			WHERE id = $8 AND deleted_at = 0
+				file_access = $6,
+				shell_access = $7,
+				updated_at = $8
+			WHERE id = $9 AND deleted_at = 0
 		`,
 		touchSession: `
 			UPDATE koda_sessions

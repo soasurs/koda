@@ -15,9 +15,11 @@ import (
 type Handler struct {
 	kodav1connect.UnimplementedKodaServiceHandler
 
-	registry *provider.Registry
-	catalog  *provider.Catalog
-	store    *store.Store
+	registry  *provider.Registry
+	catalog   *provider.Catalog
+	store     *store.Store
+	approvals *ApprovalBroker
+	questions *QuestionBroker
 
 	newSessionID func() (string, error)
 }
@@ -40,6 +42,8 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 		registry:     registry,
 		catalog:      catalog,
 		store:        sessionStore,
+		approvals:    NewApprovalBroker(),
+		questions:    NewQuestionBroker(),
 		newSessionID: newSessionID,
 	}, nil
 }

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/soasurs/koda/internal/permission"
 )
 
 var (
@@ -28,7 +30,8 @@ type Session struct {
 	ProviderID      string
 	ModelID         string
 	ReasoningEffort string
-	SafeMode        bool
+	FileAccess      permission.FileAccess
+	ShellAccess     permission.ShellAccess
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	EventCount      int64
@@ -42,7 +45,8 @@ type CreateSessionParams struct {
 	ProviderID      string
 	ModelID         string
 	ReasoningEffort string
-	SafeMode        bool
+	FileAccess      permission.FileAccess
+	ShellAccess     permission.ShellAccess
 }
 
 // UpdateSessionParams contains only the session fields to change. A nil field
@@ -54,7 +58,8 @@ type UpdateSessionParams struct {
 	ProviderID      *string
 	ModelID         *string
 	ReasoningEffort *string
-	SafeMode        *bool
+	FileAccess      *permission.FileAccess
+	ShellAccess     *permission.ShellAccess
 }
 
 // ListSessionsParams selects one page of Koda sessions. Results are ordered
@@ -71,7 +76,8 @@ type sessionRow struct {
 	ProviderID      string `db:"provider_id"`
 	ModelID         string `db:"model_id"`
 	ReasoningEffort string `db:"reasoning_effort"`
-	SafeMode        bool   `db:"safe_mode"`
+	FileAccess      string `db:"file_access"`
+	ShellAccess     string `db:"shell_access"`
 	CreatedAt       int64  `db:"created_at"`
 	UpdatedAt       int64  `db:"updated_at"`
 	EventCount      int64  `db:"event_count"`
@@ -95,7 +101,8 @@ func (s *Store) CreateSession(ctx context.Context, params CreateSessionParams) (
 		params.ProviderID,
 		params.ModelID,
 		params.ReasoningEffort,
-		params.SafeMode,
+		params.FileAccess,
+		params.ShellAccess,
 		now,
 		now,
 	)
@@ -180,7 +187,8 @@ func (s *Store) UpdateSession(ctx context.Context, id string, params UpdateSessi
 		updated.ProviderID,
 		updated.ModelID,
 		updated.ReasoningEffort,
-		updated.SafeMode,
+		updated.FileAccess,
+		updated.ShellAccess,
 		updated.UpdatedAt.UnixMilli(),
 		id,
 	)
@@ -277,6 +285,12 @@ func normalizeCreateParams(params CreateSessionParams) (CreateSessionParams, err
 	params.ProviderID = strings.TrimSpace(params.ProviderID)
 	params.ModelID = strings.TrimSpace(params.ModelID)
 	params.ReasoningEffort = strings.TrimSpace(params.ReasoningEffort)
+	if params.FileAccess == "" {
+		params.FileAccess = permission.DefaultFileAccess
+	}
+	if params.ShellAccess == "" {
+		params.ShellAccess = permission.DefaultShellAccess
+	}
 	if params.Workdir == "" {
 		return CreateSessionParams{}, errors.New("store: workdir must not be empty")
 	}
@@ -285,6 +299,12 @@ func normalizeCreateParams(params CreateSessionParams) (CreateSessionParams, err
 	}
 	if params.ModelID == "" {
 		return CreateSessionParams{}, errors.New("store: model ID must not be empty")
+	}
+	if !params.FileAccess.Valid() {
+		return CreateSessionParams{}, fmt.Errorf("store: invalid file access %q", params.FileAccess)
+	}
+	if !params.ShellAccess.Valid() {
+		return CreateSessionParams{}, fmt.Errorf("store: invalid shell access %q", params.ShellAccess)
 	}
 	return params, nil
 }
@@ -319,7 +339,8 @@ func (p UpdateSessionParams) empty() bool {
 		p.ProviderID == nil &&
 		p.ModelID == nil &&
 		p.ReasoningEffort == nil &&
-		p.SafeMode == nil
+		p.FileAccess == nil &&
+		p.ShellAccess == nil
 }
 
 func applyUpdate(current Session, params UpdateSessionParams) (Session, error) {
@@ -338,8 +359,11 @@ func applyUpdate(current Session, params UpdateSessionParams) (Session, error) {
 	if params.ReasoningEffort != nil {
 		current.ReasoningEffort = strings.TrimSpace(*params.ReasoningEffort)
 	}
-	if params.SafeMode != nil {
-		current.SafeMode = *params.SafeMode
+	if params.FileAccess != nil {
+		current.FileAccess = *params.FileAccess
+	}
+	if params.ShellAccess != nil {
+		current.ShellAccess = *params.ShellAccess
 	}
 	if current.Workdir == "" {
 		return Session{}, errors.New("store: workdir must not be empty")
@@ -349,6 +373,12 @@ func applyUpdate(current Session, params UpdateSessionParams) (Session, error) {
 	}
 	if current.ModelID == "" {
 		return Session{}, errors.New("store: model ID must not be empty")
+	}
+	if !current.FileAccess.Valid() {
+		return Session{}, fmt.Errorf("store: invalid file access %q", current.FileAccess)
+	}
+	if !current.ShellAccess.Valid() {
+		return Session{}, fmt.Errorf("store: invalid shell access %q", current.ShellAccess)
 	}
 	return current, nil
 }
@@ -361,7 +391,8 @@ func sessionFromRow(row sessionRow) Session {
 		ProviderID:      row.ProviderID,
 		ModelID:         row.ModelID,
 		ReasoningEffort: row.ReasoningEffort,
-		SafeMode:        row.SafeMode,
+		FileAccess:      permission.FileAccess(row.FileAccess),
+		ShellAccess:     permission.ShellAccess(row.ShellAccess),
 		CreatedAt:       time.UnixMilli(row.CreatedAt).UTC(),
 		UpdatedAt:       time.UnixMilli(row.UpdatedAt).UTC(),
 		EventCount:      row.EventCount,

@@ -22,8 +22,13 @@ Protocol Buffer 契约、Connect RPC 和
 - 基于 SQLite 的 Session Store，负责 Koda session metadata 和 ADK 对话历史。
 - Provider 和 Model 的 Connect handlers，以及协议级测试。
 - Session CRUD Connect handlers，以及协议级测试。
+- 具备 workspace 感知能力的文件、搜索、Git 和 Shell 工具，实现了 Hashline 编辑和结构化文件 diff。
+- Plan 和 Build agent 可用的 `ask_questions` 工具，包含类型化前端问题、答案校验和取消语义。
+- Session 级文件/Shell 权限契约，以及支持取消的进程内 approval broker。
 
-下一阶段将实现 Proto/ADK 输入和事件转换，以及 fake-runtime test seam。当前架构决策和开发顺序见 [AGENTS.md](AGENTS.md)。
+下一阶段将实现 Proto/ADK 输入和事件转换，以及 fake-runtime test seam；随后构造 agent，
+并将工具与 approval/question broker 接入流式 Run。当前架构决策和开发顺序见
+[AGENTS.md](AGENTS.md)。
 
 ## 架构
 
@@ -41,10 +46,12 @@ gen/koda/v1/                             生成的 Go/Connect bindings
 internal/provider/                       Provider Registry 和模型目录
 internal/server/                          Connect handlers
 internal/store/                          SQLite 生命周期和 Session Catalog
+internal/tools/                           Workspace 感知的 coding tools
+internal/permission/                      Session 权限策略
 buf.yaml / buf.gen.yaml                  lint 和代码生成配置
 ```
 
-计划中的包包括 `internal/agent`、`internal/tools` 和 `cmd/koda`。
+计划中的包包括 `internal/agent` 和 `cmd/koda`。
 
 ## API 模型
 
@@ -53,7 +60,8 @@ buf.yaml / buf.gen.yaml                  lint 和代码生成配置
 `Run` 通过 server stream 执行一个用户 turn。流中可能包含：
 
 - `Event`：增量文本/reasoning，或者完整的持久化事件。
-- `ToolApproval`：等待用户批准的写操作工具调用。
+- `ToolApproval`：等待用户批准的文件、Git 或 Shell 工具调用。
+- `QuestionPrompt`：等待前端返回用户答案的 `ask_questions` 调用。
 - `RunCompleted`：表示 turn 成功完成的终止帧。
 
 一个 turn 从一条多模态用户输入开始，包含模型产生的所有工具调用、工具结果和后续
@@ -68,14 +76,15 @@ Provider 和 Model 的选择属于 Session，而不是全局配置。Session 保
 
 - Provider ID 和 Model ID；
 - Provider-specific reasoning effort；
-- Safe-mode 状态；
+- 文件访问级别；
+- Shell 访问级别；
 - 工作目录；
 - 标题和时间戳。
 
 `RunRequest` 只携带 Session ID、用户输入和 build/plan 模式。
 
-创建或更新 Session 时，workdir 会归一化为存在的绝对目录。Provider、Model 和
-reasoning effort 只根据本地 Model Catalog 校验，不会隐式触发网络发现。
+创建或更新 Session 时，workdir 会归一化为存在且解析过符号链接的绝对目录。Provider、
+Model 和 reasoning effort 只根据本地 Model Catalog 校验，不会隐式触发网络发现。
 
 ### Session Store
 
@@ -84,11 +93,28 @@ reasoning effort 只根据本地 Model Catalog 校验，不会隐式触发网络
 ADK ledger；它会在第一次 Run 前创建，从而无需复制 ADK 的存储写入，也能保持
 metadata 创建原子。完整 turn 通过支持 context 取消的进程内 session lock 串行化。
 
-### 工具审批
+### 工具与审批
 
-Safe mode 可以同步暂停一个会产生修改的工具调用。服务端发送 `ToolApproval` 帧，
-客户端通过 `ResolveToolApproval` 返回批准或拒绝。Pending approval 保存在当前进程，
-并绑定到活跃的 Run；这与 koda 的单机部署模型一致。
+文件访问是 Session 级配置，自动放行能力分为三个等级：
+
+| 级别 | Workspace 内读取 | Workspace 内写入 | Workspace 外访问 |
+|---|---:|---:|---:|
+| `WORKSPACE_READ` | 允许 | 审批 | 审批 |
+| `WORKSPACE_WRITE` | 允许 | 允许 | 审批 |
+| `UNRESTRICTED` | 允许 | 允许 | 允许 |
+
+Shell 权限独立配置：默认每次都需要审批；放开后有任意进程执行和实际上的全文件系统访问能力。
+
+Plan agent 提供 `read_file`、`list_directory`、`search_text`、`find_files`、只读白名单
+`git` 和 `ask_questions`；Build agent 额外提供 `write_file`、`create_file`、基于 Hashline
+的 `edit_file` 和 `run_shell`。文件工具会先解析符号链接再判断是否位于 workspace 内。`read_file` 和
+`search_text` 返回文件 revision 与 `LINE:HASH` 锚点；`edit_file` 会在原子写入前校验两者。
+
+审批可以同步暂停工具调用。未来的 Run runtime 会在可预测的文件修改场景发送带 proposed
+structured diff 的 `ToolApproval` 帧，客户端通过 `ResolveToolApproval` 返回批准或拒绝。
+Pending approval 仅存在于当前进程，绑定活跃 Run，支持 context 取消，并会在完成后清理。
+`ask_questions` 在工具内部等待；前端提交的答案成为正常持久化的 ToolResult，
+QuestionPrompt frame 本身只用于瞬态 UI。
 
 ## Provider Registry
 
@@ -142,6 +168,7 @@ buf build
 go build ./...
 go vet ./...
 go test ./...
+go test -cover ./...
 go test -race ./...
 ```
 
@@ -155,6 +182,7 @@ buf generate
 go build ./...
 go vet ./...
 go test ./...
+go test -cover ./...
 ```
 
 生成器以 Go tool dependency 的形式固定在 `go.mod` 中。`gen/` 下的生成文件需要提交，
@@ -165,7 +193,7 @@ go test ./...
 当前实现顺序：
 
 1. Proto 与 ADK 之间的输入/事件转换，以及 Runtime 测试 seam。
-2. 可缓存的 build/plan agents、coding tools 和 Safe-mode approval。
+2. 可缓存的 build/plan agents，以及 approval/question interaction 的接入。
 3. 流式 Run、进程生命周期和端到端测试。
 
 ## License
