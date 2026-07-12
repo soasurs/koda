@@ -8,8 +8,8 @@ a versioned Protocol Buffer contract, Connect RPC, and the
 
 ## Status
 
-The repository is in an active rewrite and does not currently contain a
-runnable server or CLI.
+The repository is in an active rewrite, but it now provides a runnable local
+Connect server and CLI entry point.
 
 Available today:
 
@@ -40,8 +40,10 @@ Available today:
 - Live streamed `Run` handling that initializes ADK sessions, reuses cached
   runners, serializes event and interaction frames, and emits completion only
   after a successful, terminal assistant response.
+- A loopback-only Connect HTTP server with graceful shutdown and a `cmd/koda`
+  process entry point.
+- End-to-end Connect tests for Run, approval, question, and shutdown flows.
 
-The remaining runtime work is the HTTP server and `cmd/koda` process lifecycle.
 See [AGENTS.md](AGENTS.md) for the current architecture decisions and
 development order.
 
@@ -64,10 +66,29 @@ internal/store/                          SQLite lifecycle and session catalog
 internal/tools/                          Workspace-aware coding tools
 internal/permission/                     Session permission policy
 internal/agent/                          Cached ADK agents, prompts, and Run context
+cmd/koda/                                 Local HTTP service entry point
 buf.yaml / buf.gen.yaml                  lint and generation configuration
 ```
 
-The planned process entry point is `cmd/koda`.
+## Run locally
+
+```bash
+go run ./cmd/koda serve
+```
+
+`serve` starts only the Connect API server; it does not open a browser. It first
+tries `localhost:8080`, then asks the operating system for another loopback
+port if that address is occupied. The startup line prints the actual address.
+Provider settings live at `~/.koda/providers.json`, and its SQLite database is
+always `~/.koda/koda.db`.
+
+```bash
+go run ./cmd/koda serve --addr 127.0.0.1:8787
+```
+
+The CLI accepts only double-dash options. It always rejects non-loopback
+addresses because Koda can execute shell commands and modify files. A future
+`koda studio` command will own browser and UI behavior.
 
 ## API model
 
@@ -222,12 +243,6 @@ go test -cover ./...
 
 The generators are pinned as Go tool dependencies in `go.mod`. Generated files
 under `gen/` are committed but must not be edited manually.
-
-## Roadmap
-
-The current implementation order is:
-
-1. Process lifecycle and end-to-end tests.
 
 ## License
 

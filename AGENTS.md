@@ -42,11 +42,14 @@ Implemented today:
   runners, serializes event and interaction frames, touches sessions after
   successful turns, validates terminal assistant responses before ADK commits,
   and relies on ADK for cancellation rollback.
+- A local Connect HTTP server with graceful shutdown and a `cmd/koda` entry
+  point whose `serve` command starts a loopback-only API server.
+- End-to-end Connect coverage for server lifecycle, Run, approvals, and
+  questions over a real TCP listener.
 
 Not implemented yet:
 
-- HTTP server and `cmd/koda` entry point.
-- A runnable CLI or UI.
+- A UI.
 
 Do not document or present roadmap items as working features.
 
@@ -64,19 +67,12 @@ koda/
 ├── internal/tools/                          # workspace-aware coding tools
 ├── internal/permission/                     # session permission policy
 ├── internal/agent/                          # cached ADK agents, prompts, runtime context
+├── cmd/koda/                                # local HTTP service entry point
 ├── buf.yaml
 ├── buf.gen.yaml
 ├── go.mod
 ├── README.md
 └── README_zh-CN.md
-```
-
-Expected future packages:
-
-```text
-internal/agent/   # LLM factory, prompts, runtime, agent cache
-internal/server/  # Proto conversion, event/runtime handlers, approval broker
-cmd/koda/         # process lifecycle and HTTP server
 ```
 
 Keep generated Proto types at the server boundary. Core packages should prefer
@@ -221,7 +217,8 @@ session history remains the source of truth.
 
 ## Recommended implementation order
 
-1. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
+No next implementation slice is selected. Review the product surface before
+adding a UI or an interactive client.
 
 Review this order after each completed slice; do not build all layers at once.
 
@@ -300,9 +297,10 @@ change examples, generated output, or documented commands that need checking.
 - Use fake placeholders in examples.
 - Provider Base URLs must not contain user-info credentials.
 - Preserve secure permissions and atomic replacement for credential files.
-- The future HTTP server must listen on `127.0.0.1` by default. Binding to other
-  interfaces must require an explicit option because koda can execute shell and
-  file mutations.
+- The `koda serve` command only starts the Connect API server; it never opens a
+  browser. A future `studio` command may own browser and UI behavior.
+- The HTTP server listens on loopback only. `koda serve` first tries
+  `localhost:8080` and selects another loopback port when it is occupied.
 
 ## Git and documentation
 

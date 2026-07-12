@@ -8,7 +8,7 @@ Protocol Buffer 契约、Connect RPC 和
 
 ## 当前状态
 
-仓库正处于重写阶段，目前还没有可运行的服务端或 CLI。
+仓库正处于重写阶段，但现在已经提供可运行的本地 Connect 服务端和 CLI 入口。
 
 已经完成：
 
@@ -33,9 +33,10 @@ Protocol Buffer 契约、Connect RPC 和
   并将 Broker 等待转换为瞬态 Run frame。
 - 已接入真实流式 `Run`：初始化 ADK session、复用缓存 runner、串行化事件和交互帧，
   并仅在 terminal assistant response 的 turn 成功后更新时间和发送完成帧。
+- 默认仅监听 loopback 的 Connect HTTP server，以及具备优雅退出的 `cmd/koda` 进程入口。
+- 覆盖 Run、approval、question 和 shutdown 的端到端 Connect 测试。
 
-剩余工作主要是 HTTP server、`cmd/koda` 进程生命周期和端到端测试。当前架构决策和
-开发顺序见 [AGENTS.md](AGENTS.md)。
+当前架构决策和开发顺序见 [AGENTS.md](AGENTS.md)。
 
 ## 架构
 
@@ -56,10 +57,27 @@ internal/store/                          SQLite 生命周期和 Session Catalog
 internal/tools/                           Workspace 感知的 coding tools
 internal/permission/                      Session 权限策略
 internal/agent/                           缓存 ADK agent、prompt 与 Run context
+cmd/koda/                                  本地 HTTP 服务入口
 buf.yaml / buf.gen.yaml                  lint 和代码生成配置
 ```
 
-计划中的进程入口为 `cmd/koda`。
+## 本地运行
+
+```bash
+go run ./cmd/koda serve
+```
+
+`serve` 只启动 Connect API server，不会打开浏览器。它会先尝试监听
+`localhost:8080`；若端口已被占用，则让操作系统分配另一个 loopback 端口，并在启动时
+输出实际地址。Provider 配置固定在 `~/.koda/providers.json`，SQLite 数据库固定在
+`~/.koda/koda.db`。
+
+```bash
+go run ./cmd/koda serve --addr 127.0.0.1:8787
+```
+
+CLI option 只接受双横杠形式，且始终拒绝非 loopback 地址；Koda 可以执行 Shell 命令并
+修改文件。未来的 `koda studio` command 会负责浏览器和 UI 行为。
 
 ## API 模型
 
@@ -195,12 +213,6 @@ go test -cover ./...
 
 生成器以 Go tool dependency 的形式固定在 `go.mod` 中。`gen/` 下的生成文件需要提交，
 但不能手工修改。
-
-## 路线图
-
-当前实现顺序：
-
-1. 进程生命周期和端到端测试。
 
 ## License
 
