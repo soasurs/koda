@@ -8,21 +8,21 @@ import (
 	"github.com/soasurs/adk/tool"
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/tools"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestInputFromProtoPreservesMultimodalOrder(t *testing.T) {
-	input, err := inputFromProto(&v1.Input{Parts: []*v1.Part{
-		{Content: &v1.Part_Text{Text: "describe this"}},
-		{Content: &v1.Part_Image{Image: &v1.Image{
-			Source:   &v1.Image_Data{Data: []byte("image-bytes")},
-			MimeType: "image/png",
-			Detail:   v1.ImageDetail_IMAGE_DETAIL_HIGH,
-		}}},
-		{Content: &v1.Part_Image{Image: &v1.Image{
-			Source: &v1.Image_Url{Url: "https://example.com/diagram.png"},
-			Detail: v1.ImageDetail_IMAGE_DETAIL_LOW,
-		}}},
-	}})
+	textPart := v1.Part_builder{Text: proto.String("describe this")}.Build()
+	imageDataPart := v1.Part_builder{Image: v1.Image_builder{
+		Data:     []byte("image-bytes"),
+		MimeType: proto.String("image/png"),
+		Detail:   v1.ImageDetail_IMAGE_DETAIL_HIGH.Enum(),
+	}.Build()}.Build()
+	imageURLPart := v1.Part_builder{Image: v1.Image_builder{
+		Url:    proto.String("https://example.com/diagram.png"),
+		Detail: v1.ImageDetail_IMAGE_DETAIL_LOW.Enum(),
+	}.Build()}.Build()
+	input, err := inputFromProto(v1.Input_builder{Parts: []*v1.Part{textPart, imageDataPart, imageURLPart}}.Build())
 	if err != nil {
 		t.Fatalf("inputFromProto() error = %v", err)
 	}
@@ -37,24 +37,32 @@ func TestInputFromProtoPreservesMultimodalOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("inputToProto() error = %v", err)
 	}
-	if len(roundTrip.Parts) != 3 || roundTrip.Parts[0].GetText() != "describe this" ||
-		string(roundTrip.Parts[1].GetImage().GetData()) != "image-bytes" ||
-		roundTrip.Parts[2].GetImage().GetUrl() != "https://example.com/diagram.png" {
+	if len(roundTrip.GetParts()) != 3 || roundTrip.GetParts()[0].GetText() != "describe this" ||
+		string(roundTrip.GetParts()[1].GetImage().GetData()) != "image-bytes" ||
+		roundTrip.GetParts()[2].GetImage().GetUrl() != "https://example.com/diagram.png" {
 		t.Fatalf("inputToProto() = %+v", roundTrip)
 	}
 }
 
 func TestInputFromProtoRejectsInvalidImages(t *testing.T) {
+	makeImageData := func(data []byte, mimeType string) *v1.Input {
+		img := v1.Image_builder{Data: data, MimeType: proto.String(mimeType)}.Build()
+		return v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Image: img}.Build()}}.Build()
+	}
+	makeImageURL := func(url string) *v1.Input {
+		img := v1.Image_builder{Url: proto.String(url)}.Build()
+		return v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Image: img}.Build()}}.Build()
+	}
 	tests := []struct {
 		name  string
 		input *v1.Input
 	}{
-		{name: "empty", input: &v1.Input{}},
-		{name: "missing part content", input: &v1.Input{Parts: []*v1.Part{{}}}},
-		{name: "http URL", input: &v1.Input{Parts: []*v1.Part{{Content: &v1.Part_Image{Image: &v1.Image{Source: &v1.Image_Url{Url: "http://example.com/image.png"}}}}}}},
-		{name: "URL credentials", input: &v1.Input{Parts: []*v1.Part{{Content: &v1.Part_Image{Image: &v1.Image{Source: &v1.Image_Url{Url: "https://user:pass@example.com/image.png"}}}}}}},
-		{name: "empty data", input: &v1.Input{Parts: []*v1.Part{{Content: &v1.Part_Image{Image: &v1.Image{Source: &v1.Image_Data{}}}}}}},
-		{name: "non image MIME", input: &v1.Input{Parts: []*v1.Part{{Content: &v1.Part_Image{Image: &v1.Image{Source: &v1.Image_Data{Data: []byte("x")}, MimeType: "text/plain"}}}}}},
+		{name: "empty", input: v1.Input_builder{}.Build()},
+		{name: "missing part content", input: v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{}.Build()}}.Build()},
+		{name: "http URL", input: makeImageURL("http://example.com/image.png")},
+		{name: "URL credentials", input: makeImageURL("https://user:pass@example.com/image.png")},
+		{name: "empty data", input: makeImageData(nil, "")},
+		{name: "non image MIME", input: makeImageData([]byte("x"), "text/plain")},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -95,15 +103,15 @@ func TestEventToProtoPreservesToolOutcomesAndFileChanges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("eventToProto() error = %v", err)
 	}
-	if converted.Id != "42" || converted.Message.Role != v1.Role_ROLE_TOOL || converted.FinishReason != v1.FinishReason_FINISH_REASON_UNSPECIFIED ||
-		converted.Usage.GetDetails().ReasoningTokens != 2 || converted.Message.GetToolResponse().GetResult().StructuredContentJson != string(structured) {
+	if converted.GetId() != "42" || converted.GetMessage().GetRole() != v1.Role_ROLE_TOOL || converted.GetFinishReason() != v1.FinishReason_FINISH_REASON_UNSPECIFIED ||
+		converted.GetUsage().GetDetails().GetReasoningTokens() != 2 || converted.GetMessage().GetToolResponse().GetResult().GetStructuredContentJson() != string(structured) {
 		t.Fatalf("eventToProto() = %+v", converted)
 	}
-	changes := converted.Message.GetToolResponse().GetResult().FileChanges
-	if len(changes) != 1 || changes[0].Path != "main.go" || changes[0].Kind != v1.FileChangeKind_FILE_CHANGE_KIND_UPDATE ||
-		len(changes[0].Hunks) != 1 || len(changes[0].Hunks[0].Lines) != 2 ||
-		changes[0].Hunks[0].Lines[0].Kind != v1.DiffLineKind_DIFF_LINE_KIND_REMOVED ||
-		changes[0].Hunks[0].Lines[1].Kind != v1.DiffLineKind_DIFF_LINE_KIND_ADDED {
+	changes := converted.GetMessage().GetToolResponse().GetResult().GetFileChanges()
+	if len(changes) != 1 || changes[0].GetPath() != "main.go" || changes[0].GetKind() != v1.FileChangeKind_FILE_CHANGE_KIND_UPDATE ||
+		len(changes[0].GetHunks()) != 1 || len(changes[0].GetHunks()[0].GetLines()) != 2 ||
+		changes[0].GetHunks()[0].GetLines()[0].GetKind() != v1.DiffLineKind_DIFF_LINE_KIND_REMOVED ||
+		changes[0].GetHunks()[0].GetLines()[1].GetKind() != v1.DiffLineKind_DIFF_LINE_KIND_ADDED {
 		t.Fatalf("file changes = %+v", changes)
 	}
 
@@ -114,7 +122,7 @@ func TestEventToProtoPreservesToolOutcomesAndFileChanges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toolResponseToProto(handled) error = %v", err)
 	}
-	if handled.GetError().Content != "rejected" || handled.GetError().StructuredContentJson != `{"reason":"user"}` {
+	if handled.GetError().GetContent() != "rejected" || handled.GetError().GetStructuredContentJson() != `{"reason":"user"}` {
 		t.Fatalf("toolResponseToProto(handled) = %+v", handled)
 	}
 }
@@ -128,7 +136,7 @@ func TestEventToProtoClearsPartialPersistenceFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("eventToProto() error = %v", err)
 	}
-	if converted.Id != "" || converted.CreatedAt != 0 || converted.UpdatedAt != 0 || converted.FinishReason != v1.FinishReason_FINISH_REASON_UNSPECIFIED || converted.Usage != nil {
+	if converted.GetId() != "" || converted.GetCreatedAt() != 0 || converted.GetUpdatedAt() != 0 || converted.GetFinishReason() != v1.FinishReason_FINISH_REASON_UNSPECIFIED || converted.GetUsage() != nil {
 		t.Fatalf("partial event = %+v", converted)
 	}
 }
@@ -195,7 +203,7 @@ func TestMessageConversionPreservesToolCallsAndRejectsNilOutcomes(t *testing.T) 
 	if err != nil {
 		t.Fatalf("messageToProto() error = %v", err)
 	}
-	if len(message.ToolCalls) != 1 || message.ToolCalls[0].Id != "call-1" || message.ToolCalls[0].ArgumentsJson != `{"path":"main.go"}` {
+	if len(message.GetToolCalls()) != 1 || message.GetToolCalls()[0].GetId() != "call-1" || message.GetToolCalls()[0].GetArgumentsJson() != `{"path":"main.go"}` {
 		t.Fatalf("messageToProto() = %+v", message)
 	}
 	legacy, err := messageToProto(model.Content{
@@ -204,7 +212,7 @@ func TestMessageConversionPreservesToolCallsAndRejectsNilOutcomes(t *testing.T) 
 	if err != nil {
 		t.Fatalf("messageToProto(legacy tool) error = %v", err)
 	}
-	if legacy.GetToolResponse().GetToolCallId() != "call-legacy" || legacy.GetToolResponse().GetResult().Content != "legacy result" {
+	if legacy.GetToolResponse().GetToolCallId() != "call-legacy" || legacy.GetToolResponse().GetResult().GetContent() != "legacy result" {
 		t.Fatalf("messageToProto(legacy tool) = %+v", legacy)
 	}
 	if changes := fileChangesFromStructuredContent(json.RawMessage(`not json`)); changes != nil {

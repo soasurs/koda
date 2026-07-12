@@ -13,6 +13,7 @@ import (
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/permission"
 	"github.com/soasurs/koda/internal/store"
+	"google.golang.org/protobuf/proto"
 )
 
 // CreateSession creates a new session with a validated execution configuration.
@@ -20,19 +21,19 @@ func (h *Handler) CreateSession(ctx context.Context, request *v1.CreateSessionRe
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("create session request must not be nil"))
 	}
-	workdir, err := normalizeWorkdir(request.Workdir)
+	workdir, err := normalizeWorkdir(request.GetWorkdir())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	configuration, err := h.validateSessionConfiguration(ctx, request.ProviderId, request.ModelId, request.ReasoningEffort)
+	configuration, err := h.validateSessionConfiguration(ctx, request.GetProviderId(), request.GetModelId(), request.GetReasoningEffort())
 	if err != nil {
 		return nil, err
 	}
-	fileAccess, err := fileAccessFromProto(request.FileAccess)
+	fileAccess, err := fileAccessFromProto(request.GetFileAccess())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	shellAccess, err := shellAccessFromProto(request.ShellAccess)
+	shellAccess, err := shellAccessFromProto(request.GetShellAccess())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -52,7 +53,7 @@ func (h *Handler) CreateSession(ctx context.Context, request *v1.CreateSessionRe
 	if err != nil {
 		return nil, sessionError(err)
 	}
-	return &v1.CreateSessionResponse{Session: sessionToProto(session)}, nil
+	return v1.CreateSessionResponse_builder{Session: sessionToProto(session)}.Build(), nil
 }
 
 // GetSession returns one session by ID.
@@ -60,7 +61,7 @@ func (h *Handler) GetSession(ctx context.Context, request *v1.GetSessionRequest)
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("get session request must not be nil"))
 	}
-	id, err := sessionIDFromRequest(request.SessionId)
+	id, err := sessionIDFromRequest(request.GetSessionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -68,7 +69,7 @@ func (h *Handler) GetSession(ctx context.Context, request *v1.GetSessionRequest)
 	if err != nil {
 		return nil, sessionError(err)
 	}
-	return &v1.GetSessionResponse{Session: sessionToProto(session)}, nil
+	return v1.GetSessionResponse_builder{Session: sessionToProto(session)}.Build(), nil
 }
 
 // ListSessions returns a page of sessions ordered by last update time.
@@ -76,20 +77,23 @@ func (h *Handler) ListSessions(ctx context.Context, request *v1.ListSessionsRequ
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("list sessions request must not be nil"))
 	}
-	if request.Limit < 0 {
+	if request.GetLimit() < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("session list limit must not be negative"))
 	}
-	if request.Offset < 0 {
+	if request.GetOffset() < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("session list offset must not be negative"))
 	}
 	sessions, total, err := h.store.ListSessions(ctx, store.ListSessionsParams{
-		Limit:  int(request.Limit),
-		Offset: request.Offset,
+		Limit:  int(request.GetLimit()),
+		Offset: request.GetOffset(),
 	})
 	if err != nil {
 		return nil, sessionError(err)
 	}
-	return &v1.ListSessionsResponse{Sessions: sessionsToProto(sessions), Total: total}, nil
+	return v1.ListSessionsResponse_builder{
+		Sessions: sessionsToProto(sessions),
+		Total:    proto.Int64(total),
+	}.Build(), nil
 }
 
 // UpdateSession applies one partial configuration update to a session.
@@ -97,7 +101,7 @@ func (h *Handler) UpdateSession(ctx context.Context, request *v1.UpdateSessionRe
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("update session request must not be nil"))
 	}
-	id, err := sessionIDFromRequest(request.SessionId)
+	id, err := sessionIDFromRequest(request.GetSessionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -133,7 +137,7 @@ func (h *Handler) UpdateSession(ctx context.Context, request *v1.UpdateSessionRe
 	if err != nil {
 		return nil, sessionError(err)
 	}
-	return &v1.UpdateSessionResponse{Session: sessionToProto(session)}, nil
+	return v1.UpdateSessionResponse_builder{Session: sessionToProto(session)}.Build(), nil
 }
 
 // DeleteSession deletes one session and hides its ADK history.
@@ -141,14 +145,14 @@ func (h *Handler) DeleteSession(ctx context.Context, request *v1.DeleteSessionRe
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("delete session request must not be nil"))
 	}
-	id, err := sessionIDFromRequest(request.SessionId)
+	id, err := sessionIDFromRequest(request.GetSessionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if err := h.store.DeleteSession(ctx, id); err != nil {
 		return nil, sessionError(err)
 	}
-	return &v1.DeleteSessionResponse{}, nil
+	return v1.DeleteSessionResponse_builder{}.Build(), nil
 }
 
 type sessionConfiguration struct {
@@ -201,51 +205,51 @@ func (h *Handler) validateSessionConfiguration(
 func updateSessionParams(request *v1.UpdateSessionRequest, current store.Session) (store.UpdateSessionParams, store.Session, bool, error) {
 	candidate := current
 	params := store.UpdateSessionParams{}
-	if request.Title != nil {
-		value := strings.TrimSpace(*request.Title)
+	if request.HasTitle() {
+		value := strings.TrimSpace(request.GetTitle())
 		params.Title = &value
 		candidate.Title = value
 	}
-	if request.Workdir != nil {
-		value, err := normalizeWorkdir(*request.Workdir)
+	if request.HasWorkdir() {
+		value, err := normalizeWorkdir(request.GetWorkdir())
 		if err != nil {
 			return store.UpdateSessionParams{}, store.Session{}, false, err
 		}
 		params.Workdir = &value
 		candidate.Workdir = value
 	}
-	validateConfiguration := request.ProviderId != nil || request.ModelId != nil || request.ReasoningEffort != nil
-	if request.ProviderId != nil {
-		value, err := providerIDFromRequest(*request.ProviderId)
+	validateConfiguration := request.HasProviderId() || request.HasModelId() || request.HasReasoningEffort()
+	if request.HasProviderId() {
+		value, err := providerIDFromRequest(request.GetProviderId())
 		if err != nil {
 			return store.UpdateSessionParams{}, store.Session{}, false, err
 		}
 		params.ProviderID = &value
 		candidate.ProviderID = value
 	}
-	if request.ModelId != nil {
-		value := strings.TrimSpace(*request.ModelId)
+	if request.HasModelId() {
+		value := strings.TrimSpace(request.GetModelId())
 		if value == "" {
 			return store.UpdateSessionParams{}, store.Session{}, false, errors.New("model ID must not be empty")
 		}
 		params.ModelID = &value
 		candidate.ModelID = value
 	}
-	if request.ReasoningEffort != nil {
-		value := strings.TrimSpace(*request.ReasoningEffort)
+	if request.HasReasoningEffort() {
+		value := strings.TrimSpace(request.GetReasoningEffort())
 		params.ReasoningEffort = &value
 		candidate.ReasoningEffort = value
 	}
-	if request.FileAccess != nil {
-		value, err := fileAccessFromProto(*request.FileAccess)
+	if request.HasFileAccess() {
+		value, err := fileAccessFromProto(request.GetFileAccess())
 		if err != nil {
 			return store.UpdateSessionParams{}, store.Session{}, false, err
 		}
 		params.FileAccess = &value
 		candidate.FileAccess = value
 	}
-	if request.ShellAccess != nil {
-		value, err := shellAccessFromProto(*request.ShellAccess)
+	if request.HasShellAccess() {
+		value, err := shellAccessFromProto(request.GetShellAccess())
 		if err != nil {
 			return store.UpdateSessionParams{}, store.Session{}, false, err
 		}
@@ -287,19 +291,19 @@ func sessionIDFromRequest(id string) (string, error) {
 }
 
 func sessionToProto(session store.Session) *v1.Session {
-	return &v1.Session{
-		Id:              session.ID,
-		Title:           session.Title,
-		Workdir:         session.Workdir,
-		ProviderId:      session.ProviderID,
-		ModelId:         session.ModelID,
-		ReasoningEffort: session.ReasoningEffort,
-		FileAccess:      fileAccessToProto(session.FileAccess),
-		ShellAccess:     shellAccessToProto(session.ShellAccess),
-		CreatedAt:       session.CreatedAt.UnixMilli(),
-		UpdatedAt:       session.UpdatedAt.UnixMilli(),
-		EventCount:      session.EventCount,
-	}
+	return v1.Session_builder{
+		Id:              proto.String(session.ID),
+		Title:           proto.String(session.Title),
+		Workdir:         proto.String(session.Workdir),
+		ProviderId:      proto.String(session.ProviderID),
+		ModelId:         proto.String(session.ModelID),
+		ReasoningEffort: proto.String(session.ReasoningEffort),
+		FileAccess:      fileAccessToProto(session.FileAccess).Enum(),
+		ShellAccess:     shellAccessToProto(session.ShellAccess).Enum(),
+		CreatedAt:       proto.Int64(session.CreatedAt.UnixMilli()),
+		UpdatedAt:       proto.Int64(session.UpdatedAt.UnixMilli()),
+		EventCount:      proto.Int64(session.EventCount),
+	}.Build()
 }
 
 func sessionsToProto(sessions []store.Session) []*v1.Session {
@@ -308,11 +312,6 @@ func sessionsToProto(sessions []store.Session) []*v1.Session {
 		result[i] = sessionToProto(session)
 	}
 	return result
-}
-
-//go:fix inline
-func stringPointer(value string) *string {
-	return new(value)
 }
 
 func fileAccessFromProto(value v1.FileAccess) (permission.FileAccess, error) {

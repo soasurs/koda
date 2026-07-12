@@ -8,18 +8,19 @@ import (
 	"github.com/soasurs/adk/model"
 	sessionevent "github.com/soasurs/adk/session/event"
 	v1 "github.com/soasurs/koda/gen/koda/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestEventHistoryHandlers(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	handler.newSessionID = func() (string, error) { return "session-1", nil }
-	created, err := client.CreateSession(t.Context(), &v1.CreateSessionRequest{
-		Workdir: t.TempDir(), ProviderId: "openai-responses", ModelId: "gpt-5.6",
-	})
+	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
-	adkSession, err := handler.store.EnsureADKSession(t.Context(), created.Session.Id)
+	adkSession, err := handler.store.EnsureADKSession(t.Context(), created.GetSession().GetId())
 	if err != nil {
 		t.Fatalf("EnsureADKSession() error = %v", err)
 	}
@@ -44,37 +45,38 @@ func TestEventHistoryHandlers(t *testing.T) {
 		}
 	}
 
-	listed, err := client.ListEvents(t.Context(), &v1.ListEventsRequest{SessionId: created.Session.Id, Limit: 1})
+	sessionID := created.GetSession().GetId()
+	listed, err := client.ListEvents(t.Context(), v1.ListEventsRequest_builder{SessionId: proto.String(sessionID), Limit: proto.Int32(1)}.Build())
 	if err != nil {
 		t.Fatalf("ListEvents() error = %v", err)
 	}
-	if listed.Total != 2 || len(listed.Events) != 1 || listed.Events[0].Id != "1" ||
-		listed.Events[0].Message.Role != v1.Role_ROLE_USER || len(listed.Events[0].Message.Parts) != 2 ||
-		listed.Events[0].Message.Parts[1].GetImage().GetUrl() != "https://example.com/diagram.png" {
+	if listed.GetTotal() != 2 || len(listed.GetEvents()) != 1 || listed.GetEvents()[0].GetId() != "1" ||
+		listed.GetEvents()[0].GetMessage().GetRole() != v1.Role_ROLE_USER || len(listed.GetEvents()[0].GetMessage().GetParts()) != 2 ||
+		listed.GetEvents()[0].GetMessage().GetParts()[1].GetImage().GetUrl() != "https://example.com/diagram.png" {
 		t.Fatalf("ListEvents() = %+v", listed)
 	}
 
-	undone, err := client.UndoLastMessage(t.Context(), &v1.UndoLastMessageRequest{SessionId: created.Session.Id})
+	undone, err := client.UndoLastMessage(t.Context(), v1.UndoLastMessageRequest_builder{SessionId: proto.String(sessionID)}.Build())
 	if err != nil {
 		t.Fatalf("UndoLastMessage() error = %v", err)
 	}
-	if undone.TurnId != "turn-1" || undone.DeletedEventCount != 2 || undone.Input == nil || len(undone.Input.Parts) != 2 ||
-		undone.Input.Parts[0].GetText() != "review this" || undone.Input.Parts[1].GetImage().GetUrl() != "https://example.com/diagram.png" {
+	if undone.GetTurnId() != "turn-1" || undone.GetDeletedEventCount() != 2 || undone.GetInput() == nil || len(undone.GetInput().GetParts()) != 2 ||
+		undone.GetInput().GetParts()[0].GetText() != "review this" || undone.GetInput().GetParts()[1].GetImage().GetUrl() != "https://example.com/diagram.png" {
 		t.Fatalf("UndoLastMessage() = %+v", undone)
 	}
 
-	listed, err = client.ListEvents(t.Context(), &v1.ListEventsRequest{SessionId: created.Session.Id})
+	listed, err = client.ListEvents(t.Context(), v1.ListEventsRequest_builder{SessionId: proto.String(sessionID)}.Build())
 	if err != nil {
 		t.Fatalf("ListEvents(after undo) error = %v", err)
 	}
-	if listed.Total != 0 || len(listed.Events) != 0 {
+	if listed.GetTotal() != 0 || len(listed.GetEvents()) != 0 {
 		t.Fatalf("ListEvents(after undo) = %+v", listed)
 	}
-	empty, err := client.UndoLastMessage(t.Context(), &v1.UndoLastMessageRequest{SessionId: created.Session.Id})
+	empty, err := client.UndoLastMessage(t.Context(), v1.UndoLastMessageRequest_builder{SessionId: proto.String(sessionID)}.Build())
 	if err != nil {
 		t.Fatalf("UndoLastMessage(empty) error = %v", err)
 	}
-	if empty.TurnId != "" || empty.DeletedEventCount != 0 || empty.Input != nil {
+	if empty.GetTurnId() != "" || empty.GetDeletedEventCount() != 0 || empty.GetInput() != nil {
 		t.Fatalf("UndoLastMessage(empty) = %+v", empty)
 	}
 }
@@ -82,19 +84,20 @@ func TestEventHistoryHandlers(t *testing.T) {
 func TestEventHistoryHandlersValidateRequests(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	handler.newSessionID = func() (string, error) { return "session-1", nil }
-	created, err := client.CreateSession(t.Context(), &v1.CreateSessionRequest{
-		Workdir: t.TempDir(), ProviderId: "openai-responses", ModelId: "gpt-5.6",
-	})
+	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
-	if _, err := client.ListEvents(t.Context(), &v1.ListEventsRequest{SessionId: created.Session.Id, Limit: -1}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	sessionID := created.GetSession().GetId()
+	if _, err := client.ListEvents(t.Context(), v1.ListEventsRequest_builder{SessionId: proto.String(sessionID), Limit: proto.Int32(-1)}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListEvents(negative limit) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.ListEvents(t.Context(), &v1.ListEventsRequest{SessionId: created.Session.Id, Offset: -1}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.ListEvents(t.Context(), v1.ListEventsRequest_builder{SessionId: proto.String(sessionID), Offset: proto.Int64(-1)}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListEvents(negative offset) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.UndoLastMessage(t.Context(), &v1.UndoLastMessageRequest{SessionId: "missing"}); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := client.UndoLastMessage(t.Context(), v1.UndoLastMessageRequest_builder{SessionId: proto.String("missing")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("UndoLastMessage(missing) code = %v, want not_found; error = %v", connect.CodeOf(err), err)
 	}
 }

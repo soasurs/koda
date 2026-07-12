@@ -1,4 +1,4 @@
-syntax = "proto3";
+edition = "2023";
 
 package koda.v1;
 
@@ -379,17 +379,17 @@ message ListSessionsResponse {
 // their current values.
 message UpdateSessionRequest {
   string session_id = 1;
-  optional string title = 2;
-  optional string workdir = 3;
+  string title = 2 [features.field_presence = EXPLICIT];
+  string workdir = 3 [features.field_presence = EXPLICIT];
   // provider_id and model_id are validated together after applying the update.
-  optional string provider_id = 4;
-  optional string model_id = 5;
+  string provider_id = 4 [features.field_presence = EXPLICIT];
+  string model_id = 5 [features.field_presence = EXPLICIT];
   // An explicitly empty reasoning_effort restores the model default.
-  optional string reasoning_effort = 6;
+  string reasoning_effort = 6 [features.field_presence = EXPLICIT];
   // file_access changes the automatically allowed filesystem capability.
-  optional FileAccess file_access = 7;
+  FileAccess file_access = 7 [features.field_presence = EXPLICIT];
   // shell_access changes whether arbitrary shell commands need approval.
-  optional ShellAccess shell_access = 8;
+  ShellAccess shell_access = 8 [features.field_presence = EXPLICIT];
 }
 
 // UpdateSessionResponse returns the updated session.
@@ -604,7 +604,7 @@ message SaveProviderRequest {
   // An empty base_url restores the adapter default.
   string base_url = 4;
   // An omitted api_key preserves the stored key; an explicitly empty value clears it.
-  optional string api_key = 5;
+  string api_key = 5 [features.field_presence = EXPLICIT];
   // model_overrides add custom models or override bundled/discovered metadata by ID.
   repeated Model model_overrides = 6;
 }

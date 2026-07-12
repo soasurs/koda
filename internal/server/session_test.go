@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 	v1 "github.com/soasurs/koda/gen/koda/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestSessionHandlers(t *testing.T) {
@@ -18,32 +19,34 @@ func TestSessionHandlers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EvalSymlinks(workdir): %v", err)
 	}
-	created, err := client.CreateSession(t.Context(), &v1.CreateSessionRequest{
-		Workdir:         workdir,
-		ProviderId:      "openai-responses",
-		ModelId:         "gpt-5.6",
-		ReasoningEffort: "max",
-		FileAccess:      v1.FileAccess_FILE_ACCESS_WORKSPACE_WRITE,
-		ShellAccess:     v1.ShellAccess_SHELL_ACCESS_UNRESTRICTED,
-	})
+	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir:         proto.String(workdir),
+		ProviderId:      proto.String("openai-responses"),
+		ModelId:         proto.String("gpt-5.6"),
+		ReasoningEffort: proto.String("max"),
+		FileAccess:      v1.FileAccess_FILE_ACCESS_WORKSPACE_WRITE.Enum(),
+		ShellAccess:     v1.ShellAccess_SHELL_ACCESS_UNRESTRICTED.Enum(),
+	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
-	if created.Session.Id != "session-1" || created.Session.Workdir != resolvedWorkdir ||
-		created.Session.ProviderId != "openai-responses" || created.Session.ModelId != "gpt-5.6" ||
-		created.Session.ReasoningEffort != "max" ||
-		created.Session.FileAccess != v1.FileAccess_FILE_ACCESS_WORKSPACE_WRITE ||
-		created.Session.ShellAccess != v1.ShellAccess_SHELL_ACCESS_UNRESTRICTED ||
-		created.Session.CreatedAt == 0 || created.Session.UpdatedAt == 0 {
-		t.Fatalf("CreateSession() = %+v", created.Session)
+	session := created.GetSession()
+	if session.GetId() != "session-1" || session.GetWorkdir() != resolvedWorkdir ||
+		session.GetProviderId() != "openai-responses" || session.GetModelId() != "gpt-5.6" ||
+		session.GetReasoningEffort() != "max" ||
+		session.GetFileAccess() != v1.FileAccess_FILE_ACCESS_WORKSPACE_WRITE ||
+		session.GetShellAccess() != v1.ShellAccess_SHELL_ACCESS_UNRESTRICTED ||
+		session.GetCreatedAt() == 0 || session.GetUpdatedAt() == 0 {
+		t.Fatalf("CreateSession() = %+v", session)
 	}
 
-	got, err := client.GetSession(t.Context(), &v1.GetSessionRequest{SessionId: "session-1"})
+	got, err := client.GetSession(t.Context(), v1.GetSessionRequest_builder{SessionId: proto.String("session-1")}.Build())
 	if err != nil {
 		t.Fatalf("GetSession() error = %v", err)
 	}
-	if got.Session.Id != created.Session.Id || got.Session.EventCount != 0 {
-		t.Fatalf("GetSession() = %+v", got.Session)
+	gotSession := got.GetSession()
+	if gotSession.GetId() != session.GetId() || gotSession.GetEventCount() != 0 {
+		t.Fatalf("GetSession() = %+v", gotSession)
 	}
 
 	title := "DeepSeek session"
@@ -55,40 +58,39 @@ func TestSessionHandlers(t *testing.T) {
 	providerID := "deepseek"
 	modelID := "deepseek-v4-pro"
 	reasoningEffort := "max"
-	fileAccess := v1.FileAccess_FILE_ACCESS_UNRESTRICTED
-	shellAccess := v1.ShellAccess_SHELL_ACCESS_APPROVAL_REQUIRED
-	updated, err := client.UpdateSession(t.Context(), &v1.UpdateSessionRequest{
-		SessionId:       "session-1",
-		Title:           &title,
-		Workdir:         &updatedWorkdir,
-		ProviderId:      &providerID,
-		ModelId:         &modelID,
-		ReasoningEffort: &reasoningEffort,
-		FileAccess:      &fileAccess,
-		ShellAccess:     &shellAccess,
-	})
+	updated, err := client.UpdateSession(t.Context(), v1.UpdateSessionRequest_builder{
+		SessionId:       proto.String("session-1"),
+		Title:           proto.String(title),
+		Workdir:         proto.String(updatedWorkdir),
+		ProviderId:      proto.String(providerID),
+		ModelId:         proto.String(modelID),
+		ReasoningEffort: proto.String(reasoningEffort),
+		FileAccess:      v1.FileAccess_FILE_ACCESS_UNRESTRICTED.Enum(),
+		ShellAccess:     v1.ShellAccess_SHELL_ACCESS_APPROVAL_REQUIRED.Enum(),
+	}.Build())
 	if err != nil {
 		t.Fatalf("UpdateSession() error = %v", err)
 	}
-	if updated.Session.Title != title || updated.Session.Workdir != resolvedUpdatedWorkdir ||
-		updated.Session.ProviderId != providerID || updated.Session.ModelId != modelID ||
-		updated.Session.ReasoningEffort != reasoningEffort ||
-		updated.Session.FileAccess != fileAccess || updated.Session.ShellAccess != shellAccess {
-		t.Fatalf("UpdateSession() = %+v", updated.Session)
+	updatedSession := updated.GetSession()
+	if updatedSession.GetTitle() != title || updatedSession.GetWorkdir() != resolvedUpdatedWorkdir ||
+		updatedSession.GetProviderId() != providerID || updatedSession.GetModelId() != modelID ||
+		updatedSession.GetReasoningEffort() != reasoningEffort ||
+		updatedSession.GetFileAccess() != v1.FileAccess_FILE_ACCESS_UNRESTRICTED || updatedSession.GetShellAccess() != v1.ShellAccess_SHELL_ACCESS_APPROVAL_REQUIRED {
+		t.Fatalf("UpdateSession() = %+v", updatedSession)
 	}
 
-	listed, err := client.ListSessions(t.Context(), &v1.ListSessionsRequest{Limit: 1})
+	listed, err := client.ListSessions(t.Context(), v1.ListSessionsRequest_builder{Limit: proto.Int32(1)}.Build())
 	if err != nil {
 		t.Fatalf("ListSessions() error = %v", err)
 	}
-	if listed.Total != 1 || len(listed.Sessions) != 1 || listed.Sessions[0].Id != "session-1" {
+	if listed.GetTotal() != 1 || len(listed.GetSessions()) != 1 || listed.GetSessions()[0].GetId() != "session-1" {
 		t.Fatalf("ListSessions() = %+v", listed)
 	}
 
-	if _, err := client.DeleteSession(t.Context(), &v1.DeleteSessionRequest{SessionId: "session-1"}); err != nil {
+	if _, err := client.DeleteSession(t.Context(), v1.DeleteSessionRequest_builder{SessionId: proto.String("session-1")}.Build()); err != nil {
 		t.Fatalf("DeleteSession() error = %v", err)
 	}
-	if _, err := client.GetSession(t.Context(), &v1.GetSessionRequest{SessionId: "session-1"}); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := client.GetSession(t.Context(), v1.GetSessionRequest_builder{SessionId: proto.String("session-1")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetSession(deleted) code = %v, want not_found; error = %v", connect.CodeOf(err), err)
 	}
 }
@@ -98,51 +100,52 @@ func TestSessionHandlersValidateConfiguration(t *testing.T) {
 	handler.newSessionID = func() (string, error) { return "session-1", nil }
 	workdir := t.TempDir()
 
-	if _, err := client.CreateSession(t.Context(), &v1.CreateSessionRequest{
-		Workdir: workdir, ProviderId: "missing", ModelId: "model",
-	}); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String(workdir), ProviderId: proto.String("missing"), ModelId: proto.String("model"),
+	}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("CreateSession(missing provider) code = %v, want not_found; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.CreateSession(t.Context(), &v1.CreateSessionRequest{
-		Workdir: workdir, ProviderId: "openai-responses", ModelId: "missing-model",
-	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String(workdir), ProviderId: proto.String("openai-responses"), ModelId: proto.String("missing-model"),
+	}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSession(missing model) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.CreateSession(t.Context(), &v1.CreateSessionRequest{
-		Workdir: workdir, ProviderId: "openai-responses", ModelId: "gpt-5.6", ReasoningEffort: "ultra",
-	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String(workdir), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"), ReasoningEffort: proto.String("ultra"),
+	}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSession(unsupported effort) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.CreateSession(t.Context(), &v1.CreateSessionRequest{
-		Workdir: "missing-directory", ProviderId: "openai-responses", ModelId: "gpt-5.6",
-	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String("missing-directory"), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+	}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSession(missing workdir) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
 
-	created, err := client.CreateSession(t.Context(), &v1.CreateSessionRequest{
-		Workdir: workdir, ProviderId: "openai-responses", ModelId: "gpt-5.6",
-	})
+	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String(workdir), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession(valid) error = %v", err)
 	}
-	providerID := "deepseek"
-	if _, err := client.UpdateSession(t.Context(), &v1.UpdateSessionRequest{
-		SessionId:  created.Session.Id,
-		ProviderId: &providerID,
-	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	createdSessionID := created.GetSession().GetId()
+	if _, err := client.UpdateSession(t.Context(), v1.UpdateSessionRequest_builder{
+		SessionId:  proto.String(createdSessionID),
+		ProviderId: proto.String("deepseek"),
+	}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("UpdateSession(incompatible model) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
-	got, err := client.GetSession(t.Context(), &v1.GetSessionRequest{SessionId: created.Session.Id})
+	got, err := client.GetSession(t.Context(), v1.GetSessionRequest_builder{SessionId: proto.String(createdSessionID)}.Build())
 	if err != nil {
 		t.Fatalf("GetSession(after failed update) error = %v", err)
 	}
-	if got.Session.ProviderId != "openai-responses" || got.Session.ModelId != "gpt-5.6" {
-		t.Fatalf("failed update changed session: %+v", got.Session)
+	gotSession := got.GetSession()
+	if gotSession.GetProviderId() != "openai-responses" || gotSession.GetModelId() != "gpt-5.6" {
+		t.Fatalf("failed update changed session: %+v", gotSession)
 	}
-	if _, err := client.ListSessions(t.Context(), &v1.ListSessionsRequest{Limit: -1}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.ListSessions(t.Context(), v1.ListSessionsRequest_builder{Limit: proto.Int32(-1)}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListSessions(negative limit) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.DeleteSession(t.Context(), &v1.DeleteSessionRequest{SessionId: "missing"}); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := client.DeleteSession(t.Context(), v1.DeleteSessionRequest_builder{SessionId: proto.String("missing")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("DeleteSession(missing) code = %v, want not_found; error = %v", connect.CodeOf(err), err)
 	}
 }
@@ -151,9 +154,9 @@ func TestCreateSessionMapsIDGeneratorFailure(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	handler.newSessionID = func() (string, error) { return "", errors.New("entropy unavailable") }
 
-	if _, err := client.CreateSession(t.Context(), &v1.CreateSessionRequest{
-		Workdir: t.TempDir(), ProviderId: "openai-responses", ModelId: "gpt-5.6",
-	}); connect.CodeOf(err) != connect.CodeInternal {
+	if _, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+	}.Build()); connect.CodeOf(err) != connect.CodeInternal {
 		t.Fatalf("CreateSession(ID failure) code = %v, want internal; error = %v", connect.CodeOf(err), err)
 	}
 }
@@ -161,50 +164,53 @@ func TestCreateSessionMapsIDGeneratorFailure(t *testing.T) {
 func TestCreateSessionDefaultsPermissions(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	handler.newSessionID = func() (string, error) { return "session-1", nil }
-	created, err := client.CreateSession(t.Context(), &v1.CreateSessionRequest{
-		Workdir: t.TempDir(), ProviderId: "openai-responses", ModelId: "gpt-5.6",
-	})
+	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
-	if created.Session.FileAccess != v1.FileAccess_FILE_ACCESS_WORKSPACE_READ ||
-		created.Session.ShellAccess != v1.ShellAccess_SHELL_ACCESS_APPROVAL_REQUIRED {
-		t.Fatalf("CreateSession() permissions = %v, %v", created.Session.FileAccess, created.Session.ShellAccess)
+	session := created.GetSession()
+	if session.GetFileAccess() != v1.FileAccess_FILE_ACCESS_WORKSPACE_READ ||
+		session.GetShellAccess() != v1.ShellAccess_SHELL_ACCESS_APPROVAL_REQUIRED {
+		t.Fatalf("CreateSession() permissions = %v, %v", session.GetFileAccess(), session.GetShellAccess())
 	}
 }
 
 func TestSessionRemainsEditableAfterProviderDelete(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	handler.newSessionID = func() (string, error) { return "session-1", nil }
-	if _, err := client.SaveProvider(t.Context(), &v1.SaveProviderRequest{
-		Id:      "custom",
-		Name:    "Custom",
-		Type:    v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES,
-		BaseUrl: "https://models.example/v1",
-		ModelOverrides: []*v1.Model{{
-			Id: "private-model",
-		}},
-	}); err != nil {
+	if _, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
+		Id:      proto.String("custom"),
+		Name:    proto.String("Custom"),
+		Type:    v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES.Enum(),
+		BaseUrl: proto.String("https://models.example/v1"),
+		ModelOverrides: []*v1.Model{v1.Model_builder{
+			Id: proto.String("private-model"),
+		}.Build()},
+	}.Build()); err != nil {
 		t.Fatalf("SaveProvider() error = %v", err)
 	}
-	created, err := client.CreateSession(t.Context(), &v1.CreateSessionRequest{
-		Workdir: t.TempDir(), ProviderId: "custom", ModelId: "private-model",
-	})
+	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("custom"), ModelId: proto.String("private-model"),
+	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
-	if _, err := client.DeleteProvider(t.Context(), &v1.DeleteProviderRequest{ProviderId: "custom"}); err != nil {
+	createdSessionID := created.GetSession().GetId()
+	if _, err := client.DeleteProvider(t.Context(), v1.DeleteProviderRequest_builder{ProviderId: proto.String("custom")}.Build()); err != nil {
 		t.Fatalf("DeleteProvider() error = %v", err)
 	}
 	title := "Needs reconfiguration"
-	updated, err := client.UpdateSession(t.Context(), &v1.UpdateSessionRequest{
-		SessionId: created.Session.Id,
-		Title:     &title,
-	})
+	updated, err := client.UpdateSession(t.Context(), v1.UpdateSessionRequest_builder{
+		SessionId: proto.String(createdSessionID),
+		Title:     proto.String(title),
+	}.Build())
 	if err != nil {
 		t.Fatalf("UpdateSession(title only) error = %v", err)
 	}
-	if updated.Session.Title != title || updated.Session.ProviderId != "custom" || updated.Session.ModelId != "private-model" {
-		t.Fatalf("UpdateSession(title only) = %+v", updated.Session)
+	updatedSession := updated.GetSession()
+	if updatedSession.GetTitle() != title || updatedSession.GetProviderId() != "custom" || updatedSession.GetModelId() != "private-model" {
+		t.Fatalf("UpdateSession(title only) = %+v", updatedSession)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/permission"
 	"github.com/soasurs/koda/internal/tools"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestRunInteractionsPublishAndResolveApproval(t *testing.T) {
@@ -34,13 +35,13 @@ func TestRunInteractionsPublishAndResolveApproval(t *testing.T) {
 	}()
 
 	approval := waitForApprovalFrame(t, frames)
-	if approval.SessionId != "session-1" || approval.TurnId != "turn-1" || approval.ToolCallId != "call-1" ||
-		approval.ToolName != "write_file" || approval.ArgumentsJson != `{"path":"notes.txt","content":"hello"}` ||
-		approval.Kind != v1.ToolApprovalKind_TOOL_APPROVAL_KIND_FILE_WRITE ||
-		approval.Scope != v1.ToolApprovalScope_TOOL_APPROVAL_SCOPE_WORKSPACE || len(approval.FileChanges) != 1 {
+	if approval.GetSessionId() != "session-1" || approval.GetTurnId() != "turn-1" || approval.GetToolCallId() != "call-1" ||
+		approval.GetToolName() != "write_file" || approval.GetArgumentsJson() != `{"path":"notes.txt","content":"hello"}` ||
+		approval.GetKind() != v1.ToolApprovalKind_TOOL_APPROVAL_KIND_FILE_WRITE ||
+		approval.GetScope() != v1.ToolApprovalScope_TOOL_APPROVAL_SCOPE_WORKSPACE || len(approval.GetFileChanges()) != 1 {
 		t.Fatalf("approval = %+v", approval)
 	}
-	if err := handler.approvals.Resolve(approval.Id, true); err != nil {
+	if err := handler.approvals.Resolve(approval.GetId(), true); err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
 	select {
@@ -67,7 +68,7 @@ func TestRunInteractionsTranslateRejectionAndQuestions(t *testing.T) {
 		rejected <- interactions.Authorizer.Authorize(ctx, tools.Approval{Kind: permission.KindShell, Scope: permission.ScopeGlobal})
 	}()
 	approval := waitForApprovalFrame(t, frames)
-	if err := handler.approvals.Resolve(approval.Id, false); err != nil {
+	if err := handler.approvals.Resolve(approval.GetId(), false); err != nil {
 		t.Fatalf("Resolve(reject) error = %v", err)
 	}
 	select {
@@ -98,13 +99,14 @@ func TestRunInteractionsTranslateRejectionAndQuestions(t *testing.T) {
 		answers <- resolution
 	}()
 	prompt := waitForQuestionFrame(t, frames)
-	if prompt.SessionId != "session-1" || prompt.TurnId != "turn-1" || prompt.ToolCallId != "call-2" || len(prompt.Questions) != 1 {
+	if prompt.GetSessionId() != "session-1" || prompt.GetTurnId() != "turn-1" || prompt.GetToolCallId() != "call-2" || len(prompt.GetQuestions()) != 1 {
 		t.Fatalf("prompt = %+v", prompt)
 	}
-	if err := handler.questions.ResolveAnswers(prompt.Id, &v1.QuestionAnswers{Answers: []*v1.QuestionAnswer{{
-		QuestionId:        "storage",
+	resolvedAnswer := v1.QuestionAnswer_builder{
+		QuestionId:        proto.String("storage"),
 		SelectedOptionIds: []string{"sqlite"},
-	}}}); err != nil {
+	}.Build()
+	if err := handler.questions.ResolveAnswers(prompt.GetId(), v1.QuestionAnswers_builder{Answers: []*v1.QuestionAnswer{resolvedAnswer}}.Build()); err != nil {
 		t.Fatalf("ResolveAnswers() error = %v", err)
 	}
 	select {

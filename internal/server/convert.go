@@ -14,6 +14,7 @@ import (
 	"github.com/soasurs/adk/tool"
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/tools"
+	"google.golang.org/protobuf/proto"
 )
 
 // inputFromProto converts user-authored multimodal input into the ADK content
@@ -23,18 +24,19 @@ func inputFromProto(input *v1.Input) (model.Content, error) {
 	if input == nil {
 		return model.Content{}, errors.New("input must not be nil")
 	}
-	if len(input.Parts) == 0 {
+	parts := input.GetParts()
+	if len(parts) == 0 {
 		return model.Content{}, errors.New("input must contain at least one part")
 	}
-	parts := make([]model.ContentPart, len(input.Parts))
-	for index, part := range input.Parts {
+	result := make([]model.ContentPart, len(parts))
+	for index, part := range parts {
 		converted, err := partFromProto(part)
 		if err != nil {
 			return model.Content{}, fmt.Errorf("input part %d: %w", index, err)
 		}
-		parts[index] = converted
+		result[index] = converted
 	}
-	return model.Content{Role: model.RoleUser, Parts: parts}, nil
+	return model.Content{Role: model.RoleUser, Parts: result}, nil
 }
 
 func inputToProto(content model.Content) (*v1.Input, error) {
@@ -43,24 +45,25 @@ func inputToProto(content model.Content) (*v1.Input, error) {
 		if text == "" {
 			return nil, errors.New("input must contain at least one part")
 		}
-		return &v1.Input{Parts: []*v1.Part{{Content: &v1.Part_Text{Text: text}}}}, nil
+		part := v1.Part_builder{Text: proto.String(text)}.Build()
+		return v1.Input_builder{Parts: []*v1.Part{part}}.Build(), nil
 	}
 	parts, err := partsToProto(content.Parts)
 	if err != nil {
 		return nil, err
 	}
-	return &v1.Input{Parts: parts}, nil
+	return v1.Input_builder{Parts: parts}.Build(), nil
 }
 
 func partFromProto(part *v1.Part) (model.ContentPart, error) {
 	if part == nil {
 		return model.ContentPart{}, errors.New("must not be nil")
 	}
-	switch content := part.Content.(type) {
-	case *v1.Part_Text:
-		return model.ContentPart{Type: model.ContentPartTypeText, Text: content.Text}, nil
-	case *v1.Part_Image:
-		return imageFromProto(content.Image)
+	switch part.WhichContent() {
+	case v1.Part_Text_case:
+		return model.ContentPart{Type: model.ContentPartTypeText, Text: part.GetText()}, nil
+	case v1.Part_Image_case:
+		return imageFromProto(part.GetImage())
 	default:
 		return model.ContentPart{}, errors.New("content must be set")
 	}
@@ -70,13 +73,13 @@ func imageFromProto(image *v1.Image) (model.ContentPart, error) {
 	if image == nil {
 		return model.ContentPart{}, errors.New("image must not be nil")
 	}
-	detail, err := imageDetailFromProto(image.Detail)
+	detail, err := imageDetailFromProto(image.GetDetail())
 	if err != nil {
 		return model.ContentPart{}, err
 	}
-	switch source := image.Source.(type) {
-	case *v1.Image_Url:
-		imageURL := strings.TrimSpace(source.Url)
+	switch image.WhichSource() {
+	case v1.Image_Url_case:
+		imageURL := strings.TrimSpace(image.GetUrl())
 		if err := validateHTTPSImageURL(imageURL); err != nil {
 			return model.ContentPart{}, err
 		}
@@ -85,17 +88,18 @@ func imageFromProto(image *v1.Image) (model.ContentPart, error) {
 			ImageURL:    imageURL,
 			ImageDetail: detail,
 		}, nil
-	case *v1.Image_Data:
-		if len(source.Data) == 0 {
+	case v1.Image_Data_case:
+		data := image.GetData()
+		if len(data) == 0 {
 			return model.ContentPart{}, errors.New("inline image data must not be empty")
 		}
-		mimeType, err := validateImageMIMEType(image.MimeType)
+		mimeType, err := validateImageMIMEType(image.GetMimeType())
 		if err != nil {
 			return model.ContentPart{}, err
 		}
 		return model.ContentPart{
 			Type:        model.ContentPartTypeImageBase64,
-			ImageBase64: base64.StdEncoding.EncodeToString(source.Data),
+			ImageBase64: base64.StdEncoding.EncodeToString(data),
 			MIMEType:    mimeType,
 			ImageDetail: detail,
 		}, nil
@@ -119,15 +123,16 @@ func partsToProto(parts []model.ContentPart) ([]*v1.Part, error) {
 func partToProto(part model.ContentPart) (*v1.Part, error) {
 	switch part.Type {
 	case model.ContentPartTypeText:
-		return &v1.Part{Content: &v1.Part_Text{Text: part.Text}}, nil
+		return v1.Part_builder{Text: proto.String(part.Text)}.Build(), nil
 	case model.ContentPartTypeImageURL:
 		if err := validateHTTPSImageURL(part.ImageURL); err != nil {
 			return nil, err
 		}
-		return &v1.Part{Content: &v1.Part_Image{Image: &v1.Image{
-			Source: &v1.Image_Url{Url: part.ImageURL},
-			Detail: imageDetailToProto(part.ImageDetail),
-		}}}, nil
+		image := v1.Image_builder{
+			Url:    proto.String(part.ImageURL),
+			Detail: imageDetailToProto(part.ImageDetail).Enum(),
+		}.Build()
+		return v1.Part_builder{Image: image}.Build(), nil
 	case model.ContentPartTypeImageBase64:
 		data, err := base64.StdEncoding.DecodeString(part.ImageBase64)
 		if err != nil {
@@ -137,11 +142,12 @@ func partToProto(part model.ContentPart) (*v1.Part, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &v1.Part{Content: &v1.Part_Image{Image: &v1.Image{
-			Source:   &v1.Image_Data{Data: data},
-			MimeType: mimeType,
-			Detail:   imageDetailToProto(part.ImageDetail),
-		}}}, nil
+		image := v1.Image_builder{
+			Data:     data,
+			MimeType: proto.String(mimeType),
+			Detail:   imageDetailToProto(part.ImageDetail).Enum(),
+		}.Build()
+		return v1.Part_builder{Image: image}.Build(), nil
 	default:
 		return nil, fmt.Errorf("unsupported content part type %q", part.Type)
 	}
@@ -192,23 +198,22 @@ func eventToProto(event model.Event) (*v1.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	converted := &v1.Event{
-		SessionId: event.SessionID,
-		TurnId:    event.TurnID,
-		Author:    event.Author,
-		Message:   message,
-		Partial:   event.Partial,
-	}
+	converted := new(v1.Event)
+	converted.SetSessionId(event.SessionID)
+	converted.SetTurnId(event.TurnID)
+	converted.SetAuthor(event.Author)
+	converted.SetMessage(message)
+	converted.SetPartial(event.Partial)
 	if event.Partial {
 		return converted, nil
 	}
 	if event.ID != 0 {
-		converted.Id = strconv.FormatInt(event.ID, 10)
+		converted.SetId(strconv.FormatInt(event.ID, 10))
 	}
-	converted.FinishReason = finishReasonToProto(event.FinishReason)
-	converted.Usage = usageToProto(event.Usage)
-	converted.CreatedAt = event.CreatedAt
-	converted.UpdatedAt = event.UpdatedAt
+	converted.SetFinishReason(finishReasonToProto(event.FinishReason))
+	converted.SetUsage(usageToProto(event.Usage))
+	converted.SetCreatedAt(event.CreatedAt)
+	converted.SetUpdatedAt(event.UpdatedAt)
 	return converted, nil
 }
 
@@ -231,11 +236,11 @@ func messageToProto(content model.Content) (*v1.Message, error) {
 	}
 	toolCalls := make([]*v1.ToolCall, len(content.ToolCalls))
 	for index, call := range content.ToolCalls {
-		toolCalls[index] = &v1.ToolCall{
-			Id:            call.ID,
-			Name:          call.Name,
-			ArgumentsJson: string(call.Arguments),
-		}
+		tc := new(v1.ToolCall)
+		tc.SetId(call.ID)
+		tc.SetName(call.Name)
+		tc.SetArgumentsJson(string(call.Arguments))
+		toolCalls[index] = tc
 	}
 	toolResponse := content.ToolResponse
 	if toolResponse != nil || content.Role == model.RoleTool && (content.ToolCallID != "" || content.Content != "") {
@@ -246,38 +251,38 @@ func messageToProto(content model.Content) (*v1.Message, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &v1.Message{
-		Role:         roleToProto(content.Role),
-		Text:         content.Content,
-		Parts:        parts,
-		Reasoning:    content.ReasoningContent,
-		ToolCalls:    toolCalls,
-		ToolResponse: convertedResponse,
-	}, nil
+	msg := new(v1.Message)
+	msg.SetRole(roleToProto(content.Role))
+	msg.SetText(content.Content)
+	msg.SetParts(parts)
+	msg.SetReasoning(content.ReasoningContent)
+	msg.SetToolCalls(toolCalls)
+	msg.SetToolResponse(convertedResponse)
+	return msg, nil
 }
 
 func toolResponseToProto(response *model.ToolResponse) (*v1.ToolResponse, error) {
 	if response == nil {
 		return nil, nil
 	}
-	converted := &v1.ToolResponse{
-		ToolCallId: response.ToolCallID,
-		Name:       response.Name,
-	}
+	converted := new(v1.ToolResponse)
+	converted.SetToolCallId(response.ToolCallID)
+	converted.SetName(response.Name)
 	switch outcome := response.Outcome.(type) {
 	case *tool.Result:
 		if outcome == nil {
 			return nil, errors.New("tool response contains a nil result")
 		}
-		converted.Outcome = &v1.ToolResponse_Result{Result: toolResultToProto(outcome)}
+		converted.SetResult(toolResultToProto(outcome))
 	case *tool.HandledError:
 		if outcome == nil {
 			return nil, errors.New("tool response contains a nil handled error")
 		}
-		converted.Outcome = &v1.ToolResponse_Error{Error: &v1.ToolError{
-			Content:               outcome.Content,
-			StructuredContentJson: string(outcome.StructuredContent),
-		}}
+		errMsg := v1.ToolError_builder{
+			Content:               proto.String(outcome.Content),
+			StructuredContentJson: proto.String(string(outcome.StructuredContent)),
+		}.Build()
+		converted.SetError(errMsg)
 	default:
 		return nil, fmt.Errorf("tool response contains unsupported outcome %T", outcome)
 	}
@@ -285,11 +290,11 @@ func toolResponseToProto(response *model.ToolResponse) (*v1.ToolResponse, error)
 }
 
 func toolResultToProto(result *tool.Result) *v1.ToolResult {
-	return &v1.ToolResult{
-		Content:               result.Content,
-		StructuredContentJson: string(result.StructuredContent),
-		FileChanges:           fileChangesFromStructuredContent(result.StructuredContent),
-	}
+	tr := new(v1.ToolResult)
+	tr.SetContent(result.Content)
+	tr.SetStructuredContentJson(string(result.StructuredContent))
+	tr.SetFileChanges(fileChangesFromStructuredContent(result.StructuredContent))
+	return tr
 }
 
 func fileChangesFromStructuredContent(content json.RawMessage) []*v1.FileChange {
@@ -315,25 +320,25 @@ func fileChangesToProto(changes []tools.FileChange) []*v1.FileChange {
 		for hunkIndex, hunk := range change.Hunks {
 			lines := make([]*v1.DiffLine, len(hunk.Lines))
 			for lineIndex, line := range hunk.Lines {
-				lines[lineIndex] = &v1.DiffLine{
-					Kind:    diffLineKindToProto(line.Kind),
-					OldLine: int32(line.OldLine),
-					NewLine: int32(line.NewLine),
-					Content: line.Content,
-				}
+				dl := new(v1.DiffLine)
+				dl.SetKind(diffLineKindToProto(line.Kind))
+				dl.SetOldLine(int32(line.OldLine))
+				dl.SetNewLine(int32(line.NewLine))
+				dl.SetContent(line.Content)
+				lines[lineIndex] = dl
 			}
-			hunks[hunkIndex] = &v1.DiffHunk{
-				OldStart: int32(hunk.OldStart),
-				NewStart: int32(hunk.NewStart),
-				Lines:    lines,
-			}
+			dh := new(v1.DiffHunk)
+			dh.SetOldStart(int32(hunk.OldStart))
+			dh.SetNewStart(int32(hunk.NewStart))
+			dh.SetLines(lines)
+			hunks[hunkIndex] = dh
 		}
-		result[index] = &v1.FileChange{
-			Path:      change.Path,
-			Kind:      fileChangeKindToProto(change.Kind),
-			Hunks:     hunks,
-			Truncated: change.Truncated,
-		}
+		fc := new(v1.FileChange)
+		fc.SetPath(change.Path)
+		fc.SetKind(fileChangeKindToProto(change.Kind))
+		fc.SetHunks(hunks)
+		fc.SetTruncated(change.Truncated)
+		result[index] = fc
 	}
 	return result
 }
@@ -372,23 +377,22 @@ func usageToProto(usage *model.TokenUsage) *v1.TokenUsage {
 	if usage == nil {
 		return nil
 	}
-	converted := &v1.TokenUsage{
-		PromptTokens:     usage.PromptTokens,
-		CompletionTokens: usage.CompletionTokens,
-		TotalTokens:      usage.TotalTokens,
-	}
+	converted := new(v1.TokenUsage)
+	converted.SetPromptTokens(usage.PromptTokens)
+	converted.SetCompletionTokens(usage.CompletionTokens)
+	converted.SetTotalTokens(usage.TotalTokens)
 	if usage.Details != nil {
-		converted.Details = &v1.TokenUsageDetails{
-			CachedPromptTokens:        usage.Details.CachedPromptTokens,
-			CacheCreationPromptTokens: usage.Details.CacheCreationPromptTokens,
-			CacheReadPromptTokens:     usage.Details.CacheReadPromptTokens,
-			ReasoningTokens:           usage.Details.ReasoningTokens,
-			ToolUsePromptTokens:       usage.Details.ToolUsePromptTokens,
-			AudioPromptTokens:         usage.Details.AudioPromptTokens,
-			AudioCompletionTokens:     usage.Details.AudioCompletionTokens,
-			AcceptedPredictionTokens:  usage.Details.AcceptedPredictionTokens,
-			RejectedPredictionTokens:  usage.Details.RejectedPredictionTokens,
-		}
+		details := new(v1.TokenUsageDetails)
+		details.SetCachedPromptTokens(usage.Details.CachedPromptTokens)
+		details.SetCacheCreationPromptTokens(usage.Details.CacheCreationPromptTokens)
+		details.SetCacheReadPromptTokens(usage.Details.CacheReadPromptTokens)
+		details.SetReasoningTokens(usage.Details.ReasoningTokens)
+		details.SetToolUsePromptTokens(usage.Details.ToolUsePromptTokens)
+		details.SetAudioPromptTokens(usage.Details.AudioPromptTokens)
+		details.SetAudioCompletionTokens(usage.Details.AudioCompletionTokens)
+		details.SetAcceptedPredictionTokens(usage.Details.AcceptedPredictionTokens)
+		details.SetRejectedPredictionTokens(usage.Details.RejectedPredictionTokens)
+		converted.SetDetails(details)
 	}
 	return converted
 }

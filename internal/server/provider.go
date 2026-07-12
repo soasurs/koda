@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/provider"
+	"google.golang.org/protobuf/proto"
 )
 
 // ListProviders returns every configured and built-in provider.
@@ -19,7 +20,7 @@ func (h *Handler) ListProviders(ctx context.Context, _ *v1.ListProvidersRequest)
 	if err != nil {
 		return nil, providerError(err)
 	}
-	return &v1.ListProvidersResponse{Providers: providersToProto(providers)}, nil
+	return v1.ListProvidersResponse_builder{Providers: providersToProto(providers)}.Build(), nil
 }
 
 // SaveProvider creates or replaces a provider configuration.
@@ -40,15 +41,15 @@ func (h *Handler) SaveProvider(ctx context.Context, request *v1.SaveProviderRequ
 	}
 
 	var apiKey *string
-	if request.ApiKey != nil {
-		value := *request.ApiKey
+	if request.HasApiKey() {
+		value := request.GetApiKey()
 		apiKey = &value
 	}
 	saved, err := h.registry.Save(ctx, p, apiKey)
 	if err != nil {
 		return nil, providerError(err)
 	}
-	return &v1.SaveProviderResponse{Provider: providerToProto(saved)}, nil
+	return v1.SaveProviderResponse_builder{Provider: providerToProto(saved)}.Build(), nil
 }
 
 // DeleteProvider deletes one user-defined provider.
@@ -56,14 +57,14 @@ func (h *Handler) DeleteProvider(ctx context.Context, request *v1.DeleteProvider
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("delete provider request must not be nil"))
 	}
-	providerID, err := providerIDFromRequest(request.ProviderId)
+	providerID, err := providerIDFromRequest(request.GetProviderId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if err := h.registry.Delete(ctx, providerID); err != nil {
 		return nil, providerError(err)
 	}
-	return &v1.DeleteProviderResponse{}, nil
+	return v1.DeleteProviderResponse_builder{}.Build(), nil
 }
 
 // ListModels returns the local effective model catalog for one provider.
@@ -71,7 +72,7 @@ func (h *Handler) ListModels(ctx context.Context, request *v1.ListModelsRequest)
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("list models request must not be nil"))
 	}
-	providerID, err := providerIDFromRequest(request.ProviderId)
+	providerID, err := providerIDFromRequest(request.GetProviderId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -79,11 +80,11 @@ func (h *Handler) ListModels(ctx context.Context, request *v1.ListModelsRequest)
 	if err != nil {
 		return nil, providerError(err)
 	}
-	return &v1.ListModelsResponse{
-		ProviderId:  providerID,
+	return v1.ListModelsResponse_builder{
+		ProviderId:  proto.String(providerID),
 		Models:      modelsToProto(catalog.Models),
-		RefreshedAt: unixMilli(catalog.RefreshedAt),
-	}, nil
+		RefreshedAt: proto.Int64(unixMilli(catalog.RefreshedAt)),
+	}.Build(), nil
 }
 
 // RefreshModels discovers and persists the effective model catalog for one provider.
@@ -91,7 +92,7 @@ func (h *Handler) RefreshModels(ctx context.Context, request *v1.RefreshModelsRe
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("refresh models request must not be nil"))
 	}
-	providerID, err := providerIDFromRequest(request.ProviderId)
+	providerID, err := providerIDFromRequest(request.GetProviderId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -99,33 +100,34 @@ func (h *Handler) RefreshModels(ctx context.Context, request *v1.RefreshModelsRe
 	if err != nil {
 		return nil, refreshError(err)
 	}
-	return &v1.RefreshModelsResponse{
-		ProviderId:  providerID,
+	return v1.RefreshModelsResponse_builder{
+		ProviderId:  proto.String(providerID),
 		Models:      modelsToProto(catalog.Models),
-		RefreshedAt: unixMilli(catalog.RefreshedAt),
-	}, nil
+		RefreshedAt: proto.Int64(unixMilli(catalog.RefreshedAt)),
+	}.Build(), nil
 }
 
 func providerFromProto(request *v1.SaveProviderRequest) (provider.Provider, error) {
 	if request == nil {
 		return provider.Provider{}, errors.New("save provider request must not be nil")
 	}
-	providerType, err := providerTypeFromProto(request.Type)
+	providerType, err := providerTypeFromProto(request.GetType())
 	if err != nil {
 		return provider.Provider{}, err
 	}
-	models := make([]provider.Model, len(request.ModelOverrides))
-	for i, model := range request.ModelOverrides {
+	modelOverrides := request.GetModelOverrides()
+	models := make([]provider.Model, len(modelOverrides))
+	for i, model := range modelOverrides {
 		if model == nil {
 			return provider.Provider{}, fmt.Errorf("model override %d must not be nil", i)
 		}
 		models[i] = modelFromProto(model)
 	}
 	p := provider.Provider{
-		ID:             request.Id,
-		Name:           request.Name,
+		ID:             request.GetId(),
+		Name:           request.GetName(),
 		Type:           providerType,
-		BaseURL:        request.BaseUrl,
+		BaseURL:        request.GetBaseUrl(),
 		ModelOverrides: models,
 	}
 	if err := provider.ValidateProvider(p); err != nil {
@@ -143,14 +145,14 @@ func providerIDFromRequest(id string) (string, error) {
 }
 
 func providerToProto(p provider.Provider) *v1.Provider {
-	return &v1.Provider{
-		Id:         p.ID,
-		Name:       p.Name,
-		Type:       providerTypeToProto(p.Type),
-		BaseUrl:    p.BaseURL,
-		Configured: p.Configured(),
-		Builtin:    p.Builtin(),
-	}
+	return v1.Provider_builder{
+		Id:         proto.String(p.ID),
+		Name:       proto.String(p.Name),
+		Type:       providerTypeToProto(p.Type).Enum(),
+		BaseUrl:    proto.String(p.BaseURL),
+		Configured: proto.Bool(p.Configured()),
+		Builtin:    proto.Bool(p.Builtin()),
+	}.Build()
 }
 
 func providersToProto(providers []provider.Provider) []*v1.Provider {
@@ -163,22 +165,22 @@ func providersToProto(providers []provider.Provider) []*v1.Provider {
 
 func modelFromProto(model *v1.Model) provider.Model {
 	return provider.Model{
-		ID:                     model.Id,
-		Name:                   model.Name,
-		ReasoningEfforts:       slices.Clone(model.ReasoningEfforts),
-		DefaultReasoningEffort: model.DefaultReasoningEffort,
+		ID:                     model.GetId(),
+		Name:                   model.GetName(),
+		ReasoningEfforts:       slices.Clone(model.GetReasoningEfforts()),
+		DefaultReasoningEffort: model.GetDefaultReasoningEffort(),
 	}
 }
 
 func modelsToProto(models []provider.Model) []*v1.Model {
 	result := make([]*v1.Model, len(models))
 	for i, model := range models {
-		result[i] = &v1.Model{
-			Id:                     model.ID,
-			Name:                   model.Name,
+		result[i] = v1.Model_builder{
+			Id:                     proto.String(model.ID),
+			Name:                   proto.String(model.Name),
 			ReasoningEfforts:       slices.Clone(model.ReasoningEfforts),
-			DefaultReasoningEffort: model.DefaultReasoningEffort,
-		}
+			DefaultReasoningEffort: proto.String(model.DefaultReasoningEffort),
+		}.Build()
 	}
 	return result
 }

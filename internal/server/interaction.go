@@ -10,6 +10,7 @@ import (
 	"github.com/soasurs/koda/internal/agent"
 	"github.com/soasurs/koda/internal/permission"
 	"github.com/soasurs/koda/internal/tools"
+	"google.golang.org/protobuf/proto"
 )
 
 // runInteractions builds the context-scoped interaction adapters used by a
@@ -54,21 +55,23 @@ func (a brokerAuthorizer) Authorize(ctx context.Context, approval tools.Approval
 	if err != nil {
 		return fmt.Errorf("server: generate approval ID: %w", err)
 	}
-	request := &v1.ToolApproval{
-		Id:            id,
-		SessionId:     info.SessionID,
-		TurnId:        info.TurnID,
-		ToolCallId:    approval.ToolCallID,
-		ToolName:      approval.ToolName,
-		Summary:       approval.Summary,
-		ArgumentsJson: string(approval.Arguments),
+	request := v1.ToolApproval_builder{
+		Id:            proto.String(id),
+		SessionId:     proto.String(info.SessionID),
+		TurnId:        proto.String(info.TurnID),
+		ToolCallId:    proto.String(approval.ToolCallID),
+		ToolName:      proto.String(approval.ToolName),
+		Summary:       proto.String(approval.Summary),
+		ArgumentsJson: proto.String(string(approval.Arguments)),
 		FileChanges:   fileChangesToProto(approval.FileChanges),
-		Kind:          approvalKindToProto(approval.Kind),
-		Scope:         approvalScopeToProto(approval.Scope),
+		Kind:          approvalKindToProto(approval.Kind).Enum(),
+		Scope:         approvalScopeToProto(approval.Scope).Enum(),
 		TargetPaths:   append([]string(nil), approval.TargetPaths...),
-	}
+	}.Build()
 	accepted, err := a.broker.Await(ctx, request, func(v *v1.ToolApproval) error {
-		return a.publish(&v1.RunResponse{Payload: &v1.RunResponse_Approval{Approval: v}})
+		resp := new(v1.RunResponse)
+		resp.SetApproval(v)
+		return a.publish(resp)
 	})
 	if err != nil {
 		return fmt.Errorf("server: await tool approval: %w", err)
@@ -103,15 +106,17 @@ func (q brokerQuestioner) Ask(ctx context.Context, request tools.QuestionRequest
 	if err != nil {
 		return tools.QuestionResolution{}, fmt.Errorf("server: generate question prompt ID: %w", err)
 	}
-	prompt := &v1.QuestionPrompt{
-		Id:         id,
-		SessionId:  info.SessionID,
-		TurnId:     info.TurnID,
-		ToolCallId: request.ToolCallID,
+	prompt := v1.QuestionPrompt_builder{
+		Id:         proto.String(id),
+		SessionId:  proto.String(info.SessionID),
+		TurnId:     proto.String(info.TurnID),
+		ToolCallId: proto.String(request.ToolCallID),
 		Questions:  questionsToProto(request.Questions),
-	}
+	}.Build()
 	answers, canceled, err := q.broker.Await(ctx, prompt, func(value *v1.QuestionPrompt) error {
-		return q.publish(&v1.RunResponse{Payload: &v1.RunResponse_QuestionPrompt{QuestionPrompt: value}})
+		resp := new(v1.RunResponse)
+		resp.SetQuestionPrompt(value)
+		return q.publish(resp)
 	})
 	if err != nil {
 		return tools.QuestionResolution{}, fmt.Errorf("server: await question answers: %w", err)
@@ -119,7 +124,7 @@ func (q brokerQuestioner) Ask(ctx context.Context, request tools.QuestionRequest
 	if canceled {
 		return tools.QuestionResolution{Canceled: true}, nil
 	}
-	return tools.QuestionResolution{Answers: answersFromProto(answers.Answers)}, nil
+	return tools.QuestionResolution{Answers: answersFromProto(answers.GetAnswers())}, nil
 }
 
 func runInfo(ctx context.Context) (adktrace.RunInfo, error) {
@@ -135,20 +140,20 @@ func questionsToProto(questions []tools.Question) []*v1.Question {
 	for index, question := range questions {
 		options := make([]*v1.QuestionOption, len(question.Options))
 		for optionIndex, option := range question.Options {
-			options[optionIndex] = &v1.QuestionOption{
-				Id:          option.ID,
-				Label:       option.Label,
-				Description: option.Description,
-			}
+			options[optionIndex] = v1.QuestionOption_builder{
+				Id:          proto.String(option.ID),
+				Label:       proto.String(option.Label),
+				Description: proto.String(option.Description),
+			}.Build()
 		}
-		result[index] = &v1.Question{
-			Id:            question.ID,
-			Header:        question.Header,
-			Prompt:        question.Prompt,
+		result[index] = v1.Question_builder{
+			Id:            proto.String(question.ID),
+			Header:        proto.String(question.Header),
+			Prompt:        proto.String(question.Prompt),
 			Options:       options,
-			Multiple:      question.Multiple,
-			AllowFreeform: question.AllowFreeform,
-		}
+			Multiple:      proto.Bool(question.Multiple),
+			AllowFreeform: proto.Bool(question.AllowFreeform),
+		}.Build()
 	}
 	return result
 }

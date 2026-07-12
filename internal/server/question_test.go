@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	v1 "github.com/soasurs/koda/gen/koda/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestQuestionBrokerAnswersAndAllowsInvalidRetry(t *testing.T) {
@@ -29,56 +30,52 @@ func TestQuestionBrokerAnswersAndAllowsInvalidRetry(t *testing.T) {
 	}()
 	select {
 	case got := <-published:
-		if got.Id != "prompt-1" || got.ToolCallId != "call-1" {
+		if got.GetId() != "prompt-1" || got.GetToolCallId() != "call-1" {
 			t.Fatalf("published prompt = %+v", got)
 		}
-		got.Questions[0].Prompt = "mutated by frontend"
+		got.GetQuestions()[0].SetPrompt("mutated by frontend")
 	case <-time.After(time.Second):
 		t.Fatal("Await() did not publish")
 	}
 
-	invalid := &v1.QuestionAnswers{Answers: []*v1.QuestionAnswer{{
-		QuestionId:        "database",
+	invalidAnswer := v1.QuestionAnswer_builder{
+		QuestionId:        proto.String("database"),
 		SelectedOptionIds: []string{"missing"},
-	}}}
-	if _, err := client.SubmitQuestionAnswers(t.Context(), &v1.SubmitQuestionAnswersRequest{
-		PromptId: "prompt-1",
-		Resolution: &v1.SubmitQuestionAnswersRequest_Answers{
-			Answers: invalid,
-		},
-	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	}.Build()
+	invalid := v1.QuestionAnswers_builder{Answers: []*v1.QuestionAnswer{invalidAnswer}}.Build()
+	if _, err := client.SubmitQuestionAnswers(t.Context(), v1.SubmitQuestionAnswersRequest_builder{
+		PromptId: proto.String("prompt-1"),
+		Answers:  invalid,
+	}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("SubmitQuestionAnswers(invalid) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
 
-	valid := &v1.QuestionAnswers{Answers: []*v1.QuestionAnswer{{
-		QuestionId:        "database",
+	validAnswer := v1.QuestionAnswer_builder{
+		QuestionId:        proto.String("database"),
 		SelectedOptionIds: []string{"sqlite"},
-	}}}
-	if _, err := client.SubmitQuestionAnswers(t.Context(), &v1.SubmitQuestionAnswersRequest{
-		PromptId: "prompt-1",
-		Resolution: &v1.SubmitQuestionAnswersRequest_Answers{
-			Answers: valid,
-		},
-	}); err != nil {
+	}.Build()
+	valid := v1.QuestionAnswers_builder{Answers: []*v1.QuestionAnswer{validAnswer}}.Build()
+	if _, err := client.SubmitQuestionAnswers(t.Context(), v1.SubmitQuestionAnswersRequest_builder{
+		PromptId: proto.String("prompt-1"),
+		Answers:  valid,
+	}.Build()); err != nil {
 		t.Fatalf("SubmitQuestionAnswers() error = %v", err)
 	}
 	select {
 	case result := <-done:
-		if result.err != nil || result.canceled || result.answers.Answers[0].SelectedOptionIds[0] != "sqlite" {
+		if result.err != nil || result.canceled || result.answers.GetAnswers()[0].GetSelectedOptionIds()[0] != "sqlite" {
 			t.Fatalf("Await() result = %+v", result)
 		}
-		if prompt.Questions[0].Prompt != "Which database?" {
+		if prompt.GetQuestions()[0].GetPrompt() != "Which database?" {
 			t.Fatal("published prompt mutated broker-owned input")
 		}
 	case <-time.After(time.Second):
 		t.Fatal("Await() did not resolve")
 	}
-	if _, err := client.SubmitQuestionAnswers(t.Context(), &v1.SubmitQuestionAnswersRequest{
-		PromptId: "prompt-1",
-		Resolution: &v1.SubmitQuestionAnswersRequest_Answers{
-			Answers: valid,
-		},
-	}); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := client.SubmitQuestionAnswers(t.Context(), v1.SubmitQuestionAnswersRequest_builder{
+		PromptId: proto.String("prompt-1"),
+		Answers:  valid,
+	}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("SubmitQuestionAnswers(resolved) code = %v, want not_found; error = %v", connect.CodeOf(err), err)
 	}
 }
@@ -95,10 +92,10 @@ func TestQuestionBrokerCancellationAndCleanup(t *testing.T) {
 		done <- canceled
 	}()
 	waitForQuestionPrompt(t, handler.questions, "prompt-1")
-	if _, err := client.SubmitQuestionAnswers(t.Context(), &v1.SubmitQuestionAnswersRequest{
-		PromptId:   "prompt-1",
-		Resolution: &v1.SubmitQuestionAnswersRequest_Canceled{Canceled: true},
-	}); err != nil {
+	if _, err := client.SubmitQuestionAnswers(t.Context(), v1.SubmitQuestionAnswersRequest_builder{
+		PromptId: proto.String("prompt-1"),
+		Canceled: proto.Bool(true),
+	}.Build()); err != nil {
 		t.Fatalf("SubmitQuestionAnswers(canceled) error = %v", err)
 	}
 	select {
@@ -134,14 +131,14 @@ func TestQuestionBrokerAndHandlerRejectInvalidRequests(t *testing.T) {
 	if _, _, err := broker.Await(t.Context(), nil, func(*v1.QuestionPrompt) error { return nil }); err == nil {
 		t.Fatal("Await(nil prompt) error = nil")
 	}
-	if _, _, err := broker.Await(t.Context(), &v1.QuestionPrompt{}, func(*v1.QuestionPrompt) error { return nil }); err == nil {
+	if _, _, err := broker.Await(t.Context(), v1.QuestionPrompt_builder{}.Build(), func(*v1.QuestionPrompt) error { return nil }); err == nil {
 		t.Fatal("Await(empty ID) error = nil")
 	}
 	if _, _, err := broker.Await(t.Context(), testQuestionPrompt("prompt-1"), nil); err == nil {
 		t.Fatal("Await(nil publish) error = nil")
 	}
 	invalidPrompt := testQuestionPrompt("prompt-1")
-	invalidPrompt.Questions = nil
+	invalidPrompt.SetQuestions(nil)
 	if _, _, err := broker.Await(t.Context(), invalidPrompt, func(*v1.QuestionPrompt) error { return nil }); err == nil {
 		t.Fatal("Await(invalid questions) error = nil")
 	}
@@ -149,7 +146,7 @@ func TestQuestionBrokerAndHandlerRejectInvalidRequests(t *testing.T) {
 	if _, _, err := broker.Await(t.Context(), testQuestionPrompt("prompt-1"), func(*v1.QuestionPrompt) error { return publishErr }); !errors.Is(err, publishErr) {
 		t.Fatalf("Await(publish error) = %v, want %v", err, publishErr)
 	}
-	if err := broker.ResolveAnswers("", &v1.QuestionAnswers{}); err == nil {
+	if err := broker.ResolveAnswers("", v1.QuestionAnswers_builder{}.Build()); err == nil {
 		t.Fatal("ResolveAnswers(empty ID) error = nil")
 	}
 	if err := broker.ResolveAnswers("prompt-1", nil); err == nil {
@@ -160,32 +157,32 @@ func TestQuestionBrokerAndHandlerRejectInvalidRequests(t *testing.T) {
 	}
 
 	client, _, _ := newTestService(t, staticDiscoverer{})
-	if _, err := client.SubmitQuestionAnswers(t.Context(), &v1.SubmitQuestionAnswersRequest{}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.SubmitQuestionAnswers(t.Context(), v1.SubmitQuestionAnswersRequest_builder{}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("SubmitQuestionAnswers(no resolution) code = %v; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.SubmitQuestionAnswers(t.Context(), &v1.SubmitQuestionAnswersRequest{
-		PromptId:   "prompt-1",
-		Resolution: &v1.SubmitQuestionAnswersRequest_Canceled{Canceled: false},
-	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.SubmitQuestionAnswers(t.Context(), v1.SubmitQuestionAnswersRequest_builder{
+		PromptId: proto.String("prompt-1"),
+		Canceled: proto.Bool(false),
+	}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("SubmitQuestionAnswers(false canceled) code = %v; error = %v", connect.CodeOf(err), err)
 	}
 }
 
 func testQuestionPrompt(id string) *v1.QuestionPrompt {
-	return &v1.QuestionPrompt{
-		Id:         id,
-		SessionId:  "session-1",
-		TurnId:     "turn-1",
-		ToolCallId: "call-1",
-		Questions: []*v1.Question{{
-			Id:     "database",
-			Prompt: "Which database?",
+	return v1.QuestionPrompt_builder{
+		Id:         proto.String(id),
+		SessionId:  proto.String("session-1"),
+		TurnId:     proto.String("turn-1"),
+		ToolCallId: proto.String("call-1"),
+		Questions: []*v1.Question{v1.Question_builder{
+			Id:     proto.String("database"),
+			Prompt: proto.String("Which database?"),
 			Options: []*v1.QuestionOption{
-				{Id: "sqlite", Label: "SQLite"},
-				{Id: "postgres", Label: "PostgreSQL"},
+				v1.QuestionOption_builder{Id: proto.String("sqlite"), Label: proto.String("SQLite")}.Build(),
+				v1.QuestionOption_builder{Id: proto.String("postgres"), Label: proto.String("PostgreSQL")}.Build(),
 			},
-		}},
-	}
+		}.Build()},
+	}.Build()
 }
 
 func waitForQuestionPrompt(t *testing.T, broker *QuestionBroker, id string) {

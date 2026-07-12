@@ -51,14 +51,14 @@ func (b *QuestionBroker) Await(ctx context.Context, prompt *v1.QuestionPrompt, p
 	if prompt == nil {
 		return nil, false, errors.New("question broker: prompt must not be nil")
 	}
-	id := strings.TrimSpace(prompt.Id)
+	id := strings.TrimSpace(prompt.GetId())
 	if id == "" {
 		return nil, false, errors.New("question broker: prompt ID must not be empty")
 	}
 	if publish == nil {
 		return nil, false, errors.New("question broker: publish function must not be nil")
 	}
-	questions := questionsFromProto(prompt.Questions)
+	questions := questionsFromProto(prompt.GetQuestions())
 	if err := tools.ValidateQuestions(questions); err != nil {
 		return nil, false, fmt.Errorf("question broker: validate prompt: %w", err)
 	}
@@ -106,7 +106,7 @@ func (b *QuestionBroker) ResolveAnswers(id string, answers *v1.QuestionAnswers) 
 		b.mu.Unlock()
 		return fmt.Errorf("resolve question prompt %q: %w", id, ErrQuestionPromptNotFound)
 	}
-	if err := tools.ValidateQuestionAnswers(questionsFromProto(pending.prompt.Questions), answersFromProto(answers.Answers)); err != nil {
+	if err := tools.ValidateQuestionAnswers(questionsFromProto(pending.prompt.GetQuestions()), answersFromProto(answers.GetAnswers())); err != nil {
 		b.mu.Unlock()
 		return fmt.Errorf("resolve question prompt %q: %w", id, err)
 	}
@@ -155,14 +155,14 @@ func (h *Handler) SubmitQuestionAnswers(ctx context.Context, request *v1.SubmitQ
 		return nil, connect.NewError(connect.CodeCanceled, err)
 	}
 	var err error
-	switch resolution := request.Resolution.(type) {
-	case *v1.SubmitQuestionAnswersRequest_Answers:
-		err = h.questions.ResolveAnswers(request.PromptId, resolution.Answers)
-	case *v1.SubmitQuestionAnswersRequest_Canceled:
-		if !resolution.Canceled {
+	switch request.WhichResolution() {
+	case v1.SubmitQuestionAnswersRequest_Answers_case:
+		err = h.questions.ResolveAnswers(request.GetPromptId(), request.GetAnswers())
+	case v1.SubmitQuestionAnswersRequest_Canceled_case:
+		if !request.GetCanceled() {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("canceled resolution must be true"))
 		}
-		err = h.questions.ResolveCanceled(request.PromptId)
+		err = h.questions.ResolveCanceled(request.GetPromptId())
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("question resolution must be set"))
 	}
@@ -172,7 +172,7 @@ func (h *Handler) SubmitQuestionAnswers(ctx context.Context, request *v1.SubmitQ
 		}
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	return &v1.SubmitQuestionAnswersResponse{}, nil
+	return v1.SubmitQuestionAnswersResponse_builder{}.Build(), nil
 }
 
 func questionsFromProto(questions []*v1.Question) []tools.Question {
@@ -182,21 +182,21 @@ func questionsFromProto(questions []*v1.Question) []tools.Question {
 			continue
 		}
 		result[index] = tools.Question{
-			ID:            question.Id,
-			Header:        question.Header,
-			Prompt:        question.Prompt,
-			Multiple:      question.Multiple,
-			AllowFreeform: question.AllowFreeform,
-			Options:       make([]tools.QuestionOption, len(question.Options)),
+			ID:            question.GetId(),
+			Header:        question.GetHeader(),
+			Prompt:        question.GetPrompt(),
+			Multiple:      question.GetMultiple(),
+			AllowFreeform: question.GetAllowFreeform(),
+			Options:       make([]tools.QuestionOption, len(question.GetOptions())),
 		}
-		for optionIndex, option := range question.Options {
+		for optionIndex, option := range question.GetOptions() {
 			if option == nil {
 				continue
 			}
 			result[index].Options[optionIndex] = tools.QuestionOption{
-				ID:          option.Id,
-				Label:       option.Label,
-				Description: option.Description,
+				ID:          option.GetId(),
+				Label:       option.GetLabel(),
+				Description: option.GetDescription(),
 			}
 		}
 	}
@@ -210,9 +210,9 @@ func answersFromProto(answers []*v1.QuestionAnswer) []tools.QuestionAnswer {
 			continue
 		}
 		result[index] = tools.QuestionAnswer{
-			QuestionID:        answer.QuestionId,
-			SelectedOptionIDs: append([]string(nil), answer.SelectedOptionIds...),
-			Freeform:          answer.Freeform,
+			QuestionID:        answer.GetQuestionId(),
+			SelectedOptionIDs: append([]string(nil), answer.GetSelectedOptionIds()...),
+			Freeform:          answer.GetFreeform(),
 		}
 	}
 	return result

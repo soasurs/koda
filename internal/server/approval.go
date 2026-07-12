@@ -44,7 +44,7 @@ func (b *ApprovalBroker) Await(ctx context.Context, approval *v1.ToolApproval, p
 	if approval == nil {
 		return false, errors.New("approval broker: approval must not be nil")
 	}
-	id := strings.TrimSpace(approval.Id)
+	id := strings.TrimSpace(approval.GetId())
 	if id == "" {
 		return false, errors.New("approval broker: approval ID must not be empty")
 	}
@@ -111,11 +111,11 @@ func (h *Handler) ResolveToolApproval(ctx context.Context, request *v1.ResolveTo
 	if err := ctx.Err(); err != nil {
 		return nil, connect.NewError(connect.CodeCanceled, err)
 	}
-	if err := h.approvals.Resolve(request.ApprovalId, request.Approved); err != nil {
+	if err := h.approvals.Resolve(request.GetApprovalId(), request.GetApproved()); err != nil {
 		if errors.Is(err, ErrApprovalNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
 		}
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	return &v1.ResolveToolApprovalResponse{}, nil
+	return v1.ResolveToolApprovalResponse_builder{}.Build(), nil
 }

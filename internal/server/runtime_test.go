@@ -9,6 +9,7 @@ import (
 	"github.com/soasurs/adk/model"
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/store"
+	"google.golang.org/protobuf/proto"
 )
 
 type fakeTurnRunner struct {
@@ -50,15 +51,16 @@ func TestTurnRunnerSeamAcceptsFakeRuntime(t *testing.T) {
 func TestRunStreamsInjectedTurnRunner(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	handler.newSessionID = func() (string, error) { return "session-1", nil }
-	created, err := client.CreateSession(t.Context(), &v1.CreateSessionRequest{
-		Workdir: t.TempDir(), ProviderId: "openai-responses", ModelId: "gpt-5.6",
-	})
+	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
+	sessionID := created.GetSession().GetId()
 	fake := &fakeTurnRunner{events: []model.Event{
-		{SessionID: created.Session.Id, TurnID: "turn-1", Partial: true, Content: model.Content{Role: model.RoleAssistant, Content: "hel"}},
-		{ID: 7, SessionID: created.Session.Id, TurnID: "turn-1", Author: "assistant", Content: model.Content{Role: model.RoleAssistant, Content: "hello"}, FinishReason: model.FinishReasonStop, CreatedAt: 10, UpdatedAt: 11},
+		{SessionID: sessionID, TurnID: "turn-1", Partial: true, Content: model.Content{Role: model.RoleAssistant, Content: "hel"}},
+		{ID: 7, SessionID: sessionID, TurnID: "turn-1", Author: "assistant", Content: model.Content{Role: model.RoleAssistant, Content: "hello"}, FinishReason: model.FinishReasonStop, CreatedAt: 10, UpdatedAt: 11},
 	}}
 	var gotSession store.Session
 	var gotMode v1.AgentMode
@@ -68,11 +70,12 @@ func TestRunStreamsInjectedTurnRunner(t *testing.T) {
 		return fake, nil
 	}
 
-	stream, err := client.Run(t.Context(), &v1.RunRequest{
-		SessionId: created.Session.Id,
-		Mode:      v1.AgentMode_AGENT_MODE_PLAN,
-		Input:     &v1.Input{Parts: []*v1.Part{{Content: &v1.Part_Text{Text: "hello"}}}},
-	})
+	input := v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: proto.String("hello")}.Build()}}.Build()
+	stream, err := client.Run(t.Context(), v1.RunRequest_builder{
+		SessionId: proto.String(sessionID),
+		Mode:      v1.AgentMode_AGENT_MODE_PLAN.Enum(),
+		Input:     input,
+	}.Build())
 	if err != nil {
 		t.Fatalf("Run() setup error = %v", err)
 	}
@@ -83,18 +86,18 @@ func TestRunStreamsInjectedTurnRunner(t *testing.T) {
 	if err := stream.Err(); err != nil {
 		t.Fatalf("Run() stream error = %v", err)
 	}
-	if gotSession.ID != created.Session.Id || gotMode != v1.AgentMode_AGENT_MODE_PLAN || fake.gotSessionID != created.Session.Id ||
+	if gotSession.ID != sessionID || gotMode != v1.AgentMode_AGENT_MODE_PLAN || fake.gotSessionID != sessionID ||
 		len(fake.gotInput.Parts) != 1 || fake.gotInput.Parts[0].Text != "hello" {
 		t.Fatalf("runtime factory inputs = session %+v, mode %v, runner input %+v", gotSession, gotMode, fake.gotInput)
 	}
-	if len(events) != 2 || !events[0].Partial || events[0].Id != "" || events[1].Id != "7" || events[1].FinishReason != v1.FinishReason_FINISH_REASON_STOP {
+	if len(events) != 2 || !events[0].GetPartial() || events[0].GetId() != "" || events[1].GetId() != "7" || events[1].GetFinishReason() != v1.FinishReason_FINISH_REASON_STOP {
 		t.Fatalf("Run() events = %+v", events)
 	}
 }
 
 func TestRunUsesExpectedErrorCodesBeforeRuntimeExists(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
-	stream, err := client.Run(t.Context(), &v1.RunRequest{})
+	stream, err := client.Run(t.Context(), v1.RunRequest_builder{}.Build())
 	if err == nil {
 		for stream.Receive() {
 		}
@@ -107,7 +110,7 @@ func TestRunUsesExpectedErrorCodesBeforeRuntimeExists(t *testing.T) {
 	handler.turnRunnerFactory = func(context.Context, store.Session, v1.AgentMode) (TurnRunner, error) {
 		return &fakeTurnRunner{}, nil
 	}
-	stream, err = client.Run(t.Context(), &v1.RunRequest{SessionId: "session-1"})
+	stream, err = client.Run(t.Context(), v1.RunRequest_builder{SessionId: proto.String("session-1")}.Build())
 	if err == nil {
 		for stream.Receive() {
 		}

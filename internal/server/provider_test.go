@@ -14,40 +14,44 @@ import (
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestProviderAndModelHandlers(t *testing.T) {
 	client, registry := newTestClient(t, staticDiscoverer{models: []provider.Model{{ID: "discovered-model"}}})
 
-	listed, err := client.ListProviders(t.Context(), &v1.ListProvidersRequest{})
+	listed, err := client.ListProviders(t.Context(), v1.ListProvidersRequest_builder{}.Build())
 	if err != nil {
 		t.Fatalf("ListProviders() error = %v", err)
 	}
-	if got, want := len(listed.Providers), 5; got != want {
+	providers := listed.GetProviders()
+	if got, want := len(providers), 5; got != want {
 		t.Fatalf("len(ListProviders().Providers) = %d, want %d", got, want)
 	}
-	if listed.Providers[0].Id != "anthropic" || !listed.Providers[0].Builtin {
-		t.Fatalf("first provider = %+v, want built-in Anthropic", listed.Providers[0])
+	if providers[0].GetId() != "anthropic" || !providers[0].GetBuiltin() {
+		t.Fatalf("first provider = %+v, want built-in Anthropic", providers[0])
 	}
 
 	apiKey := "test-api-key"
-	saved, err := client.SaveProvider(t.Context(), &v1.SaveProviderRequest{
-		Id:      "custom",
-		Name:    "Custom",
-		Type:    v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES,
-		BaseUrl: "https://models.example/v1",
-		ApiKey:  &apiKey,
-		ModelOverrides: []*v1.Model{{
-			Id:                     "private-model",
-			ReasoningEfforts:       []string{"low", "max"},
-			DefaultReasoningEffort: "max",
-		}},
-	})
+	modelOverride := v1.Model_builder{
+		Id:                     proto.String("private-model"),
+		ReasoningEfforts:       []string{"low", "max"},
+		DefaultReasoningEffort: proto.String("max"),
+	}.Build()
+	saved, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
+		Id:             proto.String("custom"),
+		Name:           proto.String("Custom"),
+		Type:           v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES.Enum(),
+		BaseUrl:        proto.String("https://models.example/v1"),
+		ApiKey:         proto.String(apiKey),
+		ModelOverrides: []*v1.Model{modelOverride},
+	}.Build())
 	if err != nil {
 		t.Fatalf("SaveProvider() error = %v", err)
 	}
-	if saved.Provider.Id != "custom" || !saved.Provider.Configured || saved.Provider.Builtin {
-		t.Fatalf("SaveProvider() = %+v, want configured custom provider", saved.Provider)
+	savedProvider := saved.GetProvider()
+	if savedProvider.GetId() != "custom" || !savedProvider.GetConfigured() || savedProvider.GetBuiltin() {
+		t.Fatalf("SaveProvider() = %+v, want configured custom provider", savedProvider)
 	}
 	stored, err := registry.Get(t.Context(), "custom")
 	if err != nil {
@@ -57,22 +61,19 @@ func TestProviderAndModelHandlers(t *testing.T) {
 		t.Fatal("SaveProvider() did not persist the API key")
 	}
 
-	updated, err := client.SaveProvider(t.Context(), &v1.SaveProviderRequest{
-		Id:      "custom",
-		Name:    "Custom Updated",
-		Type:    v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES,
-		BaseUrl: "https://models.example/v1",
-		ModelOverrides: []*v1.Model{{
-			Id:                     "private-model",
-			ReasoningEfforts:       []string{"low", "max"},
-			DefaultReasoningEffort: "max",
-		}},
-	})
+	updated, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
+		Id:             proto.String("custom"),
+		Name:           proto.String("Custom Updated"),
+		Type:           v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES.Enum(),
+		BaseUrl:        proto.String("https://models.example/v1"),
+		ModelOverrides: []*v1.Model{modelOverride},
+	}.Build())
 	if err != nil {
 		t.Fatalf("SaveProvider(omit API key) error = %v", err)
 	}
-	if updated.Provider.Name != "Custom Updated" || !updated.Provider.Configured {
-		t.Fatalf("SaveProvider(omit API key) = %+v", updated.Provider)
+	updatedProvider := updated.GetProvider()
+	if updatedProvider.GetName() != "Custom Updated" || !updatedProvider.GetConfigured() {
+		t.Fatalf("SaveProvider(omit API key) = %+v", updatedProvider)
 	}
 	stored, err = registry.Get(t.Context(), "custom")
 	if err != nil {
@@ -82,29 +83,29 @@ func TestProviderAndModelHandlers(t *testing.T) {
 		t.Fatal("omitted API key did not preserve the stored credential")
 	}
 
-	models, err := client.ListModels(t.Context(), &v1.ListModelsRequest{ProviderId: "custom"})
+	models, err := client.ListModels(t.Context(), v1.ListModelsRequest_builder{ProviderId: proto.String("custom")}.Build())
 	if err != nil {
 		t.Fatalf("ListModels() error = %v", err)
 	}
-	if models.RefreshedAt != 0 || len(models.Models) != 1 || models.Models[0].Id != "private-model" {
+	if models.GetRefreshedAt() != 0 || len(models.GetModels()) != 1 || models.GetModels()[0].GetId() != "private-model" {
 		t.Fatalf("ListModels() = %+v, want local override only", models)
 	}
-	if !slices.Equal(models.Models[0].ReasoningEfforts, []string{"low", "max"}) {
-		t.Fatalf("ListModels().Models[0].ReasoningEfforts = %v", models.Models[0].ReasoningEfforts)
+	if !slices.Equal(models.GetModels()[0].GetReasoningEfforts(), []string{"low", "max"}) {
+		t.Fatalf("ListModels().Models[0].ReasoningEfforts = %v", models.GetModels()[0].GetReasoningEfforts())
 	}
 
-	refreshed, err := client.RefreshModels(t.Context(), &v1.RefreshModelsRequest{ProviderId: "custom"})
+	refreshed, err := client.RefreshModels(t.Context(), v1.RefreshModelsRequest_builder{ProviderId: proto.String("custom")}.Build())
 	if err != nil {
 		t.Fatalf("RefreshModels() error = %v", err)
 	}
-	if refreshed.RefreshedAt == 0 || !containsModel(refreshed.Models, "private-model") || !containsModel(refreshed.Models, "discovered-model") {
+	if refreshed.GetRefreshedAt() == 0 || !containsModel(refreshed.GetModels(), "private-model") || !containsModel(refreshed.GetModels(), "discovered-model") {
 		t.Fatalf("RefreshModels() = %+v, want refreshed private and discovered models", refreshed)
 	}
 
-	if _, err := client.DeleteProvider(t.Context(), &v1.DeleteProviderRequest{ProviderId: "custom"}); err != nil {
+	if _, err := client.DeleteProvider(t.Context(), v1.DeleteProviderRequest_builder{ProviderId: proto.String("custom")}.Build()); err != nil {
 		t.Fatalf("DeleteProvider() error = %v", err)
 	}
-	if _, err := client.ListModels(t.Context(), &v1.ListModelsRequest{ProviderId: "custom"}); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := client.ListModels(t.Context(), v1.ListModelsRequest_builder{ProviderId: proto.String("custom")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ListModels(deleted) code = %v, want not_found; error = %v", connect.CodeOf(err), err)
 	}
 }
@@ -112,30 +113,30 @@ func TestProviderAndModelHandlers(t *testing.T) {
 func TestProviderAndModelHandlersMapErrors(t *testing.T) {
 	client, _ := newTestClient(t, staticDiscoverer{err: errors.New("offline")})
 
-	if _, err := client.SaveProvider(t.Context(), &v1.SaveProviderRequest{
-		Id:   "invalid",
-		Name: "Invalid",
-		Type: v1.ProviderType_PROVIDER_TYPE_UNSPECIFIED,
-	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
+		Id:   proto.String("invalid"),
+		Name: proto.String("Invalid"),
+		Type: v1.ProviderType_PROVIDER_TYPE_UNSPECIFIED.Enum(),
+	}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("SaveProvider(unspecified type) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.SaveProvider(t.Context(), &v1.SaveProviderRequest{
-		Id:   "openai",
-		Name: "OpenAI",
-		Type: v1.ProviderType_PROVIDER_TYPE_ANTHROPIC,
-	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
+		Id:   proto.String("openai"),
+		Name: proto.String("OpenAI"),
+		Type: v1.ProviderType_PROVIDER_TYPE_ANTHROPIC.Enum(),
+	}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("SaveProvider(change built-in type) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.DeleteProvider(t.Context(), &v1.DeleteProviderRequest{ProviderId: "openai"}); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	if _, err := client.DeleteProvider(t.Context(), v1.DeleteProviderRequest_builder{ProviderId: proto.String("openai")}.Build()); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeleteProvider(built-in) code = %v, want failed_precondition; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.ListModels(t.Context(), &v1.ListModelsRequest{ProviderId: "missing"}); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := client.ListModels(t.Context(), v1.ListModelsRequest_builder{ProviderId: proto.String("missing")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ListModels(missing) code = %v, want not_found; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.ListModels(t.Context(), &v1.ListModelsRequest{}); connect.CodeOf(err) != connect.CodeInvalidArgument {
+	if _, err := client.ListModels(t.Context(), v1.ListModelsRequest_builder{}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListModels(empty provider) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.RefreshModels(t.Context(), &v1.RefreshModelsRequest{ProviderId: "openai"}); connect.CodeOf(err) != connect.CodeUnavailable {
+	if _, err := client.RefreshModels(t.Context(), v1.RefreshModelsRequest_builder{ProviderId: proto.String("openai")}.Build()); connect.CodeOf(err) != connect.CodeUnavailable {
 		t.Fatalf("RefreshModels(offline) code = %v, want unavailable; error = %v", connect.CodeOf(err), err)
 	}
 }
@@ -217,7 +218,7 @@ func openTestStore(t *testing.T) *store.Store {
 
 func containsModel(models []*v1.Model, id string) bool {
 	for _, model := range models {
-		if model.Id == id {
+		if model.GetId() == id {
 			return true
 		}
 	}

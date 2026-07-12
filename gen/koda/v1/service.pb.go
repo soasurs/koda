@@ -10,7 +10,6 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
-	sync "sync"
 	unsafe "unsafe"
 )
 
@@ -69,11 +68,6 @@ func (x AgentMode) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use AgentMode.Descriptor instead.
-func (AgentMode) EnumDescriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{0}
-}
-
 // Role identifies the participant represented by a message.
 type Role int32
 
@@ -123,11 +117,6 @@ func (Role) Type() protoreflect.EnumType {
 
 func (x Role) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use Role.Descriptor instead.
-func (Role) EnumDescriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{1}
 }
 
 // FinishReason identifies why a model generation ended.
@@ -185,11 +174,6 @@ func (x FinishReason) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use FinishReason.Descriptor instead.
-func (FinishReason) EnumDescriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{2}
-}
-
 // ProviderType selects the adapter used to communicate with a provider.
 type ProviderType int32
 
@@ -244,11 +228,6 @@ func (x ProviderType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use ProviderType.Descriptor instead.
-func (ProviderType) EnumDescriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{3}
-}
-
 // ImageDetail controls the fidelity at which a model processes an image.
 type ImageDetail int32
 
@@ -296,11 +275,6 @@ func (ImageDetail) Type() protoreflect.EnumType {
 
 func (x ImageDetail) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ImageDetail.Descriptor instead.
-func (ImageDetail) EnumDescriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{4}
 }
 
 // FileAccess controls which filesystem operations are automatically allowed
@@ -360,11 +334,6 @@ func (x FileAccess) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use FileAccess.Descriptor instead.
-func (FileAccess) EnumDescriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{5}
-}
-
 // ShellAccess controls whether arbitrary shell commands require approval.
 type ShellAccess int32
 
@@ -414,11 +383,6 @@ func (x ShellAccess) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use ShellAccess.Descriptor instead.
-func (ShellAccess) EnumDescriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{6}
-}
-
 // ToolApprovalKind identifies the capability requested by a pending approval.
 type ToolApprovalKind int32
 
@@ -465,11 +429,6 @@ func (ToolApprovalKind) Type() protoreflect.EnumType {
 
 func (x ToolApprovalKind) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ToolApprovalKind.Descriptor instead.
-func (ToolApprovalKind) EnumDescriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{7}
 }
 
 // ToolApprovalScope identifies the widest affected location of a request.
@@ -522,11 +481,6 @@ func (x ToolApprovalScope) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use ToolApprovalScope.Descriptor instead.
-func (ToolApprovalScope) EnumDescriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{8}
-}
-
 // FileChangeKind identifies the filesystem effect represented by a diff.
 type FileChangeKind int32
 
@@ -573,11 +527,6 @@ func (FileChangeKind) Type() protoreflect.EnumType {
 
 func (x FileChangeKind) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use FileChangeKind.Descriptor instead.
-func (FileChangeKind) EnumDescriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{9}
 }
 
 // DiffLineKind identifies how one displayed line participates in a diff hunk.
@@ -628,22 +577,16 @@ func (x DiffLineKind) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use DiffLineKind.Descriptor instead.
-func (DiffLineKind) EnumDescriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{10}
-}
-
 // RunRequest starts one user turn in an existing session.
 type RunRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// session_id references Session.id.
-	SessionId string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	// input must contain at least one part.
-	Input *Input `protobuf:"bytes,2,opt,name=input,proto3" json:"input,omitempty"`
-	// mode must be BUILD or PLAN.
-	Mode          AgentMode `protobuf:"varint,3,opt,name=mode,proto3,enum=koda.v1.AgentMode" json:"mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_SessionId   *string                `protobuf:"bytes,1,opt,name=session_id,json=sessionId"`
+	xxx_hidden_Input       *Input                 `protobuf:"bytes,2,opt,name=input"`
+	xxx_hidden_Mode        AgentMode              `protobuf:"varint,3,opt,name=mode,enum=koda.v1.AgentMode"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *RunRequest) Reset() {
@@ -671,44 +614,114 @@ func (x *RunRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RunRequest.ProtoReflect.Descriptor instead.
-func (*RunRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{0}
-}
-
 func (x *RunRequest) GetSessionId() string {
 	if x != nil {
-		return x.SessionId
+		if x.xxx_hidden_SessionId != nil {
+			return *x.xxx_hidden_SessionId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *RunRequest) GetInput() *Input {
 	if x != nil {
-		return x.Input
+		return x.xxx_hidden_Input
 	}
 	return nil
 }
 
 func (x *RunRequest) GetMode() AgentMode {
 	if x != nil {
-		return x.Mode
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 2) {
+			return x.xxx_hidden_Mode
+		}
 	}
 	return AgentMode_AGENT_MODE_UNSPECIFIED
 }
 
+func (x *RunRequest) SetSessionId(v string) {
+	x.xxx_hidden_SessionId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *RunRequest) SetInput(v *Input) {
+	x.xxx_hidden_Input = v
+}
+
+func (x *RunRequest) SetMode(v AgentMode) {
+	x.xxx_hidden_Mode = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *RunRequest) HasSessionId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *RunRequest) HasInput() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Input != nil
+}
+
+func (x *RunRequest) HasMode() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *RunRequest) ClearSessionId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_SessionId = nil
+}
+
+func (x *RunRequest) ClearInput() {
+	x.xxx_hidden_Input = nil
+}
+
+func (x *RunRequest) ClearMode() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Mode = AgentMode_AGENT_MODE_UNSPECIFIED
+}
+
+type RunRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// session_id references Session.id.
+	SessionId *string
+	// input must contain at least one part.
+	Input *Input
+	// mode must be BUILD or PLAN.
+	Mode *AgentMode
+}
+
+func (b0 RunRequest_builder) Build() *RunRequest {
+	m0 := &RunRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.SessionId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_SessionId = b.SessionId
+	}
+	x.xxx_hidden_Input = b.Input
+	if b.Mode != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Mode = *b.Mode
+	}
+	return m0
+}
+
 // RunResponse is one frame in a running turn.
 type RunResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Types that are valid to be assigned to Payload:
-	//
-	//	*RunResponse_Event
-	//	*RunResponse_Approval
-	//	*RunResponse_Completed
-	//	*RunResponse_QuestionPrompt
-	Payload       isRunResponse_Payload `protobuf_oneof:"payload"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Payload isRunResponse_Payload  `protobuf_oneof:"payload"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *RunResponse) Reset() {
@@ -736,21 +749,9 @@ func (x *RunResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RunResponse.ProtoReflect.Descriptor instead.
-func (*RunResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *RunResponse) GetPayload() isRunResponse_Payload {
-	if x != nil {
-		return x.Payload
-	}
-	return nil
-}
-
 func (x *RunResponse) GetEvent() *Event {
 	if x != nil {
-		if x, ok := x.Payload.(*RunResponse_Event); ok {
+		if x, ok := x.xxx_hidden_Payload.(*runResponse_Event); ok {
 			return x.Event
 		}
 	}
@@ -759,7 +760,7 @@ func (x *RunResponse) GetEvent() *Event {
 
 func (x *RunResponse) GetApproval() *ToolApproval {
 	if x != nil {
-		if x, ok := x.Payload.(*RunResponse_Approval); ok {
+		if x, ok := x.xxx_hidden_Payload.(*runResponse_Approval); ok {
 			return x.Approval
 		}
 	}
@@ -768,7 +769,7 @@ func (x *RunResponse) GetApproval() *ToolApproval {
 
 func (x *RunResponse) GetCompleted() *RunCompleted {
 	if x != nil {
-		if x, ok := x.Payload.(*RunResponse_Completed); ok {
+		if x, ok := x.xxx_hidden_Payload.(*runResponse_Completed); ok {
 			return x.Completed
 		}
 	}
@@ -777,53 +778,222 @@ func (x *RunResponse) GetCompleted() *RunCompleted {
 
 func (x *RunResponse) GetQuestionPrompt() *QuestionPrompt {
 	if x != nil {
-		if x, ok := x.Payload.(*RunResponse_QuestionPrompt); ok {
+		if x, ok := x.xxx_hidden_Payload.(*runResponse_QuestionPrompt); ok {
 			return x.QuestionPrompt
 		}
 	}
 	return nil
 }
 
+func (x *RunResponse) SetEvent(v *Event) {
+	if v == nil {
+		x.xxx_hidden_Payload = nil
+		return
+	}
+	x.xxx_hidden_Payload = &runResponse_Event{v}
+}
+
+func (x *RunResponse) SetApproval(v *ToolApproval) {
+	if v == nil {
+		x.xxx_hidden_Payload = nil
+		return
+	}
+	x.xxx_hidden_Payload = &runResponse_Approval{v}
+}
+
+func (x *RunResponse) SetCompleted(v *RunCompleted) {
+	if v == nil {
+		x.xxx_hidden_Payload = nil
+		return
+	}
+	x.xxx_hidden_Payload = &runResponse_Completed{v}
+}
+
+func (x *RunResponse) SetQuestionPrompt(v *QuestionPrompt) {
+	if v == nil {
+		x.xxx_hidden_Payload = nil
+		return
+	}
+	x.xxx_hidden_Payload = &runResponse_QuestionPrompt{v}
+}
+
+func (x *RunResponse) HasPayload() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Payload != nil
+}
+
+func (x *RunResponse) HasEvent() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Payload.(*runResponse_Event)
+	return ok
+}
+
+func (x *RunResponse) HasApproval() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Payload.(*runResponse_Approval)
+	return ok
+}
+
+func (x *RunResponse) HasCompleted() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Payload.(*runResponse_Completed)
+	return ok
+}
+
+func (x *RunResponse) HasQuestionPrompt() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Payload.(*runResponse_QuestionPrompt)
+	return ok
+}
+
+func (x *RunResponse) ClearPayload() {
+	x.xxx_hidden_Payload = nil
+}
+
+func (x *RunResponse) ClearEvent() {
+	if _, ok := x.xxx_hidden_Payload.(*runResponse_Event); ok {
+		x.xxx_hidden_Payload = nil
+	}
+}
+
+func (x *RunResponse) ClearApproval() {
+	if _, ok := x.xxx_hidden_Payload.(*runResponse_Approval); ok {
+		x.xxx_hidden_Payload = nil
+	}
+}
+
+func (x *RunResponse) ClearCompleted() {
+	if _, ok := x.xxx_hidden_Payload.(*runResponse_Completed); ok {
+		x.xxx_hidden_Payload = nil
+	}
+}
+
+func (x *RunResponse) ClearQuestionPrompt() {
+	if _, ok := x.xxx_hidden_Payload.(*runResponse_QuestionPrompt); ok {
+		x.xxx_hidden_Payload = nil
+	}
+}
+
+const RunResponse_Payload_not_set_case case_RunResponse_Payload = 0
+const RunResponse_Event_case case_RunResponse_Payload = 1
+const RunResponse_Approval_case case_RunResponse_Payload = 2
+const RunResponse_Completed_case case_RunResponse_Payload = 3
+const RunResponse_QuestionPrompt_case case_RunResponse_Payload = 4
+
+func (x *RunResponse) WhichPayload() case_RunResponse_Payload {
+	if x == nil {
+		return RunResponse_Payload_not_set_case
+	}
+	switch x.xxx_hidden_Payload.(type) {
+	case *runResponse_Event:
+		return RunResponse_Event_case
+	case *runResponse_Approval:
+		return RunResponse_Approval_case
+	case *runResponse_Completed:
+		return RunResponse_Completed_case
+	case *runResponse_QuestionPrompt:
+		return RunResponse_QuestionPrompt_case
+	default:
+		return RunResponse_Payload_not_set_case
+	}
+}
+
+type RunResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Fields of oneof xxx_hidden_Payload:
+	// event contains a transient partial event or a complete durable event.
+	Event *Event
+	// approval blocks one tool call until ResolveToolApproval is called.
+	Approval *ToolApproval
+	// completed is emitted only after the full turn finishes successfully.
+	Completed *RunCompleted
+	// question_prompt blocks one ask_questions tool call until the frontend
+	// submits answers or cancels the prompt.
+	QuestionPrompt *QuestionPrompt
+	// -- end of xxx_hidden_Payload
+}
+
+func (b0 RunResponse_builder) Build() *RunResponse {
+	m0 := &RunResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Event != nil {
+		x.xxx_hidden_Payload = &runResponse_Event{b.Event}
+	}
+	if b.Approval != nil {
+		x.xxx_hidden_Payload = &runResponse_Approval{b.Approval}
+	}
+	if b.Completed != nil {
+		x.xxx_hidden_Payload = &runResponse_Completed{b.Completed}
+	}
+	if b.QuestionPrompt != nil {
+		x.xxx_hidden_Payload = &runResponse_QuestionPrompt{b.QuestionPrompt}
+	}
+	return m0
+}
+
+type case_RunResponse_Payload protoreflect.FieldNumber
+
+func (x case_RunResponse_Payload) String() string {
+	md := file_koda_v1_service_proto_msgTypes[1].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
 type isRunResponse_Payload interface {
 	isRunResponse_Payload()
 }
 
-type RunResponse_Event struct {
+type runResponse_Event struct {
 	// event contains a transient partial event or a complete durable event.
-	Event *Event `protobuf:"bytes,1,opt,name=event,proto3,oneof"`
+	Event *Event `protobuf:"bytes,1,opt,name=event,oneof"`
 }
 
-type RunResponse_Approval struct {
+type runResponse_Approval struct {
 	// approval blocks one tool call until ResolveToolApproval is called.
-	Approval *ToolApproval `protobuf:"bytes,2,opt,name=approval,proto3,oneof"`
+	Approval *ToolApproval `protobuf:"bytes,2,opt,name=approval,oneof"`
 }
 
-type RunResponse_Completed struct {
+type runResponse_Completed struct {
 	// completed is emitted only after the full turn finishes successfully.
-	Completed *RunCompleted `protobuf:"bytes,3,opt,name=completed,proto3,oneof"`
+	Completed *RunCompleted `protobuf:"bytes,3,opt,name=completed,oneof"`
 }
 
-type RunResponse_QuestionPrompt struct {
+type runResponse_QuestionPrompt struct {
 	// question_prompt blocks one ask_questions tool call until the frontend
 	// submits answers or cancels the prompt.
-	QuestionPrompt *QuestionPrompt `protobuf:"bytes,4,opt,name=question_prompt,json=questionPrompt,proto3,oneof"`
+	QuestionPrompt *QuestionPrompt `protobuf:"bytes,4,opt,name=question_prompt,json=questionPrompt,oneof"`
 }
 
-func (*RunResponse_Event) isRunResponse_Payload() {}
+func (*runResponse_Event) isRunResponse_Payload() {}
 
-func (*RunResponse_Approval) isRunResponse_Payload() {}
+func (*runResponse_Approval) isRunResponse_Payload() {}
 
-func (*RunResponse_Completed) isRunResponse_Payload() {}
+func (*runResponse_Completed) isRunResponse_Payload() {}
 
-func (*RunResponse_QuestionPrompt) isRunResponse_Payload() {}
+func (*runResponse_QuestionPrompt) isRunResponse_Payload() {}
 
 // RunCompleted marks the successful end of a turn stream.
 type RunCompleted struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// turn_id identifies the committed turn shared by all of its events.
-	TurnId        string `protobuf:"bytes,1,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_TurnId      *string                `protobuf:"bytes,1,opt,name=turn_id,json=turnId"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *RunCompleted) Reset() {
@@ -851,25 +1021,57 @@ func (x *RunCompleted) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RunCompleted.ProtoReflect.Descriptor instead.
-func (*RunCompleted) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{2}
-}
-
 func (x *RunCompleted) GetTurnId() string {
 	if x != nil {
-		return x.TurnId
+		if x.xxx_hidden_TurnId != nil {
+			return *x.xxx_hidden_TurnId
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *RunCompleted) SetTurnId(v string) {
+	x.xxx_hidden_TurnId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
+}
+
+func (x *RunCompleted) HasTurnId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *RunCompleted) ClearTurnId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_TurnId = nil
+}
+
+type RunCompleted_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// turn_id identifies the committed turn shared by all of its events.
+	TurnId *string
+}
+
+func (b0 RunCompleted_builder) Build() *RunCompleted {
+	m0 := &RunCompleted{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.TurnId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_TurnId = b.TurnId
+	}
+	return m0
+}
+
 // Input is the user-authored content that starts a turn.
 type Input struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// parts preserve their original order and must not be empty.
-	Parts         []*Part `protobuf:"bytes,1,rep,name=parts,proto3" json:"parts,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Parts *[]*Part               `protobuf:"bytes,1,rep,name=parts"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Input) Reset() {
@@ -897,30 +1099,40 @@ func (x *Input) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Input.ProtoReflect.Descriptor instead.
-func (*Input) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{3}
-}
-
 func (x *Input) GetParts() []*Part {
 	if x != nil {
-		return x.Parts
+		if x.xxx_hidden_Parts != nil {
+			return *x.xxx_hidden_Parts
+		}
 	}
 	return nil
 }
 
+func (x *Input) SetParts(v []*Part) {
+	x.xxx_hidden_Parts = &v
+}
+
+type Input_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// parts preserve their original order and must not be empty.
+	Parts []*Part
+}
+
+func (b0 Input_builder) Build() *Input {
+	m0 := &Input{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Parts = &b.Parts
+	return m0
+}
+
 // Part is one item in a multimodal user input.
 type Part struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Exactly one content variant must be set.
-	//
-	// Types that are valid to be assigned to Content:
-	//
-	//	*Part_Text
-	//	*Part_Image
-	Content       isPart_Content `protobuf_oneof:"content"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Content isPart_Content         `protobuf_oneof:"content"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Part) Reset() {
@@ -948,21 +1160,9 @@ func (x *Part) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Part.ProtoReflect.Descriptor instead.
-func (*Part) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *Part) GetContent() isPart_Content {
-	if x != nil {
-		return x.Content
-	}
-	return nil
-}
-
 func (x *Part) GetText() string {
 	if x != nil {
-		if x, ok := x.Content.(*Part_Text); ok {
+		if x, ok := x.xxx_hidden_Content.(*part_Text); ok {
 			return x.Text
 		}
 	}
@@ -971,43 +1171,142 @@ func (x *Part) GetText() string {
 
 func (x *Part) GetImage() *Image {
 	if x != nil {
-		if x, ok := x.Content.(*Part_Image); ok {
+		if x, ok := x.xxx_hidden_Content.(*part_Image); ok {
 			return x.Image
 		}
 	}
 	return nil
 }
 
+func (x *Part) SetText(v string) {
+	x.xxx_hidden_Content = &part_Text{v}
+}
+
+func (x *Part) SetImage(v *Image) {
+	if v == nil {
+		x.xxx_hidden_Content = nil
+		return
+	}
+	x.xxx_hidden_Content = &part_Image{v}
+}
+
+func (x *Part) HasContent() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Content != nil
+}
+
+func (x *Part) HasText() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Content.(*part_Text)
+	return ok
+}
+
+func (x *Part) HasImage() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Content.(*part_Image)
+	return ok
+}
+
+func (x *Part) ClearContent() {
+	x.xxx_hidden_Content = nil
+}
+
+func (x *Part) ClearText() {
+	if _, ok := x.xxx_hidden_Content.(*part_Text); ok {
+		x.xxx_hidden_Content = nil
+	}
+}
+
+func (x *Part) ClearImage() {
+	if _, ok := x.xxx_hidden_Content.(*part_Image); ok {
+		x.xxx_hidden_Content = nil
+	}
+}
+
+const Part_Content_not_set_case case_Part_Content = 0
+const Part_Text_case case_Part_Content = 1
+const Part_Image_case case_Part_Content = 2
+
+func (x *Part) WhichContent() case_Part_Content {
+	if x == nil {
+		return Part_Content_not_set_case
+	}
+	switch x.xxx_hidden_Content.(type) {
+	case *part_Text:
+		return Part_Text_case
+	case *part_Image:
+		return Part_Image_case
+	default:
+		return Part_Content_not_set_case
+	}
+}
+
+type Part_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Exactly one content variant must be set.
+
+	// Fields of oneof xxx_hidden_Content:
+	Text  *string
+	Image *Image
+	// -- end of xxx_hidden_Content
+}
+
+func (b0 Part_builder) Build() *Part {
+	m0 := &Part{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Text != nil {
+		x.xxx_hidden_Content = &part_Text{*b.Text}
+	}
+	if b.Image != nil {
+		x.xxx_hidden_Content = &part_Image{b.Image}
+	}
+	return m0
+}
+
+type case_Part_Content protoreflect.FieldNumber
+
+func (x case_Part_Content) String() string {
+	md := file_koda_v1_service_proto_msgTypes[4].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
 type isPart_Content interface {
 	isPart_Content()
 }
 
-type Part_Text struct {
-	Text string `protobuf:"bytes,1,opt,name=text,proto3,oneof"`
+type part_Text struct {
+	Text string `protobuf:"bytes,1,opt,name=text,oneof"`
 }
 
-type Part_Image struct {
-	Image *Image `protobuf:"bytes,2,opt,name=image,proto3,oneof"`
+type part_Image struct {
+	Image *Image `protobuf:"bytes,2,opt,name=image,oneof"`
 }
 
-func (*Part_Text) isPart_Content() {}
+func (*part_Text) isPart_Content() {}
 
-func (*Part_Image) isPart_Content() {}
+func (*part_Image) isPart_Content() {}
 
 // Image is an HTTPS URL or inline image payload.
 type Image struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Types that are valid to be assigned to Source:
-	//
-	//	*Image_Url
-	//	*Image_Data
-	Source isImage_Source `protobuf_oneof:"source"`
-	// mime_type is required when data is set and ignored for URL images.
-	MimeType string `protobuf:"bytes,3,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
-	// detail defaults to AUTO when unspecified.
-	Detail        ImageDetail `protobuf:"varint,4,opt,name=detail,proto3,enum=koda.v1.ImageDetail" json:"detail,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Source      isImage_Source         `protobuf_oneof:"source"`
+	xxx_hidden_MimeType    *string                `protobuf:"bytes,3,opt,name=mime_type,json=mimeType"`
+	xxx_hidden_Detail      ImageDetail            `protobuf:"varint,4,opt,name=detail,enum=koda.v1.ImageDetail"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Image) Reset() {
@@ -1035,21 +1334,9 @@ func (x *Image) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Image.ProtoReflect.Descriptor instead.
-func (*Image) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *Image) GetSource() isImage_Source {
-	if x != nil {
-		return x.Source
-	}
-	return nil
-}
-
 func (x *Image) GetUrl() string {
 	if x != nil {
-		if x, ok := x.Source.(*Image_Url); ok {
+		if x, ok := x.xxx_hidden_Source.(*image_Url); ok {
 			return x.Url
 		}
 	}
@@ -1058,7 +1345,7 @@ func (x *Image) GetUrl() string {
 
 func (x *Image) GetData() []byte {
 	if x != nil {
-		if x, ok := x.Source.(*Image_Data); ok {
+		if x, ok := x.xxx_hidden_Source.(*image_Data); ok {
 			return x.Data
 		}
 	}
@@ -1067,59 +1354,207 @@ func (x *Image) GetData() []byte {
 
 func (x *Image) GetMimeType() string {
 	if x != nil {
-		return x.MimeType
+		if x.xxx_hidden_MimeType != nil {
+			return *x.xxx_hidden_MimeType
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Image) GetDetail() ImageDetail {
 	if x != nil {
-		return x.Detail
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 2) {
+			return x.xxx_hidden_Detail
+		}
 	}
 	return ImageDetail_IMAGE_DETAIL_UNSPECIFIED
+}
+
+func (x *Image) SetUrl(v string) {
+	x.xxx_hidden_Source = &image_Url{v}
+}
+
+func (x *Image) SetData(v []byte) {
+	if v == nil {
+		v = []byte{}
+	}
+	x.xxx_hidden_Source = &image_Data{v}
+}
+
+func (x *Image) SetMimeType(v string) {
+	x.xxx_hidden_MimeType = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *Image) SetDetail(v ImageDetail) {
+	x.xxx_hidden_Detail = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *Image) HasSource() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Source != nil
+}
+
+func (x *Image) HasUrl() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Source.(*image_Url)
+	return ok
+}
+
+func (x *Image) HasData() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Source.(*image_Data)
+	return ok
+}
+
+func (x *Image) HasMimeType() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Image) HasDetail() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *Image) ClearSource() {
+	x.xxx_hidden_Source = nil
+}
+
+func (x *Image) ClearUrl() {
+	if _, ok := x.xxx_hidden_Source.(*image_Url); ok {
+		x.xxx_hidden_Source = nil
+	}
+}
+
+func (x *Image) ClearData() {
+	if _, ok := x.xxx_hidden_Source.(*image_Data); ok {
+		x.xxx_hidden_Source = nil
+	}
+}
+
+func (x *Image) ClearMimeType() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_MimeType = nil
+}
+
+func (x *Image) ClearDetail() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Detail = ImageDetail_IMAGE_DETAIL_UNSPECIFIED
+}
+
+const Image_Source_not_set_case case_Image_Source = 0
+const Image_Url_case case_Image_Source = 1
+const Image_Data_case case_Image_Source = 2
+
+func (x *Image) WhichSource() case_Image_Source {
+	if x == nil {
+		return Image_Source_not_set_case
+	}
+	switch x.xxx_hidden_Source.(type) {
+	case *image_Url:
+		return Image_Url_case
+	case *image_Data:
+		return Image_Data_case
+	default:
+		return Image_Source_not_set_case
+	}
+}
+
+type Image_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Fields of oneof xxx_hidden_Source:
+	// url must be an HTTPS image URL accepted by the selected provider.
+	Url *string
+	// data contains raw image bytes; Connect JSON represents it as base64.
+	Data []byte
+	// -- end of xxx_hidden_Source
+	// mime_type is required when data is set and ignored for URL images.
+	MimeType *string
+	// detail defaults to AUTO when unspecified.
+	Detail *ImageDetail
+}
+
+func (b0 Image_builder) Build() *Image {
+	m0 := &Image{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Url != nil {
+		x.xxx_hidden_Source = &image_Url{*b.Url}
+	}
+	if b.Data != nil {
+		x.xxx_hidden_Source = &image_Data{b.Data}
+	}
+	if b.MimeType != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_MimeType = b.MimeType
+	}
+	if b.Detail != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Detail = *b.Detail
+	}
+	return m0
+}
+
+type case_Image_Source protoreflect.FieldNumber
+
+func (x case_Image_Source) String() string {
+	md := file_koda_v1_service_proto_msgTypes[5].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
 }
 
 type isImage_Source interface {
 	isImage_Source()
 }
 
-type Image_Url struct {
+type image_Url struct {
 	// url must be an HTTPS image URL accepted by the selected provider.
-	Url string `protobuf:"bytes,1,opt,name=url,proto3,oneof"`
+	Url string `protobuf:"bytes,1,opt,name=url,oneof"`
 }
 
-type Image_Data struct {
+type image_Data struct {
 	// data contains raw image bytes; Connect JSON represents it as base64.
-	Data []byte `protobuf:"bytes,2,opt,name=data,proto3,oneof"`
+	Data []byte `protobuf:"bytes,2,opt,name=data,oneof"`
 }
 
-func (*Image_Url) isImage_Source() {}
+func (*image_Url) isImage_Source() {}
 
-func (*Image_Data) isImage_Source() {}
+func (*image_Data) isImage_Source() {}
 
 // ToolApproval describes a tool call awaiting a decision.
 type ToolApproval struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id is a koda-generated approval ID, distinct from the provider tool-call ID.
-	Id        string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	SessionId string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	TurnId    string `protobuf:"bytes,3,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
-	// tool_call_id correlates this approval with ToolCall.id.
-	ToolCallId string `protobuf:"bytes,4,opt,name=tool_call_id,json=toolCallId,proto3" json:"tool_call_id,omitempty"`
-	ToolName   string `protobuf:"bytes,5,opt,name=tool_name,json=toolName,proto3" json:"tool_name,omitempty"`
-	// summary is a short, display-safe description of the requested operation.
-	Summary string `protobuf:"bytes,6,opt,name=summary,proto3" json:"summary,omitempty"`
-	// arguments_json is the exact JSON object supplied by the model.
-	ArgumentsJson string `protobuf:"bytes,7,opt,name=arguments_json,json=argumentsJson,proto3" json:"arguments_json,omitempty"`
-	// file_changes is a proposed diff for predictable file mutations. It is
-	// empty for requests such as shell commands whose effects are unknown.
-	FileChanges []*FileChange     `protobuf:"bytes,8,rep,name=file_changes,json=fileChanges,proto3" json:"file_changes,omitempty"`
-	Kind        ToolApprovalKind  `protobuf:"varint,9,opt,name=kind,proto3,enum=koda.v1.ToolApprovalKind" json:"kind,omitempty"`
-	Scope       ToolApprovalScope `protobuf:"varint,10,opt,name=scope,proto3,enum=koda.v1.ToolApprovalScope" json:"scope,omitempty"`
-	// target_paths contains normalized absolute paths when they can be known.
-	TargetPaths   []string `protobuf:"bytes,11,rep,name=target_paths,json=targetPaths,proto3" json:"target_paths,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id            *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_SessionId     *string                `protobuf:"bytes,2,opt,name=session_id,json=sessionId"`
+	xxx_hidden_TurnId        *string                `protobuf:"bytes,3,opt,name=turn_id,json=turnId"`
+	xxx_hidden_ToolCallId    *string                `protobuf:"bytes,4,opt,name=tool_call_id,json=toolCallId"`
+	xxx_hidden_ToolName      *string                `protobuf:"bytes,5,opt,name=tool_name,json=toolName"`
+	xxx_hidden_Summary       *string                `protobuf:"bytes,6,opt,name=summary"`
+	xxx_hidden_ArgumentsJson *string                `protobuf:"bytes,7,opt,name=arguments_json,json=argumentsJson"`
+	xxx_hidden_FileChanges   *[]*FileChange         `protobuf:"bytes,8,rep,name=file_changes,json=fileChanges"`
+	xxx_hidden_Kind          ToolApprovalKind       `protobuf:"varint,9,opt,name=kind,enum=koda.v1.ToolApprovalKind"`
+	xxx_hidden_Scope         ToolApprovalScope      `protobuf:"varint,10,opt,name=scope,enum=koda.v1.ToolApprovalScope"`
+	xxx_hidden_TargetPaths   []string               `protobuf:"bytes,11,rep,name=target_paths,json=targetPaths"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *ToolApproval) Reset() {
@@ -1147,97 +1582,348 @@ func (x *ToolApproval) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ToolApproval.ProtoReflect.Descriptor instead.
-func (*ToolApproval) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{6}
-}
-
 func (x *ToolApproval) GetId() string {
 	if x != nil {
-		return x.Id
+		if x.xxx_hidden_Id != nil {
+			return *x.xxx_hidden_Id
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolApproval) GetSessionId() string {
 	if x != nil {
-		return x.SessionId
+		if x.xxx_hidden_SessionId != nil {
+			return *x.xxx_hidden_SessionId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolApproval) GetTurnId() string {
 	if x != nil {
-		return x.TurnId
+		if x.xxx_hidden_TurnId != nil {
+			return *x.xxx_hidden_TurnId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolApproval) GetToolCallId() string {
 	if x != nil {
-		return x.ToolCallId
+		if x.xxx_hidden_ToolCallId != nil {
+			return *x.xxx_hidden_ToolCallId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolApproval) GetToolName() string {
 	if x != nil {
-		return x.ToolName
+		if x.xxx_hidden_ToolName != nil {
+			return *x.xxx_hidden_ToolName
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolApproval) GetSummary() string {
 	if x != nil {
-		return x.Summary
+		if x.xxx_hidden_Summary != nil {
+			return *x.xxx_hidden_Summary
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolApproval) GetArgumentsJson() string {
 	if x != nil {
-		return x.ArgumentsJson
+		if x.xxx_hidden_ArgumentsJson != nil {
+			return *x.xxx_hidden_ArgumentsJson
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolApproval) GetFileChanges() []*FileChange {
 	if x != nil {
-		return x.FileChanges
+		if x.xxx_hidden_FileChanges != nil {
+			return *x.xxx_hidden_FileChanges
+		}
 	}
 	return nil
 }
 
 func (x *ToolApproval) GetKind() ToolApprovalKind {
 	if x != nil {
-		return x.Kind
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 8) {
+			return x.xxx_hidden_Kind
+		}
 	}
 	return ToolApprovalKind_TOOL_APPROVAL_KIND_UNSPECIFIED
 }
 
 func (x *ToolApproval) GetScope() ToolApprovalScope {
 	if x != nil {
-		return x.Scope
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 9) {
+			return x.xxx_hidden_Scope
+		}
 	}
 	return ToolApprovalScope_TOOL_APPROVAL_SCOPE_UNSPECIFIED
 }
 
 func (x *ToolApproval) GetTargetPaths() []string {
 	if x != nil {
-		return x.TargetPaths
+		return x.xxx_hidden_TargetPaths
 	}
 	return nil
 }
 
+func (x *ToolApproval) SetId(v string) {
+	x.xxx_hidden_Id = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 11)
+}
+
+func (x *ToolApproval) SetSessionId(v string) {
+	x.xxx_hidden_SessionId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 11)
+}
+
+func (x *ToolApproval) SetTurnId(v string) {
+	x.xxx_hidden_TurnId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 11)
+}
+
+func (x *ToolApproval) SetToolCallId(v string) {
+	x.xxx_hidden_ToolCallId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 11)
+}
+
+func (x *ToolApproval) SetToolName(v string) {
+	x.xxx_hidden_ToolName = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 11)
+}
+
+func (x *ToolApproval) SetSummary(v string) {
+	x.xxx_hidden_Summary = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 11)
+}
+
+func (x *ToolApproval) SetArgumentsJson(v string) {
+	x.xxx_hidden_ArgumentsJson = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 11)
+}
+
+func (x *ToolApproval) SetFileChanges(v []*FileChange) {
+	x.xxx_hidden_FileChanges = &v
+}
+
+func (x *ToolApproval) SetKind(v ToolApprovalKind) {
+	x.xxx_hidden_Kind = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 11)
+}
+
+func (x *ToolApproval) SetScope(v ToolApprovalScope) {
+	x.xxx_hidden_Scope = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 11)
+}
+
+func (x *ToolApproval) SetTargetPaths(v []string) {
+	x.xxx_hidden_TargetPaths = v
+}
+
+func (x *ToolApproval) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ToolApproval) HasSessionId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ToolApproval) HasTurnId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *ToolApproval) HasToolCallId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *ToolApproval) HasToolName() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *ToolApproval) HasSummary() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *ToolApproval) HasArgumentsJson() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *ToolApproval) HasKind() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
+func (x *ToolApproval) HasScope() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 9)
+}
+
+func (x *ToolApproval) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *ToolApproval) ClearSessionId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_SessionId = nil
+}
+
+func (x *ToolApproval) ClearTurnId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_TurnId = nil
+}
+
+func (x *ToolApproval) ClearToolCallId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_ToolCallId = nil
+}
+
+func (x *ToolApproval) ClearToolName() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_ToolName = nil
+}
+
+func (x *ToolApproval) ClearSummary() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_Summary = nil
+}
+
+func (x *ToolApproval) ClearArgumentsJson() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_ArgumentsJson = nil
+}
+
+func (x *ToolApproval) ClearKind() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_Kind = ToolApprovalKind_TOOL_APPROVAL_KIND_UNSPECIFIED
+}
+
+func (x *ToolApproval) ClearScope() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 9)
+	x.xxx_hidden_Scope = ToolApprovalScope_TOOL_APPROVAL_SCOPE_UNSPECIFIED
+}
+
+type ToolApproval_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// id is a koda-generated approval ID, distinct from the provider tool-call ID.
+	Id        *string
+	SessionId *string
+	TurnId    *string
+	// tool_call_id correlates this approval with ToolCall.id.
+	ToolCallId *string
+	ToolName   *string
+	// summary is a short, display-safe description of the requested operation.
+	Summary *string
+	// arguments_json is the exact JSON object supplied by the model.
+	ArgumentsJson *string
+	// file_changes is a proposed diff for predictable file mutations. It is
+	// empty for requests such as shell commands whose effects are unknown.
+	FileChanges []*FileChange
+	Kind        *ToolApprovalKind
+	Scope       *ToolApprovalScope
+	// target_paths contains normalized absolute paths when they can be known.
+	TargetPaths []string
+}
+
+func (b0 ToolApproval_builder) Build() *ToolApproval {
+	m0 := &ToolApproval{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 11)
+		x.xxx_hidden_Id = b.Id
+	}
+	if b.SessionId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 11)
+		x.xxx_hidden_SessionId = b.SessionId
+	}
+	if b.TurnId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 11)
+		x.xxx_hidden_TurnId = b.TurnId
+	}
+	if b.ToolCallId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 11)
+		x.xxx_hidden_ToolCallId = b.ToolCallId
+	}
+	if b.ToolName != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 11)
+		x.xxx_hidden_ToolName = b.ToolName
+	}
+	if b.Summary != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 11)
+		x.xxx_hidden_Summary = b.Summary
+	}
+	if b.ArgumentsJson != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 11)
+		x.xxx_hidden_ArgumentsJson = b.ArgumentsJson
+	}
+	x.xxx_hidden_FileChanges = &b.FileChanges
+	if b.Kind != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 11)
+		x.xxx_hidden_Kind = *b.Kind
+	}
+	if b.Scope != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 11)
+		x.xxx_hidden_Scope = *b.Scope
+	}
+	x.xxx_hidden_TargetPaths = b.TargetPaths
+	return m0
+}
+
 // ResolveToolApprovalRequest resolves one pending approval exactly once.
 type ResolveToolApprovalRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// approval_id references ToolApproval.id and can be resolved only once.
-	ApprovalId string `protobuf:"bytes,1,opt,name=approval_id,json=approvalId,proto3" json:"approval_id,omitempty"`
-	// approved=false returns a model-visible rejection instead of executing the tool.
-	Approved      bool `protobuf:"varint,2,opt,name=approved,proto3" json:"approved,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_ApprovalId  *string                `protobuf:"bytes,1,opt,name=approval_id,json=approvalId"`
+	xxx_hidden_Approved    bool                   `protobuf:"varint,2,opt,name=approved"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ResolveToolApprovalRequest) Reset() {
@@ -1265,28 +1951,84 @@ func (x *ResolveToolApprovalRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ResolveToolApprovalRequest.ProtoReflect.Descriptor instead.
-func (*ResolveToolApprovalRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{7}
-}
-
 func (x *ResolveToolApprovalRequest) GetApprovalId() string {
 	if x != nil {
-		return x.ApprovalId
+		if x.xxx_hidden_ApprovalId != nil {
+			return *x.xxx_hidden_ApprovalId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ResolveToolApprovalRequest) GetApproved() bool {
 	if x != nil {
-		return x.Approved
+		return x.xxx_hidden_Approved
 	}
 	return false
 }
 
+func (x *ResolveToolApprovalRequest) SetApprovalId(v string) {
+	x.xxx_hidden_ApprovalId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *ResolveToolApprovalRequest) SetApproved(v bool) {
+	x.xxx_hidden_Approved = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *ResolveToolApprovalRequest) HasApprovalId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ResolveToolApprovalRequest) HasApproved() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ResolveToolApprovalRequest) ClearApprovalId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_ApprovalId = nil
+}
+
+func (x *ResolveToolApprovalRequest) ClearApproved() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Approved = false
+}
+
+type ResolveToolApprovalRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// approval_id references ToolApproval.id and can be resolved only once.
+	ApprovalId *string
+	// approved=false returns a model-visible rejection instead of executing the tool.
+	Approved *bool
+}
+
+func (b0 ResolveToolApprovalRequest_builder) Build() *ResolveToolApprovalRequest {
+	m0 := &ResolveToolApprovalRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.ApprovalId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_ApprovalId = b.ApprovalId
+	}
+	if b.Approved != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Approved = *b.Approved
+	}
+	return m0
+}
+
 // ResolveToolApprovalResponse acknowledges a recorded decision.
 type ResolveToolApprovalResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1316,25 +2058,31 @@ func (x *ResolveToolApprovalResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ResolveToolApprovalResponse.ProtoReflect.Descriptor instead.
-func (*ResolveToolApprovalResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{8}
+type ResolveToolApprovalResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 ResolveToolApprovalResponse_builder) Build() *ResolveToolApprovalResponse {
+	m0 := &ResolveToolApprovalResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
 }
 
 // QuestionPrompt is a transient request for frontend-authored input. The
 // prompt itself is not persisted; submitted answers become the tool result.
 type QuestionPrompt struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id is generated by koda and resolves exactly once.
-	Id        string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	SessionId string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	TurnId    string `protobuf:"bytes,3,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
-	// tool_call_id correlates this prompt with the ask_questions ToolCall.
-	ToolCallId string `protobuf:"bytes,4,opt,name=tool_call_id,json=toolCallId,proto3" json:"tool_call_id,omitempty"`
-	// questions contains between one and three items.
-	Questions     []*Question `protobuf:"bytes,5,rep,name=questions,proto3" json:"questions,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id          *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_SessionId   *string                `protobuf:"bytes,2,opt,name=session_id,json=sessionId"`
+	xxx_hidden_TurnId      *string                `protobuf:"bytes,3,opt,name=turn_id,json=turnId"`
+	xxx_hidden_ToolCallId  *string                `protobuf:"bytes,4,opt,name=tool_call_id,json=toolCallId"`
+	xxx_hidden_Questions   *[]*Question           `protobuf:"bytes,5,rep,name=questions"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *QuestionPrompt) Reset() {
@@ -1362,60 +2110,177 @@ func (x *QuestionPrompt) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use QuestionPrompt.ProtoReflect.Descriptor instead.
-func (*QuestionPrompt) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{9}
-}
-
 func (x *QuestionPrompt) GetId() string {
 	if x != nil {
-		return x.Id
+		if x.xxx_hidden_Id != nil {
+			return *x.xxx_hidden_Id
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *QuestionPrompt) GetSessionId() string {
 	if x != nil {
-		return x.SessionId
+		if x.xxx_hidden_SessionId != nil {
+			return *x.xxx_hidden_SessionId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *QuestionPrompt) GetTurnId() string {
 	if x != nil {
-		return x.TurnId
+		if x.xxx_hidden_TurnId != nil {
+			return *x.xxx_hidden_TurnId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *QuestionPrompt) GetToolCallId() string {
 	if x != nil {
-		return x.ToolCallId
+		if x.xxx_hidden_ToolCallId != nil {
+			return *x.xxx_hidden_ToolCallId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *QuestionPrompt) GetQuestions() []*Question {
 	if x != nil {
-		return x.Questions
+		if x.xxx_hidden_Questions != nil {
+			return *x.xxx_hidden_Questions
+		}
 	}
 	return nil
 }
 
+func (x *QuestionPrompt) SetId(v string) {
+	x.xxx_hidden_Id = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
+}
+
+func (x *QuestionPrompt) SetSessionId(v string) {
+	x.xxx_hidden_SessionId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
+}
+
+func (x *QuestionPrompt) SetTurnId(v string) {
+	x.xxx_hidden_TurnId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
+}
+
+func (x *QuestionPrompt) SetToolCallId(v string) {
+	x.xxx_hidden_ToolCallId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+}
+
+func (x *QuestionPrompt) SetQuestions(v []*Question) {
+	x.xxx_hidden_Questions = &v
+}
+
+func (x *QuestionPrompt) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *QuestionPrompt) HasSessionId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *QuestionPrompt) HasTurnId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *QuestionPrompt) HasToolCallId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *QuestionPrompt) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *QuestionPrompt) ClearSessionId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_SessionId = nil
+}
+
+func (x *QuestionPrompt) ClearTurnId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_TurnId = nil
+}
+
+func (x *QuestionPrompt) ClearToolCallId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_ToolCallId = nil
+}
+
+type QuestionPrompt_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// id is generated by koda and resolves exactly once.
+	Id        *string
+	SessionId *string
+	TurnId    *string
+	// tool_call_id correlates this prompt with the ask_questions ToolCall.
+	ToolCallId *string
+	// questions contains between one and three items.
+	Questions []*Question
+}
+
+func (b0 QuestionPrompt_builder) Build() *QuestionPrompt {
+	m0 := &QuestionPrompt{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
+		x.xxx_hidden_Id = b.Id
+	}
+	if b.SessionId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
+		x.xxx_hidden_SessionId = b.SessionId
+	}
+	if b.TurnId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
+		x.xxx_hidden_TurnId = b.TurnId
+	}
+	if b.ToolCallId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
+		x.xxx_hidden_ToolCallId = b.ToolCallId
+	}
+	x.xxx_hidden_Questions = &b.Questions
+	return m0
+}
+
 // Question is one input requested by the model.
 type Question struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id is model-authored and unique within its QuestionPrompt.
-	Id      string            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Header  string            `protobuf:"bytes,2,opt,name=header,proto3" json:"header,omitempty"`
-	Prompt  string            `protobuf:"bytes,3,opt,name=prompt,proto3" json:"prompt,omitempty"`
-	Options []*QuestionOption `protobuf:"bytes,4,rep,name=options,proto3" json:"options,omitempty"`
-	// multiple permits selecting more than one option.
-	Multiple bool `protobuf:"varint,5,opt,name=multiple,proto3" json:"multiple,omitempty"`
-	// allow_freeform permits an answer not represented by an option.
-	AllowFreeform bool `protobuf:"varint,6,opt,name=allow_freeform,json=allowFreeform,proto3" json:"allow_freeform,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id            *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Header        *string                `protobuf:"bytes,2,opt,name=header"`
+	xxx_hidden_Prompt        *string                `protobuf:"bytes,3,opt,name=prompt"`
+	xxx_hidden_Options       *[]*QuestionOption     `protobuf:"bytes,4,rep,name=options"`
+	xxx_hidden_Multiple      bool                   `protobuf:"varint,5,opt,name=multiple"`
+	xxx_hidden_AllowFreeform bool                   `protobuf:"varint,6,opt,name=allow_freeform,json=allowFreeform"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *Question) Reset() {
@@ -1443,62 +2308,200 @@ func (x *Question) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Question.ProtoReflect.Descriptor instead.
-func (*Question) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{10}
-}
-
 func (x *Question) GetId() string {
 	if x != nil {
-		return x.Id
+		if x.xxx_hidden_Id != nil {
+			return *x.xxx_hidden_Id
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Question) GetHeader() string {
 	if x != nil {
-		return x.Header
+		if x.xxx_hidden_Header != nil {
+			return *x.xxx_hidden_Header
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Question) GetPrompt() string {
 	if x != nil {
-		return x.Prompt
+		if x.xxx_hidden_Prompt != nil {
+			return *x.xxx_hidden_Prompt
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Question) GetOptions() []*QuestionOption {
 	if x != nil {
-		return x.Options
+		if x.xxx_hidden_Options != nil {
+			return *x.xxx_hidden_Options
+		}
 	}
 	return nil
 }
 
 func (x *Question) GetMultiple() bool {
 	if x != nil {
-		return x.Multiple
+		return x.xxx_hidden_Multiple
 	}
 	return false
 }
 
 func (x *Question) GetAllowFreeform() bool {
 	if x != nil {
-		return x.AllowFreeform
+		return x.xxx_hidden_AllowFreeform
 	}
 	return false
 }
 
+func (x *Question) SetId(v string) {
+	x.xxx_hidden_Id = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+}
+
+func (x *Question) SetHeader(v string) {
+	x.xxx_hidden_Header = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
+}
+
+func (x *Question) SetPrompt(v string) {
+	x.xxx_hidden_Prompt = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+}
+
+func (x *Question) SetOptions(v []*QuestionOption) {
+	x.xxx_hidden_Options = &v
+}
+
+func (x *Question) SetMultiple(v bool) {
+	x.xxx_hidden_Multiple = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+}
+
+func (x *Question) SetAllowFreeform(v bool) {
+	x.xxx_hidden_AllowFreeform = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
+}
+
+func (x *Question) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *Question) HasHeader() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Question) HasPrompt() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *Question) HasMultiple() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *Question) HasAllowFreeform() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *Question) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *Question) ClearHeader() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Header = nil
+}
+
+func (x *Question) ClearPrompt() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Prompt = nil
+}
+
+func (x *Question) ClearMultiple() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Multiple = false
+}
+
+func (x *Question) ClearAllowFreeform() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_AllowFreeform = false
+}
+
+type Question_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// id is model-authored and unique within its QuestionPrompt.
+	Id      *string
+	Header  *string
+	Prompt  *string
+	Options []*QuestionOption
+	// multiple permits selecting more than one option.
+	Multiple *bool
+	// allow_freeform permits an answer not represented by an option.
+	AllowFreeform *bool
+}
+
+func (b0 Question_builder) Build() *Question {
+	m0 := &Question{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		x.xxx_hidden_Id = b.Id
+	}
+	if b.Header != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
+		x.xxx_hidden_Header = b.Header
+	}
+	if b.Prompt != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
+		x.xxx_hidden_Prompt = b.Prompt
+	}
+	x.xxx_hidden_Options = &b.Options
+	if b.Multiple != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		x.xxx_hidden_Multiple = *b.Multiple
+	}
+	if b.AllowFreeform != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		x.xxx_hidden_AllowFreeform = *b.AllowFreeform
+	}
+	return m0
+}
+
 // QuestionOption is one frontend-selectable answer.
 type QuestionOption struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id is model-authored and unique within its Question.
-	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Label         string `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
-	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id          *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Label       *string                `protobuf:"bytes,2,opt,name=label"`
+	xxx_hidden_Description *string                `protobuf:"bytes,3,opt,name=description"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *QuestionOption) Reset() {
@@ -1526,43 +2529,124 @@ func (x *QuestionOption) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use QuestionOption.ProtoReflect.Descriptor instead.
-func (*QuestionOption) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{11}
-}
-
 func (x *QuestionOption) GetId() string {
 	if x != nil {
-		return x.Id
+		if x.xxx_hidden_Id != nil {
+			return *x.xxx_hidden_Id
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *QuestionOption) GetLabel() string {
 	if x != nil {
-		return x.Label
+		if x.xxx_hidden_Label != nil {
+			return *x.xxx_hidden_Label
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *QuestionOption) GetDescription() string {
 	if x != nil {
-		return x.Description
+		if x.xxx_hidden_Description != nil {
+			return *x.xxx_hidden_Description
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *QuestionOption) SetId(v string) {
+	x.xxx_hidden_Id = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *QuestionOption) SetLabel(v string) {
+	x.xxx_hidden_Label = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *QuestionOption) SetDescription(v string) {
+	x.xxx_hidden_Description = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *QuestionOption) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *QuestionOption) HasLabel() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *QuestionOption) HasDescription() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *QuestionOption) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *QuestionOption) ClearLabel() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Label = nil
+}
+
+func (x *QuestionOption) ClearDescription() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Description = nil
+}
+
+type QuestionOption_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// id is model-authored and unique within its Question.
+	Id          *string
+	Label       *string
+	Description *string
+}
+
+func (b0 QuestionOption_builder) Build() *QuestionOption {
+	m0 := &QuestionOption{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_Id = b.Id
+	}
+	if b.Label != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_Label = b.Label
+	}
+	if b.Description != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Description = b.Description
+	}
+	return m0
+}
+
 // SubmitQuestionAnswersRequest resolves one pending QuestionPrompt.
 type SubmitQuestionAnswersRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	PromptId string                 `protobuf:"bytes,1,opt,name=prompt_id,json=promptId,proto3" json:"prompt_id,omitempty"`
-	// Types that are valid to be assigned to Resolution:
-	//
-	//	*SubmitQuestionAnswersRequest_Answers
-	//	*SubmitQuestionAnswersRequest_Canceled
-	Resolution    isSubmitQuestionAnswersRequest_Resolution `protobuf_oneof:"resolution"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState                    `protogen:"opaque.v1"`
+	xxx_hidden_PromptId    *string                                   `protobuf:"bytes,1,opt,name=prompt_id,json=promptId"`
+	xxx_hidden_Resolution  isSubmitQuestionAnswersRequest_Resolution `protobuf_oneof:"resolution"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *SubmitQuestionAnswersRequest) Reset() {
@@ -1590,28 +2674,19 @@ func (x *SubmitQuestionAnswersRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SubmitQuestionAnswersRequest.ProtoReflect.Descriptor instead.
-func (*SubmitQuestionAnswersRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{12}
-}
-
 func (x *SubmitQuestionAnswersRequest) GetPromptId() string {
 	if x != nil {
-		return x.PromptId
+		if x.xxx_hidden_PromptId != nil {
+			return *x.xxx_hidden_PromptId
+		}
+		return ""
 	}
 	return ""
 }
 
-func (x *SubmitQuestionAnswersRequest) GetResolution() isSubmitQuestionAnswersRequest_Resolution {
-	if x != nil {
-		return x.Resolution
-	}
-	return nil
-}
-
 func (x *SubmitQuestionAnswersRequest) GetAnswers() *QuestionAnswers {
 	if x != nil {
-		if x, ok := x.Resolution.(*SubmitQuestionAnswersRequest_Answers); ok {
+		if x, ok := x.xxx_hidden_Resolution.(*submitQuestionAnswersRequest_Answers); ok {
 			return x.Answers
 		}
 	}
@@ -1620,34 +2695,159 @@ func (x *SubmitQuestionAnswersRequest) GetAnswers() *QuestionAnswers {
 
 func (x *SubmitQuestionAnswersRequest) GetCanceled() bool {
 	if x != nil {
-		if x, ok := x.Resolution.(*SubmitQuestionAnswersRequest_Canceled); ok {
+		if x, ok := x.xxx_hidden_Resolution.(*submitQuestionAnswersRequest_Canceled); ok {
 			return x.Canceled
 		}
 	}
 	return false
 }
 
+func (x *SubmitQuestionAnswersRequest) SetPromptId(v string) {
+	x.xxx_hidden_PromptId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *SubmitQuestionAnswersRequest) SetAnswers(v *QuestionAnswers) {
+	if v == nil {
+		x.xxx_hidden_Resolution = nil
+		return
+	}
+	x.xxx_hidden_Resolution = &submitQuestionAnswersRequest_Answers{v}
+}
+
+func (x *SubmitQuestionAnswersRequest) SetCanceled(v bool) {
+	x.xxx_hidden_Resolution = &submitQuestionAnswersRequest_Canceled{v}
+}
+
+func (x *SubmitQuestionAnswersRequest) HasPromptId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *SubmitQuestionAnswersRequest) HasResolution() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Resolution != nil
+}
+
+func (x *SubmitQuestionAnswersRequest) HasAnswers() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Resolution.(*submitQuestionAnswersRequest_Answers)
+	return ok
+}
+
+func (x *SubmitQuestionAnswersRequest) HasCanceled() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Resolution.(*submitQuestionAnswersRequest_Canceled)
+	return ok
+}
+
+func (x *SubmitQuestionAnswersRequest) ClearPromptId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_PromptId = nil
+}
+
+func (x *SubmitQuestionAnswersRequest) ClearResolution() {
+	x.xxx_hidden_Resolution = nil
+}
+
+func (x *SubmitQuestionAnswersRequest) ClearAnswers() {
+	if _, ok := x.xxx_hidden_Resolution.(*submitQuestionAnswersRequest_Answers); ok {
+		x.xxx_hidden_Resolution = nil
+	}
+}
+
+func (x *SubmitQuestionAnswersRequest) ClearCanceled() {
+	if _, ok := x.xxx_hidden_Resolution.(*submitQuestionAnswersRequest_Canceled); ok {
+		x.xxx_hidden_Resolution = nil
+	}
+}
+
+const SubmitQuestionAnswersRequest_Resolution_not_set_case case_SubmitQuestionAnswersRequest_Resolution = 0
+const SubmitQuestionAnswersRequest_Answers_case case_SubmitQuestionAnswersRequest_Resolution = 2
+const SubmitQuestionAnswersRequest_Canceled_case case_SubmitQuestionAnswersRequest_Resolution = 3
+
+func (x *SubmitQuestionAnswersRequest) WhichResolution() case_SubmitQuestionAnswersRequest_Resolution {
+	if x == nil {
+		return SubmitQuestionAnswersRequest_Resolution_not_set_case
+	}
+	switch x.xxx_hidden_Resolution.(type) {
+	case *submitQuestionAnswersRequest_Answers:
+		return SubmitQuestionAnswersRequest_Answers_case
+	case *submitQuestionAnswersRequest_Canceled:
+		return SubmitQuestionAnswersRequest_Canceled_case
+	default:
+		return SubmitQuestionAnswersRequest_Resolution_not_set_case
+	}
+}
+
+type SubmitQuestionAnswersRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	PromptId *string
+	// Fields of oneof xxx_hidden_Resolution:
+	Answers *QuestionAnswers
+	// canceled must be true when selected. Cancellation becomes a
+	// model-visible handled tool failure rather than aborting the Run.
+	Canceled *bool
+	// -- end of xxx_hidden_Resolution
+}
+
+func (b0 SubmitQuestionAnswersRequest_builder) Build() *SubmitQuestionAnswersRequest {
+	m0 := &SubmitQuestionAnswersRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.PromptId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_PromptId = b.PromptId
+	}
+	if b.Answers != nil {
+		x.xxx_hidden_Resolution = &submitQuestionAnswersRequest_Answers{b.Answers}
+	}
+	if b.Canceled != nil {
+		x.xxx_hidden_Resolution = &submitQuestionAnswersRequest_Canceled{*b.Canceled}
+	}
+	return m0
+}
+
+type case_SubmitQuestionAnswersRequest_Resolution protoreflect.FieldNumber
+
+func (x case_SubmitQuestionAnswersRequest_Resolution) String() string {
+	md := file_koda_v1_service_proto_msgTypes[12].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
 type isSubmitQuestionAnswersRequest_Resolution interface {
 	isSubmitQuestionAnswersRequest_Resolution()
 }
 
-type SubmitQuestionAnswersRequest_Answers struct {
-	Answers *QuestionAnswers `protobuf:"bytes,2,opt,name=answers,proto3,oneof"`
+type submitQuestionAnswersRequest_Answers struct {
+	Answers *QuestionAnswers `protobuf:"bytes,2,opt,name=answers,oneof"`
 }
 
-type SubmitQuestionAnswersRequest_Canceled struct {
+type submitQuestionAnswersRequest_Canceled struct {
 	// canceled must be true when selected. Cancellation becomes a
 	// model-visible handled tool failure rather than aborting the Run.
-	Canceled bool `protobuf:"varint,3,opt,name=canceled,proto3,oneof"`
+	Canceled bool `protobuf:"varint,3,opt,name=canceled,oneof"`
 }
 
-func (*SubmitQuestionAnswersRequest_Answers) isSubmitQuestionAnswersRequest_Resolution() {}
+func (*submitQuestionAnswersRequest_Answers) isSubmitQuestionAnswersRequest_Resolution() {}
 
-func (*SubmitQuestionAnswersRequest_Canceled) isSubmitQuestionAnswersRequest_Resolution() {}
+func (*submitQuestionAnswersRequest_Canceled) isSubmitQuestionAnswersRequest_Resolution() {}
 
 // SubmitQuestionAnswersResponse acknowledges a recorded resolution.
 type SubmitQuestionAnswersResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1677,17 +2877,24 @@ func (x *SubmitQuestionAnswersResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SubmitQuestionAnswersResponse.ProtoReflect.Descriptor instead.
-func (*SubmitQuestionAnswersResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{13}
+type SubmitQuestionAnswersResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 SubmitQuestionAnswersResponse_builder) Build() *SubmitQuestionAnswersResponse {
+	m0 := &SubmitQuestionAnswersResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
 }
 
 // QuestionAnswers contains one validated answer for every requested question.
 type QuestionAnswers struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Answers       []*QuestionAnswer      `protobuf:"bytes,1,rep,name=answers,proto3" json:"answers,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Answers *[]*QuestionAnswer     `protobuf:"bytes,1,rep,name=answers"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *QuestionAnswers) Reset() {
@@ -1715,26 +2922,43 @@ func (x *QuestionAnswers) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use QuestionAnswers.ProtoReflect.Descriptor instead.
-func (*QuestionAnswers) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{14}
-}
-
 func (x *QuestionAnswers) GetAnswers() []*QuestionAnswer {
 	if x != nil {
-		return x.Answers
+		if x.xxx_hidden_Answers != nil {
+			return *x.xxx_hidden_Answers
+		}
 	}
 	return nil
 }
 
+func (x *QuestionAnswers) SetAnswers(v []*QuestionAnswer) {
+	x.xxx_hidden_Answers = &v
+}
+
+type QuestionAnswers_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Answers []*QuestionAnswer
+}
+
+func (b0 QuestionAnswers_builder) Build() *QuestionAnswers {
+	m0 := &QuestionAnswers{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Answers = &b.Answers
+	return m0
+}
+
 // QuestionAnswer is one frontend-authored tool result item.
 type QuestionAnswer struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	QuestionId        string                 `protobuf:"bytes,1,opt,name=question_id,json=questionId,proto3" json:"question_id,omitempty"`
-	SelectedOptionIds []string               `protobuf:"bytes,2,rep,name=selected_option_ids,json=selectedOptionIds,proto3" json:"selected_option_ids,omitempty"`
-	Freeform          string                 `protobuf:"bytes,3,opt,name=freeform,proto3" json:"freeform,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                        protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_QuestionId        *string                `protobuf:"bytes,1,opt,name=question_id,json=questionId"`
+	xxx_hidden_SelectedOptionIds []string               `protobuf:"bytes,2,rep,name=selected_option_ids,json=selectedOptionIds"`
+	xxx_hidden_Freeform          *string                `protobuf:"bytes,3,opt,name=freeform"`
+	XXX_raceDetectHookData       protoimpl.RaceDetectHookData
+	XXX_presence                 [1]uint32
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *QuestionAnswer) Reset() {
@@ -1762,58 +2986,113 @@ func (x *QuestionAnswer) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use QuestionAnswer.ProtoReflect.Descriptor instead.
-func (*QuestionAnswer) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{15}
-}
-
 func (x *QuestionAnswer) GetQuestionId() string {
 	if x != nil {
-		return x.QuestionId
+		if x.xxx_hidden_QuestionId != nil {
+			return *x.xxx_hidden_QuestionId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *QuestionAnswer) GetSelectedOptionIds() []string {
 	if x != nil {
-		return x.SelectedOptionIds
+		return x.xxx_hidden_SelectedOptionIds
 	}
 	return nil
 }
 
 func (x *QuestionAnswer) GetFreeform() string {
 	if x != nil {
-		return x.Freeform
+		if x.xxx_hidden_Freeform != nil {
+			return *x.xxx_hidden_Freeform
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *QuestionAnswer) SetQuestionId(v string) {
+	x.xxx_hidden_QuestionId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *QuestionAnswer) SetSelectedOptionIds(v []string) {
+	x.xxx_hidden_SelectedOptionIds = v
+}
+
+func (x *QuestionAnswer) SetFreeform(v string) {
+	x.xxx_hidden_Freeform = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *QuestionAnswer) HasQuestionId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *QuestionAnswer) HasFreeform() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *QuestionAnswer) ClearQuestionId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_QuestionId = nil
+}
+
+func (x *QuestionAnswer) ClearFreeform() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Freeform = nil
+}
+
+type QuestionAnswer_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	QuestionId        *string
+	SelectedOptionIds []string
+	Freeform          *string
+}
+
+func (b0 QuestionAnswer_builder) Build() *QuestionAnswer {
+	m0 := &QuestionAnswer{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.QuestionId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_QuestionId = b.QuestionId
+	}
+	x.xxx_hidden_SelectedOptionIds = b.SelectedOptionIds
+	if b.Freeform != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Freeform = b.Freeform
+	}
+	return m0
+}
+
 // Session contains metadata and execution settings for one coding session.
 type Session struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id is the stable application-assigned session identifier.
-	Id    string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	// workdir is the base directory used to resolve relative tool paths.
-	Workdir string `protobuf:"bytes,3,opt,name=workdir,proto3" json:"workdir,omitempty"`
-	// provider_id references Provider.id.
-	ProviderId string `protobuf:"bytes,4,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	// model_id references a Model.id registered for provider_id.
-	ModelId string `protobuf:"bytes,5,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
-	// reasoning_effort is provider-specific; empty uses the model default.
-	ReasoningEffort string `protobuf:"bytes,6,opt,name=reasoning_effort,json=reasoningEffort,proto3" json:"reasoning_effort,omitempty"`
-	// file_access determines which filesystem operations execute without a
-	// per-call approval.
-	FileAccess FileAccess `protobuf:"varint,7,opt,name=file_access,json=fileAccess,proto3,enum=koda.v1.FileAccess" json:"file_access,omitempty"`
-	// created_at and updated_at are Unix timestamps in milliseconds.
-	CreatedAt int64 `protobuf:"varint,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt int64 `protobuf:"varint,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	// event_count counts active, non-archived events in the session.
-	EventCount int64 `protobuf:"varint,10,opt,name=event_count,json=eventCount,proto3" json:"event_count,omitempty"`
-	// shell_access determines whether arbitrary shell commands need approval.
-	ShellAccess   ShellAccess `protobuf:"varint,11,opt,name=shell_access,json=shellAccess,proto3,enum=koda.v1.ShellAccess" json:"shell_access,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                      protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id              *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Title           *string                `protobuf:"bytes,2,opt,name=title"`
+	xxx_hidden_Workdir         *string                `protobuf:"bytes,3,opt,name=workdir"`
+	xxx_hidden_ProviderId      *string                `protobuf:"bytes,4,opt,name=provider_id,json=providerId"`
+	xxx_hidden_ModelId         *string                `protobuf:"bytes,5,opt,name=model_id,json=modelId"`
+	xxx_hidden_ReasoningEffort *string                `protobuf:"bytes,6,opt,name=reasoning_effort,json=reasoningEffort"`
+	xxx_hidden_FileAccess      FileAccess             `protobuf:"varint,7,opt,name=file_access,json=fileAccess,enum=koda.v1.FileAccess"`
+	xxx_hidden_CreatedAt       int64                  `protobuf:"varint,8,opt,name=created_at,json=createdAt"`
+	xxx_hidden_UpdatedAt       int64                  `protobuf:"varint,9,opt,name=updated_at,json=updatedAt"`
+	xxx_hidden_EventCount      int64                  `protobuf:"varint,10,opt,name=event_count,json=eventCount"`
+	xxx_hidden_ShellAccess     ShellAccess            `protobuf:"varint,11,opt,name=shell_access,json=shellAccess,enum=koda.v1.ShellAccess"`
+	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
+	XXX_presence               [1]uint32
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *Session) Reset() {
@@ -1841,104 +3120,382 @@ func (x *Session) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Session.ProtoReflect.Descriptor instead.
-func (*Session) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{16}
-}
-
 func (x *Session) GetId() string {
 	if x != nil {
-		return x.Id
+		if x.xxx_hidden_Id != nil {
+			return *x.xxx_hidden_Id
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Session) GetTitle() string {
 	if x != nil {
-		return x.Title
+		if x.xxx_hidden_Title != nil {
+			return *x.xxx_hidden_Title
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Session) GetWorkdir() string {
 	if x != nil {
-		return x.Workdir
+		if x.xxx_hidden_Workdir != nil {
+			return *x.xxx_hidden_Workdir
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Session) GetProviderId() string {
 	if x != nil {
-		return x.ProviderId
+		if x.xxx_hidden_ProviderId != nil {
+			return *x.xxx_hidden_ProviderId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Session) GetModelId() string {
 	if x != nil {
-		return x.ModelId
+		if x.xxx_hidden_ModelId != nil {
+			return *x.xxx_hidden_ModelId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Session) GetReasoningEffort() string {
 	if x != nil {
-		return x.ReasoningEffort
+		if x.xxx_hidden_ReasoningEffort != nil {
+			return *x.xxx_hidden_ReasoningEffort
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Session) GetFileAccess() FileAccess {
 	if x != nil {
-		return x.FileAccess
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 6) {
+			return x.xxx_hidden_FileAccess
+		}
 	}
 	return FileAccess_FILE_ACCESS_UNSPECIFIED
 }
 
 func (x *Session) GetCreatedAt() int64 {
 	if x != nil {
-		return x.CreatedAt
+		return x.xxx_hidden_CreatedAt
 	}
 	return 0
 }
 
 func (x *Session) GetUpdatedAt() int64 {
 	if x != nil {
-		return x.UpdatedAt
+		return x.xxx_hidden_UpdatedAt
 	}
 	return 0
 }
 
 func (x *Session) GetEventCount() int64 {
 	if x != nil {
-		return x.EventCount
+		return x.xxx_hidden_EventCount
 	}
 	return 0
 }
 
 func (x *Session) GetShellAccess() ShellAccess {
 	if x != nil {
-		return x.ShellAccess
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 10) {
+			return x.xxx_hidden_ShellAccess
+		}
 	}
 	return ShellAccess_SHELL_ACCESS_UNSPECIFIED
 }
 
+func (x *Session) SetId(v string) {
+	x.xxx_hidden_Id = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 11)
+}
+
+func (x *Session) SetTitle(v string) {
+	x.xxx_hidden_Title = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 11)
+}
+
+func (x *Session) SetWorkdir(v string) {
+	x.xxx_hidden_Workdir = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 11)
+}
+
+func (x *Session) SetProviderId(v string) {
+	x.xxx_hidden_ProviderId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 11)
+}
+
+func (x *Session) SetModelId(v string) {
+	x.xxx_hidden_ModelId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 11)
+}
+
+func (x *Session) SetReasoningEffort(v string) {
+	x.xxx_hidden_ReasoningEffort = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 11)
+}
+
+func (x *Session) SetFileAccess(v FileAccess) {
+	x.xxx_hidden_FileAccess = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 11)
+}
+
+func (x *Session) SetCreatedAt(v int64) {
+	x.xxx_hidden_CreatedAt = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 11)
+}
+
+func (x *Session) SetUpdatedAt(v int64) {
+	x.xxx_hidden_UpdatedAt = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 11)
+}
+
+func (x *Session) SetEventCount(v int64) {
+	x.xxx_hidden_EventCount = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 11)
+}
+
+func (x *Session) SetShellAccess(v ShellAccess) {
+	x.xxx_hidden_ShellAccess = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 11)
+}
+
+func (x *Session) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *Session) HasTitle() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Session) HasWorkdir() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *Session) HasProviderId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *Session) HasModelId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *Session) HasReasoningEffort() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *Session) HasFileAccess() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *Session) HasCreatedAt() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
+func (x *Session) HasUpdatedAt() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
+func (x *Session) HasEventCount() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 9)
+}
+
+func (x *Session) HasShellAccess() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
+}
+
+func (x *Session) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *Session) ClearTitle() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Title = nil
+}
+
+func (x *Session) ClearWorkdir() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Workdir = nil
+}
+
+func (x *Session) ClearProviderId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_ProviderId = nil
+}
+
+func (x *Session) ClearModelId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_ModelId = nil
+}
+
+func (x *Session) ClearReasoningEffort() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_ReasoningEffort = nil
+}
+
+func (x *Session) ClearFileAccess() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_FileAccess = FileAccess_FILE_ACCESS_UNSPECIFIED
+}
+
+func (x *Session) ClearCreatedAt() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_CreatedAt = 0
+}
+
+func (x *Session) ClearUpdatedAt() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_UpdatedAt = 0
+}
+
+func (x *Session) ClearEventCount() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 9)
+	x.xxx_hidden_EventCount = 0
+}
+
+func (x *Session) ClearShellAccess() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 10)
+	x.xxx_hidden_ShellAccess = ShellAccess_SHELL_ACCESS_UNSPECIFIED
+}
+
+type Session_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// id is the stable application-assigned session identifier.
+	Id    *string
+	Title *string
+	// workdir is the base directory used to resolve relative tool paths.
+	Workdir *string
+	// provider_id references Provider.id.
+	ProviderId *string
+	// model_id references a Model.id registered for provider_id.
+	ModelId *string
+	// reasoning_effort is provider-specific; empty uses the model default.
+	ReasoningEffort *string
+	// file_access determines which filesystem operations execute without a
+	// per-call approval.
+	FileAccess *FileAccess
+	// created_at and updated_at are Unix timestamps in milliseconds.
+	CreatedAt *int64
+	UpdatedAt *int64
+	// event_count counts active, non-archived events in the session.
+	EventCount *int64
+	// shell_access determines whether arbitrary shell commands need approval.
+	ShellAccess *ShellAccess
+}
+
+func (b0 Session_builder) Build() *Session {
+	m0 := &Session{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 11)
+		x.xxx_hidden_Id = b.Id
+	}
+	if b.Title != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 11)
+		x.xxx_hidden_Title = b.Title
+	}
+	if b.Workdir != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 11)
+		x.xxx_hidden_Workdir = b.Workdir
+	}
+	if b.ProviderId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 11)
+		x.xxx_hidden_ProviderId = b.ProviderId
+	}
+	if b.ModelId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 11)
+		x.xxx_hidden_ModelId = b.ModelId
+	}
+	if b.ReasoningEffort != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 11)
+		x.xxx_hidden_ReasoningEffort = b.ReasoningEffort
+	}
+	if b.FileAccess != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 11)
+		x.xxx_hidden_FileAccess = *b.FileAccess
+	}
+	if b.CreatedAt != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 11)
+		x.xxx_hidden_CreatedAt = *b.CreatedAt
+	}
+	if b.UpdatedAt != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 11)
+		x.xxx_hidden_UpdatedAt = *b.UpdatedAt
+	}
+	if b.EventCount != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 11)
+		x.xxx_hidden_EventCount = *b.EventCount
+	}
+	if b.ShellAccess != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 11)
+		x.xxx_hidden_ShellAccess = *b.ShellAccess
+	}
+	return m0
+}
+
 // CreateSessionRequest creates a session with an initial execution configuration.
 type CreateSessionRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// workdir becomes the base directory for all relative tool paths.
-	Workdir string `protobuf:"bytes,1,opt,name=workdir,proto3" json:"workdir,omitempty"`
-	// provider_id and model_id select the initial execution backend.
-	ProviderId string `protobuf:"bytes,2,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	ModelId    string `protobuf:"bytes,3,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
-	// reasoning_effort is provider-specific; empty uses the model default.
-	ReasoningEffort string `protobuf:"bytes,4,opt,name=reasoning_effort,json=reasoningEffort,proto3" json:"reasoning_effort,omitempty"`
-	// file_access defaults to FILE_ACCESS_WORKSPACE_READ when unspecified.
-	FileAccess FileAccess `protobuf:"varint,5,opt,name=file_access,json=fileAccess,proto3,enum=koda.v1.FileAccess" json:"file_access,omitempty"`
-	// shell_access defaults to SHELL_ACCESS_APPROVAL_REQUIRED when unspecified.
-	ShellAccess   ShellAccess `protobuf:"varint,6,opt,name=shell_access,json=shellAccess,proto3,enum=koda.v1.ShellAccess" json:"shell_access,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                      protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Workdir         *string                `protobuf:"bytes,1,opt,name=workdir"`
+	xxx_hidden_ProviderId      *string                `protobuf:"bytes,2,opt,name=provider_id,json=providerId"`
+	xxx_hidden_ModelId         *string                `protobuf:"bytes,3,opt,name=model_id,json=modelId"`
+	xxx_hidden_ReasoningEffort *string                `protobuf:"bytes,4,opt,name=reasoning_effort,json=reasoningEffort"`
+	xxx_hidden_FileAccess      FileAccess             `protobuf:"varint,5,opt,name=file_access,json=fileAccess,enum=koda.v1.FileAccess"`
+	xxx_hidden_ShellAccess     ShellAccess            `protobuf:"varint,6,opt,name=shell_access,json=shellAccess,enum=koda.v1.ShellAccess"`
+	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
+	XXX_presence               [1]uint32
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *CreateSessionRequest) Reset() {
@@ -1966,59 +3523,219 @@ func (x *CreateSessionRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CreateSessionRequest.ProtoReflect.Descriptor instead.
-func (*CreateSessionRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{17}
-}
-
 func (x *CreateSessionRequest) GetWorkdir() string {
 	if x != nil {
-		return x.Workdir
+		if x.xxx_hidden_Workdir != nil {
+			return *x.xxx_hidden_Workdir
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *CreateSessionRequest) GetProviderId() string {
 	if x != nil {
-		return x.ProviderId
+		if x.xxx_hidden_ProviderId != nil {
+			return *x.xxx_hidden_ProviderId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *CreateSessionRequest) GetModelId() string {
 	if x != nil {
-		return x.ModelId
+		if x.xxx_hidden_ModelId != nil {
+			return *x.xxx_hidden_ModelId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *CreateSessionRequest) GetReasoningEffort() string {
 	if x != nil {
-		return x.ReasoningEffort
+		if x.xxx_hidden_ReasoningEffort != nil {
+			return *x.xxx_hidden_ReasoningEffort
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *CreateSessionRequest) GetFileAccess() FileAccess {
 	if x != nil {
-		return x.FileAccess
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 4) {
+			return x.xxx_hidden_FileAccess
+		}
 	}
 	return FileAccess_FILE_ACCESS_UNSPECIFIED
 }
 
 func (x *CreateSessionRequest) GetShellAccess() ShellAccess {
 	if x != nil {
-		return x.ShellAccess
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 5) {
+			return x.xxx_hidden_ShellAccess
+		}
 	}
 	return ShellAccess_SHELL_ACCESS_UNSPECIFIED
 }
 
+func (x *CreateSessionRequest) SetWorkdir(v string) {
+	x.xxx_hidden_Workdir = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+}
+
+func (x *CreateSessionRequest) SetProviderId(v string) {
+	x.xxx_hidden_ProviderId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
+}
+
+func (x *CreateSessionRequest) SetModelId(v string) {
+	x.xxx_hidden_ModelId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+}
+
+func (x *CreateSessionRequest) SetReasoningEffort(v string) {
+	x.xxx_hidden_ReasoningEffort = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+}
+
+func (x *CreateSessionRequest) SetFileAccess(v FileAccess) {
+	x.xxx_hidden_FileAccess = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+}
+
+func (x *CreateSessionRequest) SetShellAccess(v ShellAccess) {
+	x.xxx_hidden_ShellAccess = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
+}
+
+func (x *CreateSessionRequest) HasWorkdir() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *CreateSessionRequest) HasProviderId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *CreateSessionRequest) HasModelId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *CreateSessionRequest) HasReasoningEffort() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *CreateSessionRequest) HasFileAccess() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *CreateSessionRequest) HasShellAccess() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *CreateSessionRequest) ClearWorkdir() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Workdir = nil
+}
+
+func (x *CreateSessionRequest) ClearProviderId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_ProviderId = nil
+}
+
+func (x *CreateSessionRequest) ClearModelId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_ModelId = nil
+}
+
+func (x *CreateSessionRequest) ClearReasoningEffort() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_ReasoningEffort = nil
+}
+
+func (x *CreateSessionRequest) ClearFileAccess() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_FileAccess = FileAccess_FILE_ACCESS_UNSPECIFIED
+}
+
+func (x *CreateSessionRequest) ClearShellAccess() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_ShellAccess = ShellAccess_SHELL_ACCESS_UNSPECIFIED
+}
+
+type CreateSessionRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// workdir becomes the base directory for all relative tool paths.
+	Workdir *string
+	// provider_id and model_id select the initial execution backend.
+	ProviderId *string
+	ModelId    *string
+	// reasoning_effort is provider-specific; empty uses the model default.
+	ReasoningEffort *string
+	// file_access defaults to FILE_ACCESS_WORKSPACE_READ when unspecified.
+	FileAccess *FileAccess
+	// shell_access defaults to SHELL_ACCESS_APPROVAL_REQUIRED when unspecified.
+	ShellAccess *ShellAccess
+}
+
+func (b0 CreateSessionRequest_builder) Build() *CreateSessionRequest {
+	m0 := &CreateSessionRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Workdir != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		x.xxx_hidden_Workdir = b.Workdir
+	}
+	if b.ProviderId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
+		x.xxx_hidden_ProviderId = b.ProviderId
+	}
+	if b.ModelId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
+		x.xxx_hidden_ModelId = b.ModelId
+	}
+	if b.ReasoningEffort != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		x.xxx_hidden_ReasoningEffort = b.ReasoningEffort
+	}
+	if b.FileAccess != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		x.xxx_hidden_FileAccess = *b.FileAccess
+	}
+	if b.ShellAccess != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		x.xxx_hidden_ShellAccess = *b.ShellAccess
+	}
+	return m0
+}
+
 // CreateSessionResponse returns the created session.
 type CreateSessionResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Session       *Session               `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Session *Session               `protobuf:"bytes,1,opt,name=session"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *CreateSessionResponse) Reset() {
@@ -2046,24 +3763,50 @@ func (x *CreateSessionResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CreateSessionResponse.ProtoReflect.Descriptor instead.
-func (*CreateSessionResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{18}
-}
-
 func (x *CreateSessionResponse) GetSession() *Session {
 	if x != nil {
-		return x.Session
+		return x.xxx_hidden_Session
 	}
 	return nil
 }
 
+func (x *CreateSessionResponse) SetSession(v *Session) {
+	x.xxx_hidden_Session = v
+}
+
+func (x *CreateSessionResponse) HasSession() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Session != nil
+}
+
+func (x *CreateSessionResponse) ClearSession() {
+	x.xxx_hidden_Session = nil
+}
+
+type CreateSessionResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Session *Session
+}
+
+func (b0 CreateSessionResponse_builder) Build() *CreateSessionResponse {
+	m0 := &CreateSessionResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Session = b.Session
+	return m0
+}
+
 // GetSessionRequest identifies a session.
 type GetSessionRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_SessionId   *string                `protobuf:"bytes,1,opt,name=session_id,json=sessionId"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *GetSessionRequest) Reset() {
@@ -2091,24 +3834,56 @@ func (x *GetSessionRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetSessionRequest.ProtoReflect.Descriptor instead.
-func (*GetSessionRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{19}
-}
-
 func (x *GetSessionRequest) GetSessionId() string {
 	if x != nil {
-		return x.SessionId
+		if x.xxx_hidden_SessionId != nil {
+			return *x.xxx_hidden_SessionId
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *GetSessionRequest) SetSessionId(v string) {
+	x.xxx_hidden_SessionId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
+}
+
+func (x *GetSessionRequest) HasSessionId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *GetSessionRequest) ClearSessionId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_SessionId = nil
+}
+
+type GetSessionRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	SessionId *string
+}
+
+func (b0 GetSessionRequest_builder) Build() *GetSessionRequest {
+	m0 := &GetSessionRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.SessionId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_SessionId = b.SessionId
+	}
+	return m0
+}
+
 // GetSessionResponse returns the requested session.
 type GetSessionResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Session       *Session               `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Session *Session               `protobuf:"bytes,1,opt,name=session"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *GetSessionResponse) Reset() {
@@ -2136,27 +3911,51 @@ func (x *GetSessionResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetSessionResponse.ProtoReflect.Descriptor instead.
-func (*GetSessionResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{20}
-}
-
 func (x *GetSessionResponse) GetSession() *Session {
 	if x != nil {
-		return x.Session
+		return x.xxx_hidden_Session
 	}
 	return nil
 }
 
+func (x *GetSessionResponse) SetSession(v *Session) {
+	x.xxx_hidden_Session = v
+}
+
+func (x *GetSessionResponse) HasSession() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Session != nil
+}
+
+func (x *GetSessionResponse) ClearSession() {
+	x.xxx_hidden_Session = nil
+}
+
+type GetSessionResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Session *Session
+}
+
+func (b0 GetSessionResponse_builder) Build() *GetSessionResponse {
+	m0 := &GetSessionResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Session = b.Session
+	return m0
+}
+
 // ListSessionsRequest selects a page ordered by most recently updated first.
 type ListSessionsRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// limit defaults to 50 when zero and is capped at 200.
-	Limit int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
-	// offset is a zero-based offset into the updated-at-descending result set.
-	Offset        int64 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Limit       int32                  `protobuf:"varint,1,opt,name=limit"`
+	xxx_hidden_Offset      int64                  `protobuf:"varint,2,opt,name=offset"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ListSessionsRequest) Reset() {
@@ -2184,32 +3983,87 @@ func (x *ListSessionsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListSessionsRequest.ProtoReflect.Descriptor instead.
-func (*ListSessionsRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{21}
-}
-
 func (x *ListSessionsRequest) GetLimit() int32 {
 	if x != nil {
-		return x.Limit
+		return x.xxx_hidden_Limit
 	}
 	return 0
 }
 
 func (x *ListSessionsRequest) GetOffset() int64 {
 	if x != nil {
-		return x.Offset
+		return x.xxx_hidden_Offset
 	}
 	return 0
 }
 
+func (x *ListSessionsRequest) SetLimit(v int32) {
+	x.xxx_hidden_Limit = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *ListSessionsRequest) SetOffset(v int64) {
+	x.xxx_hidden_Offset = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *ListSessionsRequest) HasLimit() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ListSessionsRequest) HasOffset() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ListSessionsRequest) ClearLimit() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Limit = 0
+}
+
+func (x *ListSessionsRequest) ClearOffset() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Offset = 0
+}
+
+type ListSessionsRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// limit defaults to 50 when zero and is capped at 200.
+	Limit *int32
+	// offset is a zero-based offset into the updated-at-descending result set.
+	Offset *int64
+}
+
+func (b0 ListSessionsRequest_builder) Build() *ListSessionsRequest {
+	m0 := &ListSessionsRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Limit != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_Limit = *b.Limit
+	}
+	if b.Offset != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Offset = *b.Offset
+	}
+	return m0
+}
+
 // ListSessionsResponse contains one page and the unpaginated total.
 type ListSessionsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Sessions      []*Session             `protobuf:"bytes,1,rep,name=sessions,proto3" json:"sessions,omitempty"`
-	Total         int64                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Sessions    *[]*Session            `protobuf:"bytes,1,rep,name=sessions"`
+	xxx_hidden_Total       int64                  `protobuf:"varint,2,opt,name=total"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ListSessionsResponse) Reset() {
@@ -2237,43 +4091,78 @@ func (x *ListSessionsResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListSessionsResponse.ProtoReflect.Descriptor instead.
-func (*ListSessionsResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{22}
-}
-
 func (x *ListSessionsResponse) GetSessions() []*Session {
 	if x != nil {
-		return x.Sessions
+		if x.xxx_hidden_Sessions != nil {
+			return *x.xxx_hidden_Sessions
+		}
 	}
 	return nil
 }
 
 func (x *ListSessionsResponse) GetTotal() int64 {
 	if x != nil {
-		return x.Total
+		return x.xxx_hidden_Total
 	}
 	return 0
+}
+
+func (x *ListSessionsResponse) SetSessions(v []*Session) {
+	x.xxx_hidden_Sessions = &v
+}
+
+func (x *ListSessionsResponse) SetTotal(v int64) {
+	x.xxx_hidden_Total = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *ListSessionsResponse) HasTotal() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ListSessionsResponse) ClearTotal() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Total = 0
+}
+
+type ListSessionsResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Sessions []*Session
+	Total    *int64
+}
+
+func (b0 ListSessionsResponse_builder) Build() *ListSessionsResponse {
+	m0 := &ListSessionsResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Sessions = &b.Sessions
+	if b.Total != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Total = *b.Total
+	}
+	return m0
 }
 
 // UpdateSessionRequest updates fields that are present; omitted fields keep
 // their current values.
 type UpdateSessionRequest struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Title     *string                `protobuf:"bytes,2,opt,name=title,proto3,oneof" json:"title,omitempty"`
-	Workdir   *string                `protobuf:"bytes,3,opt,name=workdir,proto3,oneof" json:"workdir,omitempty"`
-	// provider_id and model_id are validated together after applying the update.
-	ProviderId *string `protobuf:"bytes,4,opt,name=provider_id,json=providerId,proto3,oneof" json:"provider_id,omitempty"`
-	ModelId    *string `protobuf:"bytes,5,opt,name=model_id,json=modelId,proto3,oneof" json:"model_id,omitempty"`
-	// An explicitly empty reasoning_effort restores the model default.
-	ReasoningEffort *string `protobuf:"bytes,6,opt,name=reasoning_effort,json=reasoningEffort,proto3,oneof" json:"reasoning_effort,omitempty"`
-	// file_access changes the automatically allowed filesystem capability.
-	FileAccess *FileAccess `protobuf:"varint,7,opt,name=file_access,json=fileAccess,proto3,enum=koda.v1.FileAccess,oneof" json:"file_access,omitempty"`
-	// shell_access changes whether arbitrary shell commands need approval.
-	ShellAccess   *ShellAccess `protobuf:"varint,8,opt,name=shell_access,json=shellAccess,proto3,enum=koda.v1.ShellAccess,oneof" json:"shell_access,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                      protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_SessionId       *string                `protobuf:"bytes,1,opt,name=session_id,json=sessionId"`
+	xxx_hidden_Title           *string                `protobuf:"bytes,2,opt,name=title"`
+	xxx_hidden_Workdir         *string                `protobuf:"bytes,3,opt,name=workdir"`
+	xxx_hidden_ProviderId      *string                `protobuf:"bytes,4,opt,name=provider_id,json=providerId"`
+	xxx_hidden_ModelId         *string                `protobuf:"bytes,5,opt,name=model_id,json=modelId"`
+	xxx_hidden_ReasoningEffort *string                `protobuf:"bytes,6,opt,name=reasoning_effort,json=reasoningEffort"`
+	xxx_hidden_FileAccess      FileAccess             `protobuf:"varint,7,opt,name=file_access,json=fileAccess,enum=koda.v1.FileAccess"`
+	xxx_hidden_ShellAccess     ShellAccess            `protobuf:"varint,8,opt,name=shell_access,json=shellAccess,enum=koda.v1.ShellAccess"`
+	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
+	XXX_presence               [1]uint32
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *UpdateSessionRequest) Reset() {
@@ -2301,73 +4190,282 @@ func (x *UpdateSessionRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UpdateSessionRequest.ProtoReflect.Descriptor instead.
-func (*UpdateSessionRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{23}
-}
-
 func (x *UpdateSessionRequest) GetSessionId() string {
 	if x != nil {
-		return x.SessionId
+		if x.xxx_hidden_SessionId != nil {
+			return *x.xxx_hidden_SessionId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *UpdateSessionRequest) GetTitle() string {
-	if x != nil && x.Title != nil {
-		return *x.Title
+	if x != nil {
+		if x.xxx_hidden_Title != nil {
+			return *x.xxx_hidden_Title
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *UpdateSessionRequest) GetWorkdir() string {
-	if x != nil && x.Workdir != nil {
-		return *x.Workdir
+	if x != nil {
+		if x.xxx_hidden_Workdir != nil {
+			return *x.xxx_hidden_Workdir
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *UpdateSessionRequest) GetProviderId() string {
-	if x != nil && x.ProviderId != nil {
-		return *x.ProviderId
+	if x != nil {
+		if x.xxx_hidden_ProviderId != nil {
+			return *x.xxx_hidden_ProviderId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *UpdateSessionRequest) GetModelId() string {
-	if x != nil && x.ModelId != nil {
-		return *x.ModelId
+	if x != nil {
+		if x.xxx_hidden_ModelId != nil {
+			return *x.xxx_hidden_ModelId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *UpdateSessionRequest) GetReasoningEffort() string {
-	if x != nil && x.ReasoningEffort != nil {
-		return *x.ReasoningEffort
+	if x != nil {
+		if x.xxx_hidden_ReasoningEffort != nil {
+			return *x.xxx_hidden_ReasoningEffort
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *UpdateSessionRequest) GetFileAccess() FileAccess {
-	if x != nil && x.FileAccess != nil {
-		return *x.FileAccess
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 6) {
+			return x.xxx_hidden_FileAccess
+		}
 	}
 	return FileAccess_FILE_ACCESS_UNSPECIFIED
 }
 
 func (x *UpdateSessionRequest) GetShellAccess() ShellAccess {
-	if x != nil && x.ShellAccess != nil {
-		return *x.ShellAccess
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 7) {
+			return x.xxx_hidden_ShellAccess
+		}
 	}
 	return ShellAccess_SHELL_ACCESS_UNSPECIFIED
 }
 
+func (x *UpdateSessionRequest) SetSessionId(v string) {
+	x.xxx_hidden_SessionId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
+}
+
+func (x *UpdateSessionRequest) SetTitle(v string) {
+	x.xxx_hidden_Title = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
+}
+
+func (x *UpdateSessionRequest) SetWorkdir(v string) {
+	x.xxx_hidden_Workdir = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 8)
+}
+
+func (x *UpdateSessionRequest) SetProviderId(v string) {
+	x.xxx_hidden_ProviderId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
+}
+
+func (x *UpdateSessionRequest) SetModelId(v string) {
+	x.xxx_hidden_ModelId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
+}
+
+func (x *UpdateSessionRequest) SetReasoningEffort(v string) {
+	x.xxx_hidden_ReasoningEffort = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
+}
+
+func (x *UpdateSessionRequest) SetFileAccess(v FileAccess) {
+	x.xxx_hidden_FileAccess = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 8)
+}
+
+func (x *UpdateSessionRequest) SetShellAccess(v ShellAccess) {
+	x.xxx_hidden_ShellAccess = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 8)
+}
+
+func (x *UpdateSessionRequest) HasSessionId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *UpdateSessionRequest) HasTitle() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *UpdateSessionRequest) HasWorkdir() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *UpdateSessionRequest) HasProviderId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *UpdateSessionRequest) HasModelId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *UpdateSessionRequest) HasReasoningEffort() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *UpdateSessionRequest) HasFileAccess() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *UpdateSessionRequest) HasShellAccess() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
+func (x *UpdateSessionRequest) ClearSessionId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_SessionId = nil
+}
+
+func (x *UpdateSessionRequest) ClearTitle() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Title = nil
+}
+
+func (x *UpdateSessionRequest) ClearWorkdir() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Workdir = nil
+}
+
+func (x *UpdateSessionRequest) ClearProviderId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_ProviderId = nil
+}
+
+func (x *UpdateSessionRequest) ClearModelId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_ModelId = nil
+}
+
+func (x *UpdateSessionRequest) ClearReasoningEffort() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_ReasoningEffort = nil
+}
+
+func (x *UpdateSessionRequest) ClearFileAccess() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_FileAccess = FileAccess_FILE_ACCESS_UNSPECIFIED
+}
+
+func (x *UpdateSessionRequest) ClearShellAccess() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_ShellAccess = ShellAccess_SHELL_ACCESS_UNSPECIFIED
+}
+
+type UpdateSessionRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	SessionId *string
+	Title     *string
+	Workdir   *string
+	// provider_id and model_id are validated together after applying the update.
+	ProviderId *string
+	ModelId    *string
+	// An explicitly empty reasoning_effort restores the model default.
+	ReasoningEffort *string
+	// file_access changes the automatically allowed filesystem capability.
+	FileAccess *FileAccess
+	// shell_access changes whether arbitrary shell commands need approval.
+	ShellAccess *ShellAccess
+}
+
+func (b0 UpdateSessionRequest_builder) Build() *UpdateSessionRequest {
+	m0 := &UpdateSessionRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.SessionId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
+		x.xxx_hidden_SessionId = b.SessionId
+	}
+	if b.Title != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
+		x.xxx_hidden_Title = b.Title
+	}
+	if b.Workdir != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 8)
+		x.xxx_hidden_Workdir = b.Workdir
+	}
+	if b.ProviderId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
+		x.xxx_hidden_ProviderId = b.ProviderId
+	}
+	if b.ModelId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
+		x.xxx_hidden_ModelId = b.ModelId
+	}
+	if b.ReasoningEffort != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
+		x.xxx_hidden_ReasoningEffort = b.ReasoningEffort
+	}
+	if b.FileAccess != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 8)
+		x.xxx_hidden_FileAccess = *b.FileAccess
+	}
+	if b.ShellAccess != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 8)
+		x.xxx_hidden_ShellAccess = *b.ShellAccess
+	}
+	return m0
+}
+
 // UpdateSessionResponse returns the updated session.
 type UpdateSessionResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Session       *Session               `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Session *Session               `protobuf:"bytes,1,opt,name=session"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *UpdateSessionResponse) Reset() {
@@ -2395,24 +4493,50 @@ func (x *UpdateSessionResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UpdateSessionResponse.ProtoReflect.Descriptor instead.
-func (*UpdateSessionResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{24}
-}
-
 func (x *UpdateSessionResponse) GetSession() *Session {
 	if x != nil {
-		return x.Session
+		return x.xxx_hidden_Session
 	}
 	return nil
 }
 
+func (x *UpdateSessionResponse) SetSession(v *Session) {
+	x.xxx_hidden_Session = v
+}
+
+func (x *UpdateSessionResponse) HasSession() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Session != nil
+}
+
+func (x *UpdateSessionResponse) ClearSession() {
+	x.xxx_hidden_Session = nil
+}
+
+type UpdateSessionResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Session *Session
+}
+
+func (b0 UpdateSessionResponse_builder) Build() *UpdateSessionResponse {
+	m0 := &UpdateSessionResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Session = b.Session
+	return m0
+}
+
 // DeleteSessionRequest identifies a session to delete.
 type DeleteSessionRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_SessionId   *string                `protobuf:"bytes,1,opt,name=session_id,json=sessionId"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *DeleteSessionRequest) Reset() {
@@ -2440,21 +4564,53 @@ func (x *DeleteSessionRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteSessionRequest.ProtoReflect.Descriptor instead.
-func (*DeleteSessionRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{25}
-}
-
 func (x *DeleteSessionRequest) GetSessionId() string {
 	if x != nil {
-		return x.SessionId
+		if x.xxx_hidden_SessionId != nil {
+			return *x.xxx_hidden_SessionId
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *DeleteSessionRequest) SetSessionId(v string) {
+	x.xxx_hidden_SessionId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
+}
+
+func (x *DeleteSessionRequest) HasSessionId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *DeleteSessionRequest) ClearSessionId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_SessionId = nil
+}
+
+type DeleteSessionRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	SessionId *string
+}
+
+func (b0 DeleteSessionRequest_builder) Build() *DeleteSessionRequest {
+	m0 := &DeleteSessionRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.SessionId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_SessionId = b.SessionId
+	}
+	return m0
+}
+
 // DeleteSessionResponse acknowledges session deletion.
 type DeleteSessionResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2484,33 +4640,35 @@ func (x *DeleteSessionResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteSessionResponse.ProtoReflect.Descriptor instead.
-func (*DeleteSessionResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{26}
+type DeleteSessionResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 DeleteSessionResponse_builder) Build() *DeleteSessionResponse {
+	m0 := &DeleteSessionResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
 }
 
 // Event is an agent-runtime event exposed to clients.
 type Event struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id is the decimal string form of the durable ADK event ID; partial events have no ID.
-	Id        string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	SessionId string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	// turn_id groups the user input, model messages, and tool results from one Run.
-	TurnId string `protobuf:"bytes,3,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
-	// author is display metadata and is not forwarded to the model.
-	Author  string   `protobuf:"bytes,4,opt,name=author,proto3" json:"author,omitempty"`
-	Message *Message `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
-	// finish_reason is meaningful only for complete assistant events.
-	FinishReason FinishReason `protobuf:"varint,6,opt,name=finish_reason,json=finishReason,proto3,enum=koda.v1.FinishReason" json:"finish_reason,omitempty"`
-	// usage is present only when the provider reports token accounting.
-	Usage *TokenUsage `protobuf:"bytes,7,opt,name=usage,proto3" json:"usage,omitempty"`
-	// partial events contain text/reasoning deltas, are transient, and are not persisted.
-	Partial bool `protobuf:"varint,8,opt,name=partial,proto3" json:"partial,omitempty"`
-	// Timestamps are Unix milliseconds and are zero for transient partial events.
-	CreatedAt     int64 `protobuf:"varint,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     int64 `protobuf:"varint,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id           *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_SessionId    *string                `protobuf:"bytes,2,opt,name=session_id,json=sessionId"`
+	xxx_hidden_TurnId       *string                `protobuf:"bytes,3,opt,name=turn_id,json=turnId"`
+	xxx_hidden_Author       *string                `protobuf:"bytes,4,opt,name=author"`
+	xxx_hidden_Message      *Message               `protobuf:"bytes,5,opt,name=message"`
+	xxx_hidden_FinishReason FinishReason           `protobuf:"varint,6,opt,name=finish_reason,json=finishReason,enum=koda.v1.FinishReason"`
+	xxx_hidden_Usage        *TokenUsage            `protobuf:"bytes,7,opt,name=usage"`
+	xxx_hidden_Partial      bool                   `protobuf:"varint,8,opt,name=partial"`
+	xxx_hidden_CreatedAt    int64                  `protobuf:"varint,9,opt,name=created_at,json=createdAt"`
+	xxx_hidden_UpdatedAt    int64                  `protobuf:"varint,10,opt,name=updated_at,json=updatedAt"`
+	XXX_raceDetectHookData  protoimpl.RaceDetectHookData
+	XXX_presence            [1]uint32
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *Event) Reset() {
@@ -2538,96 +4696,332 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Event.ProtoReflect.Descriptor instead.
-func (*Event) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{27}
-}
-
 func (x *Event) GetId() string {
 	if x != nil {
-		return x.Id
+		if x.xxx_hidden_Id != nil {
+			return *x.xxx_hidden_Id
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Event) GetSessionId() string {
 	if x != nil {
-		return x.SessionId
+		if x.xxx_hidden_SessionId != nil {
+			return *x.xxx_hidden_SessionId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Event) GetTurnId() string {
 	if x != nil {
-		return x.TurnId
+		if x.xxx_hidden_TurnId != nil {
+			return *x.xxx_hidden_TurnId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Event) GetAuthor() string {
 	if x != nil {
-		return x.Author
+		if x.xxx_hidden_Author != nil {
+			return *x.xxx_hidden_Author
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Event) GetMessage() *Message {
 	if x != nil {
-		return x.Message
+		return x.xxx_hidden_Message
 	}
 	return nil
 }
 
 func (x *Event) GetFinishReason() FinishReason {
 	if x != nil {
-		return x.FinishReason
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 5) {
+			return x.xxx_hidden_FinishReason
+		}
 	}
 	return FinishReason_FINISH_REASON_UNSPECIFIED
 }
 
 func (x *Event) GetUsage() *TokenUsage {
 	if x != nil {
-		return x.Usage
+		return x.xxx_hidden_Usage
 	}
 	return nil
 }
 
 func (x *Event) GetPartial() bool {
 	if x != nil {
-		return x.Partial
+		return x.xxx_hidden_Partial
 	}
 	return false
 }
 
 func (x *Event) GetCreatedAt() int64 {
 	if x != nil {
-		return x.CreatedAt
+		return x.xxx_hidden_CreatedAt
 	}
 	return 0
 }
 
 func (x *Event) GetUpdatedAt() int64 {
 	if x != nil {
-		return x.UpdatedAt
+		return x.xxx_hidden_UpdatedAt
 	}
 	return 0
 }
 
+func (x *Event) SetId(v string) {
+	x.xxx_hidden_Id = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 10)
+}
+
+func (x *Event) SetSessionId(v string) {
+	x.xxx_hidden_SessionId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 10)
+}
+
+func (x *Event) SetTurnId(v string) {
+	x.xxx_hidden_TurnId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 10)
+}
+
+func (x *Event) SetAuthor(v string) {
+	x.xxx_hidden_Author = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 10)
+}
+
+func (x *Event) SetMessage(v *Message) {
+	x.xxx_hidden_Message = v
+}
+
+func (x *Event) SetFinishReason(v FinishReason) {
+	x.xxx_hidden_FinishReason = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 10)
+}
+
+func (x *Event) SetUsage(v *TokenUsage) {
+	x.xxx_hidden_Usage = v
+}
+
+func (x *Event) SetPartial(v bool) {
+	x.xxx_hidden_Partial = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 10)
+}
+
+func (x *Event) SetCreatedAt(v int64) {
+	x.xxx_hidden_CreatedAt = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 10)
+}
+
+func (x *Event) SetUpdatedAt(v int64) {
+	x.xxx_hidden_UpdatedAt = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 10)
+}
+
+func (x *Event) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *Event) HasSessionId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Event) HasTurnId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *Event) HasAuthor() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *Event) HasMessage() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Message != nil
+}
+
+func (x *Event) HasFinishReason() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *Event) HasUsage() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Usage != nil
+}
+
+func (x *Event) HasPartial() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
+func (x *Event) HasCreatedAt() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
+func (x *Event) HasUpdatedAt() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 9)
+}
+
+func (x *Event) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *Event) ClearSessionId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_SessionId = nil
+}
+
+func (x *Event) ClearTurnId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_TurnId = nil
+}
+
+func (x *Event) ClearAuthor() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Author = nil
+}
+
+func (x *Event) ClearMessage() {
+	x.xxx_hidden_Message = nil
+}
+
+func (x *Event) ClearFinishReason() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_FinishReason = FinishReason_FINISH_REASON_UNSPECIFIED
+}
+
+func (x *Event) ClearUsage() {
+	x.xxx_hidden_Usage = nil
+}
+
+func (x *Event) ClearPartial() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_Partial = false
+}
+
+func (x *Event) ClearCreatedAt() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_CreatedAt = 0
+}
+
+func (x *Event) ClearUpdatedAt() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 9)
+	x.xxx_hidden_UpdatedAt = 0
+}
+
+type Event_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// id is the decimal string form of the durable ADK event ID; partial events have no ID.
+	Id        *string
+	SessionId *string
+	// turn_id groups the user input, model messages, and tool results from one Run.
+	TurnId *string
+	// author is display metadata and is not forwarded to the model.
+	Author  *string
+	Message *Message
+	// finish_reason is meaningful only for complete assistant events.
+	FinishReason *FinishReason
+	// usage is present only when the provider reports token accounting.
+	Usage *TokenUsage
+	// partial events contain text/reasoning deltas, are transient, and are not persisted.
+	Partial *bool
+	// Timestamps are Unix milliseconds and are zero for transient partial events.
+	CreatedAt *int64
+	UpdatedAt *int64
+}
+
+func (b0 Event_builder) Build() *Event {
+	m0 := &Event{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 10)
+		x.xxx_hidden_Id = b.Id
+	}
+	if b.SessionId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 10)
+		x.xxx_hidden_SessionId = b.SessionId
+	}
+	if b.TurnId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 10)
+		x.xxx_hidden_TurnId = b.TurnId
+	}
+	if b.Author != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 10)
+		x.xxx_hidden_Author = b.Author
+	}
+	x.xxx_hidden_Message = b.Message
+	if b.FinishReason != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 10)
+		x.xxx_hidden_FinishReason = *b.FinishReason
+	}
+	x.xxx_hidden_Usage = b.Usage
+	if b.Partial != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 10)
+		x.xxx_hidden_Partial = *b.Partial
+	}
+	if b.CreatedAt != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 10)
+		x.xxx_hidden_CreatedAt = *b.CreatedAt
+	}
+	if b.UpdatedAt != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 10)
+		x.xxx_hidden_UpdatedAt = *b.UpdatedAt
+	}
+	return m0
+}
+
 // Message is the provider-neutral content carried by an event.
 type Message struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Role  Role                   `protobuf:"varint,1,opt,name=role,proto3,enum=koda.v1.Role" json:"role,omitempty"`
-	// text is the plain-text payload; parts take precedence when non-empty.
-	Text string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	// parts contains ordered multimodal user content.
-	Parts []*Part `protobuf:"bytes,3,rep,name=parts,proto3" json:"parts,omitempty"`
-	// reasoning contains provider-reported reasoning content when available.
-	Reasoning string      `protobuf:"bytes,4,opt,name=reasoning,proto3" json:"reasoning,omitempty"`
-	ToolCalls []*ToolCall `protobuf:"bytes,5,rep,name=tool_calls,json=toolCalls,proto3" json:"tool_calls,omitempty"`
-	// tool_response is set only for ROLE_TOOL messages.
-	ToolResponse  *ToolResponse `protobuf:"bytes,6,opt,name=tool_response,json=toolResponse,proto3" json:"tool_response,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Role         Role                   `protobuf:"varint,1,opt,name=role,enum=koda.v1.Role"`
+	xxx_hidden_Text         *string                `protobuf:"bytes,2,opt,name=text"`
+	xxx_hidden_Parts        *[]*Part               `protobuf:"bytes,3,rep,name=parts"`
+	xxx_hidden_Reasoning    *string                `protobuf:"bytes,4,opt,name=reasoning"`
+	xxx_hidden_ToolCalls    *[]*ToolCall           `protobuf:"bytes,5,rep,name=tool_calls,json=toolCalls"`
+	xxx_hidden_ToolResponse *ToolResponse          `protobuf:"bytes,6,opt,name=tool_response,json=toolResponse"`
+	XXX_raceDetectHookData  protoimpl.RaceDetectHookData
+	XXX_presence            [1]uint32
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *Message) Reset() {
@@ -2655,63 +5049,181 @@ func (x *Message) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Message.ProtoReflect.Descriptor instead.
-func (*Message) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{28}
-}
-
 func (x *Message) GetRole() Role {
 	if x != nil {
-		return x.Role
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 0) {
+			return x.xxx_hidden_Role
+		}
 	}
 	return Role_ROLE_UNSPECIFIED
 }
 
 func (x *Message) GetText() string {
 	if x != nil {
-		return x.Text
+		if x.xxx_hidden_Text != nil {
+			return *x.xxx_hidden_Text
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Message) GetParts() []*Part {
 	if x != nil {
-		return x.Parts
+		if x.xxx_hidden_Parts != nil {
+			return *x.xxx_hidden_Parts
+		}
 	}
 	return nil
 }
 
 func (x *Message) GetReasoning() string {
 	if x != nil {
-		return x.Reasoning
+		if x.xxx_hidden_Reasoning != nil {
+			return *x.xxx_hidden_Reasoning
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Message) GetToolCalls() []*ToolCall {
 	if x != nil {
-		return x.ToolCalls
+		if x.xxx_hidden_ToolCalls != nil {
+			return *x.xxx_hidden_ToolCalls
+		}
 	}
 	return nil
 }
 
 func (x *Message) GetToolResponse() *ToolResponse {
 	if x != nil {
-		return x.ToolResponse
+		return x.xxx_hidden_ToolResponse
 	}
 	return nil
 }
 
+func (x *Message) SetRole(v Role) {
+	x.xxx_hidden_Role = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+}
+
+func (x *Message) SetText(v string) {
+	x.xxx_hidden_Text = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
+}
+
+func (x *Message) SetParts(v []*Part) {
+	x.xxx_hidden_Parts = &v
+}
+
+func (x *Message) SetReasoning(v string) {
+	x.xxx_hidden_Reasoning = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+}
+
+func (x *Message) SetToolCalls(v []*ToolCall) {
+	x.xxx_hidden_ToolCalls = &v
+}
+
+func (x *Message) SetToolResponse(v *ToolResponse) {
+	x.xxx_hidden_ToolResponse = v
+}
+
+func (x *Message) HasRole() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *Message) HasText() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Message) HasReasoning() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *Message) HasToolResponse() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_ToolResponse != nil
+}
+
+func (x *Message) ClearRole() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Role = Role_ROLE_UNSPECIFIED
+}
+
+func (x *Message) ClearText() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Text = nil
+}
+
+func (x *Message) ClearReasoning() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Reasoning = nil
+}
+
+func (x *Message) ClearToolResponse() {
+	x.xxx_hidden_ToolResponse = nil
+}
+
+type Message_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Role *Role
+	// text is the plain-text payload; parts take precedence when non-empty.
+	Text *string
+	// parts contains ordered multimodal user content.
+	Parts []*Part
+	// reasoning contains provider-reported reasoning content when available.
+	Reasoning *string
+	ToolCalls []*ToolCall
+	// tool_response is set only for ROLE_TOOL messages.
+	ToolResponse *ToolResponse
+}
+
+func (b0 Message_builder) Build() *Message {
+	m0 := &Message{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Role != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		x.xxx_hidden_Role = *b.Role
+	}
+	if b.Text != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
+		x.xxx_hidden_Text = b.Text
+	}
+	x.xxx_hidden_Parts = &b.Parts
+	if b.Reasoning != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		x.xxx_hidden_Reasoning = b.Reasoning
+	}
+	x.xxx_hidden_ToolCalls = &b.ToolCalls
+	x.xxx_hidden_ToolResponse = b.ToolResponse
+	return m0
+}
+
 // ToolCall is one model-requested tool invocation.
 type ToolCall struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id is assigned by the provider and correlates with ToolResponse.tool_call_id.
-	Id   string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// arguments_json is a JSON object containing the model-supplied arguments.
-	ArgumentsJson string `protobuf:"bytes,3,opt,name=arguments_json,json=argumentsJson,proto3" json:"arguments_json,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id            *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Name          *string                `protobuf:"bytes,2,opt,name=name"`
+	xxx_hidden_ArgumentsJson *string                `protobuf:"bytes,3,opt,name=arguments_json,json=argumentsJson"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *ToolCall) Reset() {
@@ -2739,47 +5251,126 @@ func (x *ToolCall) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ToolCall.ProtoReflect.Descriptor instead.
-func (*ToolCall) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{29}
-}
-
 func (x *ToolCall) GetId() string {
 	if x != nil {
-		return x.Id
+		if x.xxx_hidden_Id != nil {
+			return *x.xxx_hidden_Id
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolCall) GetName() string {
 	if x != nil {
-		return x.Name
+		if x.xxx_hidden_Name != nil {
+			return *x.xxx_hidden_Name
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolCall) GetArgumentsJson() string {
 	if x != nil {
-		return x.ArgumentsJson
+		if x.xxx_hidden_ArgumentsJson != nil {
+			return *x.xxx_hidden_ArgumentsJson
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *ToolCall) SetId(v string) {
+	x.xxx_hidden_Id = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *ToolCall) SetName(v string) {
+	x.xxx_hidden_Name = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *ToolCall) SetArgumentsJson(v string) {
+	x.xxx_hidden_ArgumentsJson = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *ToolCall) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ToolCall) HasName() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ToolCall) HasArgumentsJson() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *ToolCall) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *ToolCall) ClearName() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Name = nil
+}
+
+func (x *ToolCall) ClearArgumentsJson() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_ArgumentsJson = nil
+}
+
+type ToolCall_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// id is assigned by the provider and correlates with ToolResponse.tool_call_id.
+	Id   *string
+	Name *string
+	// arguments_json is a JSON object containing the model-supplied arguments.
+	ArgumentsJson *string
+}
+
+func (b0 ToolCall_builder) Build() *ToolCall {
+	m0 := &ToolCall{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_Id = b.Id
+	}
+	if b.Name != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_Name = b.Name
+	}
+	if b.ArgumentsJson != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_ArgumentsJson = b.ArgumentsJson
+	}
+	return m0
+}
+
 // ToolResponse is the completed outcome of one tool invocation.
 type ToolResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// tool_call_id references ToolCall.id.
-	ToolCallId string `protobuf:"bytes,1,opt,name=tool_call_id,json=toolCallId,proto3" json:"tool_call_id,omitempty"`
-	Name       string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// Exactly one completed outcome must be set.
-	//
-	// Types that are valid to be assigned to Outcome:
-	//
-	//	*ToolResponse_Result
-	//	*ToolResponse_Error
-	Outcome       isToolResponse_Outcome `protobuf_oneof:"outcome"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_ToolCallId  *string                `protobuf:"bytes,1,opt,name=tool_call_id,json=toolCallId"`
+	xxx_hidden_Name        *string                `protobuf:"bytes,2,opt,name=name"`
+	xxx_hidden_Outcome     isToolResponse_Outcome `protobuf_oneof:"outcome"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ToolResponse) Reset() {
@@ -2807,35 +5398,29 @@ func (x *ToolResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ToolResponse.ProtoReflect.Descriptor instead.
-func (*ToolResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{30}
-}
-
 func (x *ToolResponse) GetToolCallId() string {
 	if x != nil {
-		return x.ToolCallId
+		if x.xxx_hidden_ToolCallId != nil {
+			return *x.xxx_hidden_ToolCallId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolResponse) GetName() string {
 	if x != nil {
-		return x.Name
+		if x.xxx_hidden_Name != nil {
+			return *x.xxx_hidden_Name
+		}
+		return ""
 	}
 	return ""
 }
 
-func (x *ToolResponse) GetOutcome() isToolResponse_Outcome {
-	if x != nil {
-		return x.Outcome
-	}
-	return nil
-}
-
 func (x *ToolResponse) GetResult() *ToolResult {
 	if x != nil {
-		if x, ok := x.Outcome.(*ToolResponse_Result); ok {
+		if x, ok := x.xxx_hidden_Outcome.(*toolResponse_Result); ok {
 			return x.Result
 		}
 	}
@@ -2844,40 +5429,191 @@ func (x *ToolResponse) GetResult() *ToolResult {
 
 func (x *ToolResponse) GetError() *ToolError {
 	if x != nil {
-		if x, ok := x.Outcome.(*ToolResponse_Error); ok {
+		if x, ok := x.xxx_hidden_Outcome.(*toolResponse_Error); ok {
 			return x.Error
 		}
 	}
 	return nil
 }
 
+func (x *ToolResponse) SetToolCallId(v string) {
+	x.xxx_hidden_ToolCallId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *ToolResponse) SetName(v string) {
+	x.xxx_hidden_Name = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *ToolResponse) SetResult(v *ToolResult) {
+	if v == nil {
+		x.xxx_hidden_Outcome = nil
+		return
+	}
+	x.xxx_hidden_Outcome = &toolResponse_Result{v}
+}
+
+func (x *ToolResponse) SetError(v *ToolError) {
+	if v == nil {
+		x.xxx_hidden_Outcome = nil
+		return
+	}
+	x.xxx_hidden_Outcome = &toolResponse_Error{v}
+}
+
+func (x *ToolResponse) HasToolCallId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ToolResponse) HasName() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ToolResponse) HasOutcome() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Outcome != nil
+}
+
+func (x *ToolResponse) HasResult() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Outcome.(*toolResponse_Result)
+	return ok
+}
+
+func (x *ToolResponse) HasError() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Outcome.(*toolResponse_Error)
+	return ok
+}
+
+func (x *ToolResponse) ClearToolCallId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_ToolCallId = nil
+}
+
+func (x *ToolResponse) ClearName() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Name = nil
+}
+
+func (x *ToolResponse) ClearOutcome() {
+	x.xxx_hidden_Outcome = nil
+}
+
+func (x *ToolResponse) ClearResult() {
+	if _, ok := x.xxx_hidden_Outcome.(*toolResponse_Result); ok {
+		x.xxx_hidden_Outcome = nil
+	}
+}
+
+func (x *ToolResponse) ClearError() {
+	if _, ok := x.xxx_hidden_Outcome.(*toolResponse_Error); ok {
+		x.xxx_hidden_Outcome = nil
+	}
+}
+
+const ToolResponse_Outcome_not_set_case case_ToolResponse_Outcome = 0
+const ToolResponse_Result_case case_ToolResponse_Outcome = 3
+const ToolResponse_Error_case case_ToolResponse_Outcome = 4
+
+func (x *ToolResponse) WhichOutcome() case_ToolResponse_Outcome {
+	if x == nil {
+		return ToolResponse_Outcome_not_set_case
+	}
+	switch x.xxx_hidden_Outcome.(type) {
+	case *toolResponse_Result:
+		return ToolResponse_Result_case
+	case *toolResponse_Error:
+		return ToolResponse_Error_case
+	default:
+		return ToolResponse_Outcome_not_set_case
+	}
+}
+
+type ToolResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// tool_call_id references ToolCall.id.
+	ToolCallId *string
+	Name       *string
+	// Exactly one completed outcome must be set.
+
+	// Fields of oneof xxx_hidden_Outcome:
+	Result *ToolResult
+	Error  *ToolError
+	// -- end of xxx_hidden_Outcome
+}
+
+func (b0 ToolResponse_builder) Build() *ToolResponse {
+	m0 := &ToolResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.ToolCallId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_ToolCallId = b.ToolCallId
+	}
+	if b.Name != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_Name = b.Name
+	}
+	if b.Result != nil {
+		x.xxx_hidden_Outcome = &toolResponse_Result{b.Result}
+	}
+	if b.Error != nil {
+		x.xxx_hidden_Outcome = &toolResponse_Error{b.Error}
+	}
+	return m0
+}
+
+type case_ToolResponse_Outcome protoreflect.FieldNumber
+
+func (x case_ToolResponse_Outcome) String() string {
+	md := file_koda_v1_service_proto_msgTypes[30].Descriptor()
+	if x == 0 {
+		return "not set"
+	}
+	return protoimpl.X.MessageFieldStringOf(md, protoreflect.FieldNumber(x))
+}
+
 type isToolResponse_Outcome interface {
 	isToolResponse_Outcome()
 }
 
-type ToolResponse_Result struct {
-	Result *ToolResult `protobuf:"bytes,3,opt,name=result,proto3,oneof"`
+type toolResponse_Result struct {
+	Result *ToolResult `protobuf:"bytes,3,opt,name=result,oneof"`
 }
 
-type ToolResponse_Error struct {
-	Error *ToolError `protobuf:"bytes,4,opt,name=error,proto3,oneof"`
+type toolResponse_Error struct {
+	Error *ToolError `protobuf:"bytes,4,opt,name=error,oneof"`
 }
 
-func (*ToolResponse_Result) isToolResponse_Outcome() {}
+func (*toolResponse_Result) isToolResponse_Outcome() {}
 
-func (*ToolResponse_Error) isToolResponse_Outcome() {}
+func (*toolResponse_Error) isToolResponse_Outcome() {}
 
 // ToolResult contains a successful tool outcome.
 type ToolResult struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// content is the plain-text fallback sent to providers without structured results.
-	Content string `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
-	// structured_content_json is an optional raw JSON value.
-	StructuredContentJson string `protobuf:"bytes,2,opt,name=structured_content_json,json=structuredContentJson,proto3" json:"structured_content_json,omitempty"`
-	// file_changes contains the actual diff applied by a file mutation.
-	FileChanges   []*FileChange `protobuf:"bytes,3,rep,name=file_changes,json=fileChanges,proto3" json:"file_changes,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Content               *string                `protobuf:"bytes,1,opt,name=content"`
+	xxx_hidden_StructuredContentJson *string                `protobuf:"bytes,2,opt,name=structured_content_json,json=structuredContentJson"`
+	xxx_hidden_FileChanges           *[]*FileChange         `protobuf:"bytes,3,rep,name=file_changes,json=fileChanges"`
+	XXX_raceDetectHookData           protoimpl.RaceDetectHookData
+	XXX_presence                     [1]uint32
+	unknownFields                    protoimpl.UnknownFields
+	sizeCache                        protoimpl.SizeCache
 }
 
 func (x *ToolResult) Reset() {
@@ -2905,43 +5641,112 @@ func (x *ToolResult) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ToolResult.ProtoReflect.Descriptor instead.
-func (*ToolResult) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{31}
-}
-
 func (x *ToolResult) GetContent() string {
 	if x != nil {
-		return x.Content
+		if x.xxx_hidden_Content != nil {
+			return *x.xxx_hidden_Content
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolResult) GetStructuredContentJson() string {
 	if x != nil {
-		return x.StructuredContentJson
+		if x.xxx_hidden_StructuredContentJson != nil {
+			return *x.xxx_hidden_StructuredContentJson
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolResult) GetFileChanges() []*FileChange {
 	if x != nil {
-		return x.FileChanges
+		if x.xxx_hidden_FileChanges != nil {
+			return *x.xxx_hidden_FileChanges
+		}
 	}
 	return nil
+}
+
+func (x *ToolResult) SetContent(v string) {
+	x.xxx_hidden_Content = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *ToolResult) SetStructuredContentJson(v string) {
+	x.xxx_hidden_StructuredContentJson = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *ToolResult) SetFileChanges(v []*FileChange) {
+	x.xxx_hidden_FileChanges = &v
+}
+
+func (x *ToolResult) HasContent() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ToolResult) HasStructuredContentJson() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ToolResult) ClearContent() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Content = nil
+}
+
+func (x *ToolResult) ClearStructuredContentJson() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_StructuredContentJson = nil
+}
+
+type ToolResult_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// content is the plain-text fallback sent to providers without structured results.
+	Content *string
+	// structured_content_json is an optional raw JSON value.
+	StructuredContentJson *string
+	// file_changes contains the actual diff applied by a file mutation.
+	FileChanges []*FileChange
+}
+
+func (b0 ToolResult_builder) Build() *ToolResult {
+	m0 := &ToolResult{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Content != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_Content = b.Content
+	}
+	if b.StructuredContentJson != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_StructuredContentJson = b.StructuredContentJson
+	}
+	x.xxx_hidden_FileChanges = &b.FileChanges
+	return m0
 }
 
 // FileChange is a display-oriented change to one file. It is used for both a
 // proposed ToolApproval diff and a completed ToolResult diff.
 type FileChange struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Path  string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
-	Kind  FileChangeKind         `protobuf:"varint,2,opt,name=kind,proto3,enum=koda.v1.FileChangeKind" json:"kind,omitempty"`
-	Hunks []*DiffHunk            `protobuf:"bytes,3,rep,name=hunks,proto3" json:"hunks,omitempty"`
-	// truncated indicates that display limits omitted one or more hunks or lines.
-	Truncated     bool `protobuf:"varint,4,opt,name=truncated,proto3" json:"truncated,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Path        *string                `protobuf:"bytes,1,opt,name=path"`
+	xxx_hidden_Kind        FileChangeKind         `protobuf:"varint,2,opt,name=kind,enum=koda.v1.FileChangeKind"`
+	xxx_hidden_Hunks       *[]*DiffHunk           `protobuf:"bytes,3,rep,name=hunks"`
+	xxx_hidden_Truncated   bool                   `protobuf:"varint,4,opt,name=truncated"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *FileChange) Reset() {
@@ -2969,49 +5774,136 @@ func (x *FileChange) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use FileChange.ProtoReflect.Descriptor instead.
-func (*FileChange) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{32}
-}
-
 func (x *FileChange) GetPath() string {
 	if x != nil {
-		return x.Path
+		if x.xxx_hidden_Path != nil {
+			return *x.xxx_hidden_Path
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *FileChange) GetKind() FileChangeKind {
 	if x != nil {
-		return x.Kind
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 1) {
+			return x.xxx_hidden_Kind
+		}
 	}
 	return FileChangeKind_FILE_CHANGE_KIND_UNSPECIFIED
 }
 
 func (x *FileChange) GetHunks() []*DiffHunk {
 	if x != nil {
-		return x.Hunks
+		if x.xxx_hidden_Hunks != nil {
+			return *x.xxx_hidden_Hunks
+		}
 	}
 	return nil
 }
 
 func (x *FileChange) GetTruncated() bool {
 	if x != nil {
-		return x.Truncated
+		return x.xxx_hidden_Truncated
 	}
 	return false
 }
 
+func (x *FileChange) SetPath(v string) {
+	x.xxx_hidden_Path = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+}
+
+func (x *FileChange) SetKind(v FileChangeKind) {
+	x.xxx_hidden_Kind = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+}
+
+func (x *FileChange) SetHunks(v []*DiffHunk) {
+	x.xxx_hidden_Hunks = &v
+}
+
+func (x *FileChange) SetTruncated(v bool) {
+	x.xxx_hidden_Truncated = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+}
+
+func (x *FileChange) HasPath() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *FileChange) HasKind() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *FileChange) HasTruncated() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *FileChange) ClearPath() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Path = nil
+}
+
+func (x *FileChange) ClearKind() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Kind = FileChangeKind_FILE_CHANGE_KIND_UNSPECIFIED
+}
+
+func (x *FileChange) ClearTruncated() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Truncated = false
+}
+
+type FileChange_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Path  *string
+	Kind  *FileChangeKind
+	Hunks []*DiffHunk
+	// truncated indicates that display limits omitted one or more hunks or lines.
+	Truncated *bool
+}
+
+func (b0 FileChange_builder) Build() *FileChange {
+	m0 := &FileChange{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Path != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_Path = b.Path
+	}
+	if b.Kind != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_Kind = *b.Kind
+	}
+	x.xxx_hidden_Hunks = &b.Hunks
+	if b.Truncated != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_Truncated = *b.Truncated
+	}
+	return m0
+}
+
 // DiffHunk groups nearby changed lines with a small amount of context.
 type DiffHunk struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// old_start and new_start are 1-based line numbers for their respective
-	// file versions. A zero value means that side has no corresponding line.
-	OldStart      int32       `protobuf:"varint,1,opt,name=old_start,json=oldStart,proto3" json:"old_start,omitempty"`
-	NewStart      int32       `protobuf:"varint,2,opt,name=new_start,json=newStart,proto3" json:"new_start,omitempty"`
-	Lines         []*DiffLine `protobuf:"bytes,3,rep,name=lines,proto3" json:"lines,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_OldStart    int32                  `protobuf:"varint,1,opt,name=old_start,json=oldStart"`
+	xxx_hidden_NewStart    int32                  `protobuf:"varint,2,opt,name=new_start,json=newStart"`
+	xxx_hidden_Lines       *[]*DiffLine           `protobuf:"bytes,3,rep,name=lines"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *DiffHunk) Reset() {
@@ -3039,43 +5931,104 @@ func (x *DiffHunk) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DiffHunk.ProtoReflect.Descriptor instead.
-func (*DiffHunk) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{33}
-}
-
 func (x *DiffHunk) GetOldStart() int32 {
 	if x != nil {
-		return x.OldStart
+		return x.xxx_hidden_OldStart
 	}
 	return 0
 }
 
 func (x *DiffHunk) GetNewStart() int32 {
 	if x != nil {
-		return x.NewStart
+		return x.xxx_hidden_NewStart
 	}
 	return 0
 }
 
 func (x *DiffHunk) GetLines() []*DiffLine {
 	if x != nil {
-		return x.Lines
+		if x.xxx_hidden_Lines != nil {
+			return *x.xxx_hidden_Lines
+		}
 	}
 	return nil
 }
 
+func (x *DiffHunk) SetOldStart(v int32) {
+	x.xxx_hidden_OldStart = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *DiffHunk) SetNewStart(v int32) {
+	x.xxx_hidden_NewStart = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *DiffHunk) SetLines(v []*DiffLine) {
+	x.xxx_hidden_Lines = &v
+}
+
+func (x *DiffHunk) HasOldStart() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *DiffHunk) HasNewStart() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *DiffHunk) ClearOldStart() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_OldStart = 0
+}
+
+func (x *DiffHunk) ClearNewStart() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_NewStart = 0
+}
+
+type DiffHunk_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// old_start and new_start are 1-based line numbers for their respective
+	// file versions. A zero value means that side has no corresponding line.
+	OldStart *int32
+	NewStart *int32
+	Lines    []*DiffLine
+}
+
+func (b0 DiffHunk_builder) Build() *DiffHunk {
+	m0 := &DiffHunk{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.OldStart != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_OldStart = *b.OldStart
+	}
+	if b.NewStart != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_NewStart = *b.NewStart
+	}
+	x.xxx_hidden_Lines = &b.Lines
+	return m0
+}
+
 // DiffLine is one display line in a diff hunk.
 type DiffLine struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Kind  DiffLineKind           `protobuf:"varint,1,opt,name=kind,proto3,enum=koda.v1.DiffLineKind" json:"kind,omitempty"`
-	// old_line and new_line are 1-based. Zero means the line is absent on that
-	// side of the change.
-	OldLine       int32  `protobuf:"varint,2,opt,name=old_line,json=oldLine,proto3" json:"old_line,omitempty"`
-	NewLine       int32  `protobuf:"varint,3,opt,name=new_line,json=newLine,proto3" json:"new_line,omitempty"`
-	Content       string `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Kind        DiffLineKind           `protobuf:"varint,1,opt,name=kind,enum=koda.v1.DiffLineKind"`
+	xxx_hidden_OldLine     int32                  `protobuf:"varint,2,opt,name=old_line,json=oldLine"`
+	xxx_hidden_NewLine     int32                  `protobuf:"varint,3,opt,name=new_line,json=newLine"`
+	xxx_hidden_Content     *string                `protobuf:"bytes,4,opt,name=content"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *DiffLine) Reset() {
@@ -3103,48 +6056,150 @@ func (x *DiffLine) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DiffLine.ProtoReflect.Descriptor instead.
-func (*DiffLine) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{34}
-}
-
 func (x *DiffLine) GetKind() DiffLineKind {
 	if x != nil {
-		return x.Kind
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 0) {
+			return x.xxx_hidden_Kind
+		}
 	}
 	return DiffLineKind_DIFF_LINE_KIND_UNSPECIFIED
 }
 
 func (x *DiffLine) GetOldLine() int32 {
 	if x != nil {
-		return x.OldLine
+		return x.xxx_hidden_OldLine
 	}
 	return 0
 }
 
 func (x *DiffLine) GetNewLine() int32 {
 	if x != nil {
-		return x.NewLine
+		return x.xxx_hidden_NewLine
 	}
 	return 0
 }
 
 func (x *DiffLine) GetContent() string {
 	if x != nil {
-		return x.Content
+		if x.xxx_hidden_Content != nil {
+			return *x.xxx_hidden_Content
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *DiffLine) SetKind(v DiffLineKind) {
+	x.xxx_hidden_Kind = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+}
+
+func (x *DiffLine) SetOldLine(v int32) {
+	x.xxx_hidden_OldLine = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+}
+
+func (x *DiffLine) SetNewLine(v int32) {
+	x.xxx_hidden_NewLine = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *DiffLine) SetContent(v string) {
+	x.xxx_hidden_Content = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+}
+
+func (x *DiffLine) HasKind() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *DiffLine) HasOldLine() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *DiffLine) HasNewLine() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *DiffLine) HasContent() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *DiffLine) ClearKind() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Kind = DiffLineKind_DIFF_LINE_KIND_UNSPECIFIED
+}
+
+func (x *DiffLine) ClearOldLine() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_OldLine = 0
+}
+
+func (x *DiffLine) ClearNewLine() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_NewLine = 0
+}
+
+func (x *DiffLine) ClearContent() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Content = nil
+}
+
+type DiffLine_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Kind *DiffLineKind
+	// old_line and new_line are 1-based. Zero means the line is absent on that
+	// side of the change.
+	OldLine *int32
+	NewLine *int32
+	Content *string
+}
+
+func (b0 DiffLine_builder) Build() *DiffLine {
+	m0 := &DiffLine{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Kind != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_Kind = *b.Kind
+	}
+	if b.OldLine != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_OldLine = *b.OldLine
+	}
+	if b.NewLine != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		x.xxx_hidden_NewLine = *b.NewLine
+	}
+	if b.Content != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_Content = b.Content
+	}
+	return m0
+}
+
 // ToolError contains a model-visible handled tool failure.
 type ToolError struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// content is safe to expose to both the model and the client.
-	Content string `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
-	// structured_content_json is an optional raw JSON error payload.
-	StructuredContentJson string `protobuf:"bytes,2,opt,name=structured_content_json,json=structuredContentJson,proto3" json:"structured_content_json,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	state                            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Content               *string                `protobuf:"bytes,1,opt,name=content"`
+	xxx_hidden_StructuredContentJson *string                `protobuf:"bytes,2,opt,name=structured_content_json,json=structuredContentJson"`
+	XXX_raceDetectHookData           protoimpl.RaceDetectHookData
+	XXX_presence                     [1]uint32
+	unknownFields                    protoimpl.UnknownFields
+	sizeCache                        protoimpl.SizeCache
 }
 
 func (x *ToolError) Reset() {
@@ -3172,34 +6227,95 @@ func (x *ToolError) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ToolError.ProtoReflect.Descriptor instead.
-func (*ToolError) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{35}
-}
-
 func (x *ToolError) GetContent() string {
 	if x != nil {
-		return x.Content
+		if x.xxx_hidden_Content != nil {
+			return *x.xxx_hidden_Content
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ToolError) GetStructuredContentJson() string {
 	if x != nil {
-		return x.StructuredContentJson
+		if x.xxx_hidden_StructuredContentJson != nil {
+			return *x.xxx_hidden_StructuredContentJson
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *ToolError) SetContent(v string) {
+	x.xxx_hidden_Content = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *ToolError) SetStructuredContentJson(v string) {
+	x.xxx_hidden_StructuredContentJson = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *ToolError) HasContent() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ToolError) HasStructuredContentJson() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ToolError) ClearContent() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Content = nil
+}
+
+func (x *ToolError) ClearStructuredContentJson() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_StructuredContentJson = nil
+}
+
+type ToolError_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// content is safe to expose to both the model and the client.
+	Content *string
+	// structured_content_json is an optional raw JSON error payload.
+	StructuredContentJson *string
+}
+
+func (b0 ToolError_builder) Build() *ToolError {
+	m0 := &ToolError{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Content != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_Content = b.Content
+	}
+	if b.StructuredContentJson != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_StructuredContentJson = b.StructuredContentJson
+	}
+	return m0
+}
+
 // TokenUsage contains aggregate and provider-neutral token accounting.
 type TokenUsage struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	PromptTokens     int64                  `protobuf:"varint,1,opt,name=prompt_tokens,json=promptTokens,proto3" json:"prompt_tokens,omitempty"`
-	CompletionTokens int64                  `protobuf:"varint,2,opt,name=completion_tokens,json=completionTokens,proto3" json:"completion_tokens,omitempty"`
-	TotalTokens      int64                  `protobuf:"varint,3,opt,name=total_tokens,json=totalTokens,proto3" json:"total_tokens,omitempty"`
-	Details          *TokenUsageDetails     `protobuf:"bytes,4,opt,name=details,proto3" json:"details,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state                       protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_PromptTokens     int64                  `protobuf:"varint,1,opt,name=prompt_tokens,json=promptTokens"`
+	xxx_hidden_CompletionTokens int64                  `protobuf:"varint,2,opt,name=completion_tokens,json=completionTokens"`
+	xxx_hidden_TotalTokens      int64                  `protobuf:"varint,3,opt,name=total_tokens,json=totalTokens"`
+	xxx_hidden_Details          *TokenUsageDetails     `protobuf:"bytes,4,opt,name=details"`
+	XXX_raceDetectHookData      protoimpl.RaceDetectHookData
+	XXX_presence                [1]uint32
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *TokenUsage) Reset() {
@@ -3227,53 +6343,145 @@ func (x *TokenUsage) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use TokenUsage.ProtoReflect.Descriptor instead.
-func (*TokenUsage) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{36}
-}
-
 func (x *TokenUsage) GetPromptTokens() int64 {
 	if x != nil {
-		return x.PromptTokens
+		return x.xxx_hidden_PromptTokens
 	}
 	return 0
 }
 
 func (x *TokenUsage) GetCompletionTokens() int64 {
 	if x != nil {
-		return x.CompletionTokens
+		return x.xxx_hidden_CompletionTokens
 	}
 	return 0
 }
 
 func (x *TokenUsage) GetTotalTokens() int64 {
 	if x != nil {
-		return x.TotalTokens
+		return x.xxx_hidden_TotalTokens
 	}
 	return 0
 }
 
 func (x *TokenUsage) GetDetails() *TokenUsageDetails {
 	if x != nil {
-		return x.Details
+		return x.xxx_hidden_Details
 	}
 	return nil
 }
 
+func (x *TokenUsage) SetPromptTokens(v int64) {
+	x.xxx_hidden_PromptTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+}
+
+func (x *TokenUsage) SetCompletionTokens(v int64) {
+	x.xxx_hidden_CompletionTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+}
+
+func (x *TokenUsage) SetTotalTokens(v int64) {
+	x.xxx_hidden_TotalTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *TokenUsage) SetDetails(v *TokenUsageDetails) {
+	x.xxx_hidden_Details = v
+}
+
+func (x *TokenUsage) HasPromptTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *TokenUsage) HasCompletionTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *TokenUsage) HasTotalTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *TokenUsage) HasDetails() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Details != nil
+}
+
+func (x *TokenUsage) ClearPromptTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_PromptTokens = 0
+}
+
+func (x *TokenUsage) ClearCompletionTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_CompletionTokens = 0
+}
+
+func (x *TokenUsage) ClearTotalTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_TotalTokens = 0
+}
+
+func (x *TokenUsage) ClearDetails() {
+	x.xxx_hidden_Details = nil
+}
+
+type TokenUsage_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	PromptTokens     *int64
+	CompletionTokens *int64
+	TotalTokens      *int64
+	Details          *TokenUsageDetails
+}
+
+func (b0 TokenUsage_builder) Build() *TokenUsage {
+	m0 := &TokenUsage{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.PromptTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_PromptTokens = *b.PromptTokens
+	}
+	if b.CompletionTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_CompletionTokens = *b.CompletionTokens
+	}
+	if b.TotalTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		x.xxx_hidden_TotalTokens = *b.TotalTokens
+	}
+	x.xxx_hidden_Details = b.Details
+	return m0
+}
+
 // TokenUsageDetails contains optional provider-reported token breakdowns.
 type TokenUsageDetails struct {
-	state                     protoimpl.MessageState `protogen:"open.v1"`
-	CachedPromptTokens        int64                  `protobuf:"varint,1,opt,name=cached_prompt_tokens,json=cachedPromptTokens,proto3" json:"cached_prompt_tokens,omitempty"`
-	CacheCreationPromptTokens int64                  `protobuf:"varint,2,opt,name=cache_creation_prompt_tokens,json=cacheCreationPromptTokens,proto3" json:"cache_creation_prompt_tokens,omitempty"`
-	CacheReadPromptTokens     int64                  `protobuf:"varint,3,opt,name=cache_read_prompt_tokens,json=cacheReadPromptTokens,proto3" json:"cache_read_prompt_tokens,omitempty"`
-	ReasoningTokens           int64                  `protobuf:"varint,4,opt,name=reasoning_tokens,json=reasoningTokens,proto3" json:"reasoning_tokens,omitempty"`
-	ToolUsePromptTokens       int64                  `protobuf:"varint,5,opt,name=tool_use_prompt_tokens,json=toolUsePromptTokens,proto3" json:"tool_use_prompt_tokens,omitempty"`
-	AudioPromptTokens         int64                  `protobuf:"varint,6,opt,name=audio_prompt_tokens,json=audioPromptTokens,proto3" json:"audio_prompt_tokens,omitempty"`
-	AudioCompletionTokens     int64                  `protobuf:"varint,7,opt,name=audio_completion_tokens,json=audioCompletionTokens,proto3" json:"audio_completion_tokens,omitempty"`
-	AcceptedPredictionTokens  int64                  `protobuf:"varint,8,opt,name=accepted_prediction_tokens,json=acceptedPredictionTokens,proto3" json:"accepted_prediction_tokens,omitempty"`
-	RejectedPredictionTokens  int64                  `protobuf:"varint,9,opt,name=rejected_prediction_tokens,json=rejectedPredictionTokens,proto3" json:"rejected_prediction_tokens,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	state                                protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_CachedPromptTokens        int64                  `protobuf:"varint,1,opt,name=cached_prompt_tokens,json=cachedPromptTokens"`
+	xxx_hidden_CacheCreationPromptTokens int64                  `protobuf:"varint,2,opt,name=cache_creation_prompt_tokens,json=cacheCreationPromptTokens"`
+	xxx_hidden_CacheReadPromptTokens     int64                  `protobuf:"varint,3,opt,name=cache_read_prompt_tokens,json=cacheReadPromptTokens"`
+	xxx_hidden_ReasoningTokens           int64                  `protobuf:"varint,4,opt,name=reasoning_tokens,json=reasoningTokens"`
+	xxx_hidden_ToolUsePromptTokens       int64                  `protobuf:"varint,5,opt,name=tool_use_prompt_tokens,json=toolUsePromptTokens"`
+	xxx_hidden_AudioPromptTokens         int64                  `protobuf:"varint,6,opt,name=audio_prompt_tokens,json=audioPromptTokens"`
+	xxx_hidden_AudioCompletionTokens     int64                  `protobuf:"varint,7,opt,name=audio_completion_tokens,json=audioCompletionTokens"`
+	xxx_hidden_AcceptedPredictionTokens  int64                  `protobuf:"varint,8,opt,name=accepted_prediction_tokens,json=acceptedPredictionTokens"`
+	xxx_hidden_RejectedPredictionTokens  int64                  `protobuf:"varint,9,opt,name=rejected_prediction_tokens,json=rejectedPredictionTokens"`
+	XXX_raceDetectHookData               protoimpl.RaceDetectHookData
+	XXX_presence                         [1]uint32
+	unknownFields                        protoimpl.UnknownFields
+	sizeCache                            protoimpl.SizeCache
 }
 
 func (x *TokenUsageDetails) Reset() {
@@ -3301,84 +6509,289 @@ func (x *TokenUsageDetails) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use TokenUsageDetails.ProtoReflect.Descriptor instead.
-func (*TokenUsageDetails) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{37}
-}
-
 func (x *TokenUsageDetails) GetCachedPromptTokens() int64 {
 	if x != nil {
-		return x.CachedPromptTokens
+		return x.xxx_hidden_CachedPromptTokens
 	}
 	return 0
 }
 
 func (x *TokenUsageDetails) GetCacheCreationPromptTokens() int64 {
 	if x != nil {
-		return x.CacheCreationPromptTokens
+		return x.xxx_hidden_CacheCreationPromptTokens
 	}
 	return 0
 }
 
 func (x *TokenUsageDetails) GetCacheReadPromptTokens() int64 {
 	if x != nil {
-		return x.CacheReadPromptTokens
+		return x.xxx_hidden_CacheReadPromptTokens
 	}
 	return 0
 }
 
 func (x *TokenUsageDetails) GetReasoningTokens() int64 {
 	if x != nil {
-		return x.ReasoningTokens
+		return x.xxx_hidden_ReasoningTokens
 	}
 	return 0
 }
 
 func (x *TokenUsageDetails) GetToolUsePromptTokens() int64 {
 	if x != nil {
-		return x.ToolUsePromptTokens
+		return x.xxx_hidden_ToolUsePromptTokens
 	}
 	return 0
 }
 
 func (x *TokenUsageDetails) GetAudioPromptTokens() int64 {
 	if x != nil {
-		return x.AudioPromptTokens
+		return x.xxx_hidden_AudioPromptTokens
 	}
 	return 0
 }
 
 func (x *TokenUsageDetails) GetAudioCompletionTokens() int64 {
 	if x != nil {
-		return x.AudioCompletionTokens
+		return x.xxx_hidden_AudioCompletionTokens
 	}
 	return 0
 }
 
 func (x *TokenUsageDetails) GetAcceptedPredictionTokens() int64 {
 	if x != nil {
-		return x.AcceptedPredictionTokens
+		return x.xxx_hidden_AcceptedPredictionTokens
 	}
 	return 0
 }
 
 func (x *TokenUsageDetails) GetRejectedPredictionTokens() int64 {
 	if x != nil {
-		return x.RejectedPredictionTokens
+		return x.xxx_hidden_RejectedPredictionTokens
 	}
 	return 0
 }
 
+func (x *TokenUsageDetails) SetCachedPromptTokens(v int64) {
+	x.xxx_hidden_CachedPromptTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 9)
+}
+
+func (x *TokenUsageDetails) SetCacheCreationPromptTokens(v int64) {
+	x.xxx_hidden_CacheCreationPromptTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 9)
+}
+
+func (x *TokenUsageDetails) SetCacheReadPromptTokens(v int64) {
+	x.xxx_hidden_CacheReadPromptTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 9)
+}
+
+func (x *TokenUsageDetails) SetReasoningTokens(v int64) {
+	x.xxx_hidden_ReasoningTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 9)
+}
+
+func (x *TokenUsageDetails) SetToolUsePromptTokens(v int64) {
+	x.xxx_hidden_ToolUsePromptTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 9)
+}
+
+func (x *TokenUsageDetails) SetAudioPromptTokens(v int64) {
+	x.xxx_hidden_AudioPromptTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 9)
+}
+
+func (x *TokenUsageDetails) SetAudioCompletionTokens(v int64) {
+	x.xxx_hidden_AudioCompletionTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 9)
+}
+
+func (x *TokenUsageDetails) SetAcceptedPredictionTokens(v int64) {
+	x.xxx_hidden_AcceptedPredictionTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 9)
+}
+
+func (x *TokenUsageDetails) SetRejectedPredictionTokens(v int64) {
+	x.xxx_hidden_RejectedPredictionTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 9)
+}
+
+func (x *TokenUsageDetails) HasCachedPromptTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *TokenUsageDetails) HasCacheCreationPromptTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *TokenUsageDetails) HasCacheReadPromptTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *TokenUsageDetails) HasReasoningTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *TokenUsageDetails) HasToolUsePromptTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *TokenUsageDetails) HasAudioPromptTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *TokenUsageDetails) HasAudioCompletionTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *TokenUsageDetails) HasAcceptedPredictionTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
+func (x *TokenUsageDetails) HasRejectedPredictionTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
+func (x *TokenUsageDetails) ClearCachedPromptTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_CachedPromptTokens = 0
+}
+
+func (x *TokenUsageDetails) ClearCacheCreationPromptTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_CacheCreationPromptTokens = 0
+}
+
+func (x *TokenUsageDetails) ClearCacheReadPromptTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_CacheReadPromptTokens = 0
+}
+
+func (x *TokenUsageDetails) ClearReasoningTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_ReasoningTokens = 0
+}
+
+func (x *TokenUsageDetails) ClearToolUsePromptTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_ToolUsePromptTokens = 0
+}
+
+func (x *TokenUsageDetails) ClearAudioPromptTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_AudioPromptTokens = 0
+}
+
+func (x *TokenUsageDetails) ClearAudioCompletionTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_AudioCompletionTokens = 0
+}
+
+func (x *TokenUsageDetails) ClearAcceptedPredictionTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_AcceptedPredictionTokens = 0
+}
+
+func (x *TokenUsageDetails) ClearRejectedPredictionTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_RejectedPredictionTokens = 0
+}
+
+type TokenUsageDetails_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	CachedPromptTokens        *int64
+	CacheCreationPromptTokens *int64
+	CacheReadPromptTokens     *int64
+	ReasoningTokens           *int64
+	ToolUsePromptTokens       *int64
+	AudioPromptTokens         *int64
+	AudioCompletionTokens     *int64
+	AcceptedPredictionTokens  *int64
+	RejectedPredictionTokens  *int64
+}
+
+func (b0 TokenUsageDetails_builder) Build() *TokenUsageDetails {
+	m0 := &TokenUsageDetails{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.CachedPromptTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 9)
+		x.xxx_hidden_CachedPromptTokens = *b.CachedPromptTokens
+	}
+	if b.CacheCreationPromptTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 9)
+		x.xxx_hidden_CacheCreationPromptTokens = *b.CacheCreationPromptTokens
+	}
+	if b.CacheReadPromptTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 9)
+		x.xxx_hidden_CacheReadPromptTokens = *b.CacheReadPromptTokens
+	}
+	if b.ReasoningTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 9)
+		x.xxx_hidden_ReasoningTokens = *b.ReasoningTokens
+	}
+	if b.ToolUsePromptTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 9)
+		x.xxx_hidden_ToolUsePromptTokens = *b.ToolUsePromptTokens
+	}
+	if b.AudioPromptTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 9)
+		x.xxx_hidden_AudioPromptTokens = *b.AudioPromptTokens
+	}
+	if b.AudioCompletionTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 9)
+		x.xxx_hidden_AudioCompletionTokens = *b.AudioCompletionTokens
+	}
+	if b.AcceptedPredictionTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 9)
+		x.xxx_hidden_AcceptedPredictionTokens = *b.AcceptedPredictionTokens
+	}
+	if b.RejectedPredictionTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 9)
+		x.xxx_hidden_RejectedPredictionTokens = *b.RejectedPredictionTokens
+	}
+	return m0
+}
+
 // ListEventsRequest selects a page of active events in conversation order.
 type ListEventsRequest struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	// limit defaults to 50 when zero and is capped at 200.
-	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	// offset is a zero-based offset into active events ordered oldest first.
-	Offset        int64 `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_SessionId   *string                `protobuf:"bytes,1,opt,name=session_id,json=sessionId"`
+	xxx_hidden_Limit       int32                  `protobuf:"varint,2,opt,name=limit"`
+	xxx_hidden_Offset      int64                  `protobuf:"varint,3,opt,name=offset"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ListEventsRequest) Reset() {
@@ -3406,39 +6819,119 @@ func (x *ListEventsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListEventsRequest.ProtoReflect.Descriptor instead.
-func (*ListEventsRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{38}
-}
-
 func (x *ListEventsRequest) GetSessionId() string {
 	if x != nil {
-		return x.SessionId
+		if x.xxx_hidden_SessionId != nil {
+			return *x.xxx_hidden_SessionId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ListEventsRequest) GetLimit() int32 {
 	if x != nil {
-		return x.Limit
+		return x.xxx_hidden_Limit
 	}
 	return 0
 }
 
 func (x *ListEventsRequest) GetOffset() int64 {
 	if x != nil {
-		return x.Offset
+		return x.xxx_hidden_Offset
 	}
 	return 0
 }
 
+func (x *ListEventsRequest) SetSessionId(v string) {
+	x.xxx_hidden_SessionId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *ListEventsRequest) SetLimit(v int32) {
+	x.xxx_hidden_Limit = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *ListEventsRequest) SetOffset(v int64) {
+	x.xxx_hidden_Offset = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *ListEventsRequest) HasSessionId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ListEventsRequest) HasLimit() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ListEventsRequest) HasOffset() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *ListEventsRequest) ClearSessionId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_SessionId = nil
+}
+
+func (x *ListEventsRequest) ClearLimit() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Limit = 0
+}
+
+func (x *ListEventsRequest) ClearOffset() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Offset = 0
+}
+
+type ListEventsRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	SessionId *string
+	// limit defaults to 50 when zero and is capped at 200.
+	Limit *int32
+	// offset is a zero-based offset into active events ordered oldest first.
+	Offset *int64
+}
+
+func (b0 ListEventsRequest_builder) Build() *ListEventsRequest {
+	m0 := &ListEventsRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.SessionId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_SessionId = b.SessionId
+	}
+	if b.Limit != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_Limit = *b.Limit
+	}
+	if b.Offset != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Offset = *b.Offset
+	}
+	return m0
+}
+
 // ListEventsResponse contains one page and the unpaginated active-event total.
 type ListEventsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Events        []*Event               `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
-	Total         int64                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Events      *[]*Event              `protobuf:"bytes,1,rep,name=events"`
+	xxx_hidden_Total       int64                  `protobuf:"varint,2,opt,name=total"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ListEventsResponse) Reset() {
@@ -3466,31 +6959,70 @@ func (x *ListEventsResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListEventsResponse.ProtoReflect.Descriptor instead.
-func (*ListEventsResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{39}
-}
-
 func (x *ListEventsResponse) GetEvents() []*Event {
 	if x != nil {
-		return x.Events
+		if x.xxx_hidden_Events != nil {
+			return *x.xxx_hidden_Events
+		}
 	}
 	return nil
 }
 
 func (x *ListEventsResponse) GetTotal() int64 {
 	if x != nil {
-		return x.Total
+		return x.xxx_hidden_Total
 	}
 	return 0
 }
 
+func (x *ListEventsResponse) SetEvents(v []*Event) {
+	x.xxx_hidden_Events = &v
+}
+
+func (x *ListEventsResponse) SetTotal(v int64) {
+	x.xxx_hidden_Total = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *ListEventsResponse) HasTotal() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *ListEventsResponse) ClearTotal() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Total = 0
+}
+
+type ListEventsResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Events []*Event
+	Total  *int64
+}
+
+func (b0 ListEventsResponse_builder) Build() *ListEventsResponse {
+	m0 := &ListEventsResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Events = &b.Events
+	if b.Total != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Total = *b.Total
+	}
+	return m0
+}
+
 // UndoLastMessageRequest identifies the session to modify.
 type UndoLastMessageRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_SessionId   *string                `protobuf:"bytes,1,opt,name=session_id,json=sessionId"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *UndoLastMessageRequest) Reset() {
@@ -3518,29 +7050,60 @@ func (x *UndoLastMessageRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UndoLastMessageRequest.ProtoReflect.Descriptor instead.
-func (*UndoLastMessageRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{40}
-}
-
 func (x *UndoLastMessageRequest) GetSessionId() string {
 	if x != nil {
-		return x.SessionId
+		if x.xxx_hidden_SessionId != nil {
+			return *x.xxx_hidden_SessionId
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *UndoLastMessageRequest) SetSessionId(v string) {
+	x.xxx_hidden_SessionId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
+}
+
+func (x *UndoLastMessageRequest) HasSessionId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *UndoLastMessageRequest) ClearSessionId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_SessionId = nil
+}
+
+type UndoLastMessageRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	SessionId *string
+}
+
+func (b0 UndoLastMessageRequest_builder) Build() *UndoLastMessageRequest {
+	m0 := &UndoLastMessageRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.SessionId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_SessionId = b.SessionId
+	}
+	return m0
+}
+
 // UndoLastMessageResponse describes the removed user turn.
 type UndoLastMessageResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// turn_id identifies the removed turn, or is empty when there was no user turn.
-	TurnId string `protobuf:"bytes,1,opt,name=turn_id,json=turnId,proto3" json:"turn_id,omitempty"`
-	// deleted_event_count includes the user event and all later events in that turn.
-	DeletedEventCount int64 `protobuf:"varint,2,opt,name=deleted_event_count,json=deletedEventCount,proto3" json:"deleted_event_count,omitempty"`
-	// input contains the removed user content so a client can restore its editor.
-	Input         *Input `protobuf:"bytes,3,opt,name=input,proto3" json:"input,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                        protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_TurnId            *string                `protobuf:"bytes,1,opt,name=turn_id,json=turnId"`
+	xxx_hidden_DeletedEventCount int64                  `protobuf:"varint,2,opt,name=deleted_event_count,json=deletedEventCount"`
+	xxx_hidden_Input             *Input                 `protobuf:"bytes,3,opt,name=input"`
+	XXX_raceDetectHookData       protoimpl.RaceDetectHookData
+	XXX_presence                 [1]uint32
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *UndoLastMessageResponse) Reset() {
@@ -3568,49 +7131,119 @@ func (x *UndoLastMessageResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UndoLastMessageResponse.ProtoReflect.Descriptor instead.
-func (*UndoLastMessageResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{41}
-}
-
 func (x *UndoLastMessageResponse) GetTurnId() string {
 	if x != nil {
-		return x.TurnId
+		if x.xxx_hidden_TurnId != nil {
+			return *x.xxx_hidden_TurnId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *UndoLastMessageResponse) GetDeletedEventCount() int64 {
 	if x != nil {
-		return x.DeletedEventCount
+		return x.xxx_hidden_DeletedEventCount
 	}
 	return 0
 }
 
 func (x *UndoLastMessageResponse) GetInput() *Input {
 	if x != nil {
-		return x.Input
+		return x.xxx_hidden_Input
 	}
 	return nil
 }
 
+func (x *UndoLastMessageResponse) SetTurnId(v string) {
+	x.xxx_hidden_TurnId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *UndoLastMessageResponse) SetDeletedEventCount(v int64) {
+	x.xxx_hidden_DeletedEventCount = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *UndoLastMessageResponse) SetInput(v *Input) {
+	x.xxx_hidden_Input = v
+}
+
+func (x *UndoLastMessageResponse) HasTurnId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *UndoLastMessageResponse) HasDeletedEventCount() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *UndoLastMessageResponse) HasInput() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Input != nil
+}
+
+func (x *UndoLastMessageResponse) ClearTurnId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_TurnId = nil
+}
+
+func (x *UndoLastMessageResponse) ClearDeletedEventCount() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_DeletedEventCount = 0
+}
+
+func (x *UndoLastMessageResponse) ClearInput() {
+	x.xxx_hidden_Input = nil
+}
+
+type UndoLastMessageResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// turn_id identifies the removed turn, or is empty when there was no user turn.
+	TurnId *string
+	// deleted_event_count includes the user event and all later events in that turn.
+	DeletedEventCount *int64
+	// input contains the removed user content so a client can restore its editor.
+	Input *Input
+}
+
+func (b0 UndoLastMessageResponse_builder) Build() *UndoLastMessageResponse {
+	m0 := &UndoLastMessageResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.TurnId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_TurnId = b.TurnId
+	}
+	if b.DeletedEventCount != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
+		x.xxx_hidden_DeletedEventCount = *b.DeletedEventCount
+	}
+	x.xxx_hidden_Input = b.Input
+	return m0
+}
+
 // Provider describes one built-in or user-defined model provider.
 type Provider struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id is the stable registry key referenced by Session.provider_id.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// name is the user-facing display name.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// type selects the ADK model adapter.
-	Type ProviderType `protobuf:"varint,3,opt,name=type,proto3,enum=koda.v1.ProviderType" json:"type,omitempty"`
-	// base_url is empty for the adapter default and may point to a compatible endpoint.
-	BaseUrl string `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
-	// configured reports whether the registry resolved a non-empty API key.
-	Configured bool `protobuf:"varint,5,opt,name=configured,proto3" json:"configured,omitempty"`
-	// builtin providers cannot be deleted or changed to another type.
-	Builtin       bool `protobuf:"varint,6,opt,name=builtin,proto3" json:"builtin,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id          *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Name        *string                `protobuf:"bytes,2,opt,name=name"`
+	xxx_hidden_Type        ProviderType           `protobuf:"varint,3,opt,name=type,enum=koda.v1.ProviderType"`
+	xxx_hidden_BaseUrl     *string                `protobuf:"bytes,4,opt,name=base_url,json=baseUrl"`
+	xxx_hidden_Configured  bool                   `protobuf:"varint,5,opt,name=configured"`
+	xxx_hidden_Builtin     bool                   `protobuf:"varint,6,opt,name=builtin"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Provider) Reset() {
@@ -3638,66 +7271,220 @@ func (x *Provider) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Provider.ProtoReflect.Descriptor instead.
-func (*Provider) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{42}
-}
-
 func (x *Provider) GetId() string {
 	if x != nil {
-		return x.Id
+		if x.xxx_hidden_Id != nil {
+			return *x.xxx_hidden_Id
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Provider) GetName() string {
 	if x != nil {
-		return x.Name
+		if x.xxx_hidden_Name != nil {
+			return *x.xxx_hidden_Name
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Provider) GetType() ProviderType {
 	if x != nil {
-		return x.Type
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 2) {
+			return x.xxx_hidden_Type
+		}
 	}
 	return ProviderType_PROVIDER_TYPE_UNSPECIFIED
 }
 
 func (x *Provider) GetBaseUrl() string {
 	if x != nil {
-		return x.BaseUrl
+		if x.xxx_hidden_BaseUrl != nil {
+			return *x.xxx_hidden_BaseUrl
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Provider) GetConfigured() bool {
 	if x != nil {
-		return x.Configured
+		return x.xxx_hidden_Configured
 	}
 	return false
 }
 
 func (x *Provider) GetBuiltin() bool {
 	if x != nil {
-		return x.Builtin
+		return x.xxx_hidden_Builtin
 	}
 	return false
 }
 
+func (x *Provider) SetId(v string) {
+	x.xxx_hidden_Id = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+}
+
+func (x *Provider) SetName(v string) {
+	x.xxx_hidden_Name = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
+}
+
+func (x *Provider) SetType(v ProviderType) {
+	x.xxx_hidden_Type = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+}
+
+func (x *Provider) SetBaseUrl(v string) {
+	x.xxx_hidden_BaseUrl = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+}
+
+func (x *Provider) SetConfigured(v bool) {
+	x.xxx_hidden_Configured = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+}
+
+func (x *Provider) SetBuiltin(v bool) {
+	x.xxx_hidden_Builtin = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
+}
+
+func (x *Provider) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *Provider) HasName() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Provider) HasType() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *Provider) HasBaseUrl() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *Provider) HasConfigured() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *Provider) HasBuiltin() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *Provider) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *Provider) ClearName() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Name = nil
+}
+
+func (x *Provider) ClearType() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Type = ProviderType_PROVIDER_TYPE_UNSPECIFIED
+}
+
+func (x *Provider) ClearBaseUrl() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_BaseUrl = nil
+}
+
+func (x *Provider) ClearConfigured() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_Configured = false
+}
+
+func (x *Provider) ClearBuiltin() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_Builtin = false
+}
+
+type Provider_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// id is the stable registry key referenced by Session.provider_id.
+	Id *string
+	// name is the user-facing display name.
+	Name *string
+	// type selects the ADK model adapter.
+	Type *ProviderType
+	// base_url is empty for the adapter default and may point to a compatible endpoint.
+	BaseUrl *string
+	// configured reports whether the registry resolved a non-empty API key.
+	Configured *bool
+	// builtin providers cannot be deleted or changed to another type.
+	Builtin *bool
+}
+
+func (b0 Provider_builder) Build() *Provider {
+	m0 := &Provider{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		x.xxx_hidden_Id = b.Id
+	}
+	if b.Name != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
+		x.xxx_hidden_Name = b.Name
+	}
+	if b.Type != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
+		x.xxx_hidden_Type = *b.Type
+	}
+	if b.BaseUrl != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		x.xxx_hidden_BaseUrl = b.BaseUrl
+	}
+	if b.Configured != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		x.xxx_hidden_Configured = *b.Configured
+	}
+	if b.Builtin != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		x.xxx_hidden_Builtin = *b.Builtin
+	}
+	return m0
+}
+
 // Model describes one model exposed by a provider.
 type Model struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// id is the exact model identifier sent to the provider API.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// name is the user-facing display name and defaults to id when omitted.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// reasoning_efforts contains provider-specific values such as high, max, or ultra.
-	ReasoningEfforts []string `protobuf:"bytes,3,rep,name=reasoning_efforts,json=reasoningEfforts,proto3" json:"reasoning_efforts,omitempty"`
-	// default_reasoning_effort is empty when the provider should choose the default.
-	DefaultReasoningEffort string `protobuf:"bytes,4,opt,name=default_reasoning_effort,json=defaultReasoningEffort,proto3" json:"default_reasoning_effort,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state                             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id                     *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Name                   *string                `protobuf:"bytes,2,opt,name=name"`
+	xxx_hidden_ReasoningEfforts       []string               `protobuf:"bytes,3,rep,name=reasoning_efforts,json=reasoningEfforts"`
+	xxx_hidden_DefaultReasoningEffort *string                `protobuf:"bytes,4,opt,name=default_reasoning_effort,json=defaultReasoningEffort"`
+	XXX_raceDetectHookData            protoimpl.RaceDetectHookData
+	XXX_presence                      [1]uint32
+	unknownFields                     protoimpl.UnknownFields
+	sizeCache                         protoimpl.SizeCache
 }
 
 func (x *Model) Reset() {
@@ -3725,42 +7512,134 @@ func (x *Model) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Model.ProtoReflect.Descriptor instead.
-func (*Model) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{43}
-}
-
 func (x *Model) GetId() string {
 	if x != nil {
-		return x.Id
+		if x.xxx_hidden_Id != nil {
+			return *x.xxx_hidden_Id
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Model) GetName() string {
 	if x != nil {
-		return x.Name
+		if x.xxx_hidden_Name != nil {
+			return *x.xxx_hidden_Name
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *Model) GetReasoningEfforts() []string {
 	if x != nil {
-		return x.ReasoningEfforts
+		return x.xxx_hidden_ReasoningEfforts
 	}
 	return nil
 }
 
 func (x *Model) GetDefaultReasoningEffort() string {
 	if x != nil {
-		return x.DefaultReasoningEffort
+		if x.xxx_hidden_DefaultReasoningEffort != nil {
+			return *x.xxx_hidden_DefaultReasoningEffort
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *Model) SetId(v string) {
+	x.xxx_hidden_Id = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+}
+
+func (x *Model) SetName(v string) {
+	x.xxx_hidden_Name = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+}
+
+func (x *Model) SetReasoningEfforts(v []string) {
+	x.xxx_hidden_ReasoningEfforts = v
+}
+
+func (x *Model) SetDefaultReasoningEffort(v string) {
+	x.xxx_hidden_DefaultReasoningEffort = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+}
+
+func (x *Model) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *Model) HasName() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Model) HasDefaultReasoningEffort() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *Model) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *Model) ClearName() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Name = nil
+}
+
+func (x *Model) ClearDefaultReasoningEffort() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_DefaultReasoningEffort = nil
+}
+
+type Model_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// id is the exact model identifier sent to the provider API.
+	Id *string
+	// name is the user-facing display name and defaults to id when omitted.
+	Name *string
+	// reasoning_efforts contains provider-specific values such as high, max, or ultra.
+	ReasoningEfforts []string
+	// default_reasoning_effort is empty when the provider should choose the default.
+	DefaultReasoningEffort *string
+}
+
+func (b0 Model_builder) Build() *Model {
+	m0 := &Model{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_Id = b.Id
+	}
+	if b.Name != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_Name = b.Name
+	}
+	x.xxx_hidden_ReasoningEfforts = b.ReasoningEfforts
+	if b.DefaultReasoningEffort != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_DefaultReasoningEffort = b.DefaultReasoningEffort
+	}
+	return m0
+}
+
 // ListProvidersRequest requests all registered providers.
 type ListProvidersRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3790,17 +7669,24 @@ func (x *ListProvidersRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListProvidersRequest.ProtoReflect.Descriptor instead.
-func (*ListProvidersRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{44}
+type ListProvidersRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 ListProvidersRequest_builder) Build() *ListProvidersRequest {
+	m0 := &ListProvidersRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
 }
 
 // ListProvidersResponse returns all registered providers.
 type ListProvidersResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Providers     []*Provider            `protobuf:"bytes,1,rep,name=providers,proto3" json:"providers,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Providers *[]*Provider           `protobuf:"bytes,1,rep,name=providers"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *ListProvidersResponse) Reset() {
@@ -3828,33 +7714,46 @@ func (x *ListProvidersResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListProvidersResponse.ProtoReflect.Descriptor instead.
-func (*ListProvidersResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{45}
-}
-
 func (x *ListProvidersResponse) GetProviders() []*Provider {
 	if x != nil {
-		return x.Providers
+		if x.xxx_hidden_Providers != nil {
+			return *x.xxx_hidden_Providers
+		}
 	}
 	return nil
 }
 
+func (x *ListProvidersResponse) SetProviders(v []*Provider) {
+	x.xxx_hidden_Providers = &v
+}
+
+type ListProvidersResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Providers []*Provider
+}
+
+func (b0 ListProvidersResponse_builder) Build() *ListProvidersResponse {
+	m0 := &ListProvidersResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Providers = &b.Providers
+	return m0
+}
+
 // SaveProviderRequest creates or replaces a provider. An omitted API key is preserved.
 type SaveProviderRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// Built-in providers must retain their predefined type.
-	Type ProviderType `protobuf:"varint,3,opt,name=type,proto3,enum=koda.v1.ProviderType" json:"type,omitempty"`
-	// An empty base_url restores the adapter default.
-	BaseUrl string `protobuf:"bytes,4,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
-	// An omitted api_key preserves the stored key; an explicitly empty value clears it.
-	ApiKey *string `protobuf:"bytes,5,opt,name=api_key,json=apiKey,proto3,oneof" json:"api_key,omitempty"`
-	// model_overrides add custom models or override bundled/discovered metadata by ID.
-	ModelOverrides []*Model `protobuf:"bytes,6,rep,name=model_overrides,json=modelOverrides,proto3" json:"model_overrides,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state                     protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Id             *string                `protobuf:"bytes,1,opt,name=id"`
+	xxx_hidden_Name           *string                `protobuf:"bytes,2,opt,name=name"`
+	xxx_hidden_Type           ProviderType           `protobuf:"varint,3,opt,name=type,enum=koda.v1.ProviderType"`
+	xxx_hidden_BaseUrl        *string                `protobuf:"bytes,4,opt,name=base_url,json=baseUrl"`
+	xxx_hidden_ApiKey         *string                `protobuf:"bytes,5,opt,name=api_key,json=apiKey"`
+	xxx_hidden_ModelOverrides *[]*Model              `protobuf:"bytes,6,rep,name=model_overrides,json=modelOverrides"`
+	XXX_raceDetectHookData    protoimpl.RaceDetectHookData
+	XXX_presence              [1]uint32
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *SaveProviderRequest) Reset() {
@@ -3882,59 +7781,202 @@ func (x *SaveProviderRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SaveProviderRequest.ProtoReflect.Descriptor instead.
-func (*SaveProviderRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{46}
-}
-
 func (x *SaveProviderRequest) GetId() string {
 	if x != nil {
-		return x.Id
+		if x.xxx_hidden_Id != nil {
+			return *x.xxx_hidden_Id
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *SaveProviderRequest) GetName() string {
 	if x != nil {
-		return x.Name
+		if x.xxx_hidden_Name != nil {
+			return *x.xxx_hidden_Name
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *SaveProviderRequest) GetType() ProviderType {
 	if x != nil {
-		return x.Type
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 2) {
+			return x.xxx_hidden_Type
+		}
 	}
 	return ProviderType_PROVIDER_TYPE_UNSPECIFIED
 }
 
 func (x *SaveProviderRequest) GetBaseUrl() string {
 	if x != nil {
-		return x.BaseUrl
+		if x.xxx_hidden_BaseUrl != nil {
+			return *x.xxx_hidden_BaseUrl
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *SaveProviderRequest) GetApiKey() string {
-	if x != nil && x.ApiKey != nil {
-		return *x.ApiKey
+	if x != nil {
+		if x.xxx_hidden_ApiKey != nil {
+			return *x.xxx_hidden_ApiKey
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *SaveProviderRequest) GetModelOverrides() []*Model {
 	if x != nil {
-		return x.ModelOverrides
+		if x.xxx_hidden_ModelOverrides != nil {
+			return *x.xxx_hidden_ModelOverrides
+		}
 	}
 	return nil
 }
 
+func (x *SaveProviderRequest) SetId(v string) {
+	x.xxx_hidden_Id = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+}
+
+func (x *SaveProviderRequest) SetName(v string) {
+	x.xxx_hidden_Name = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
+}
+
+func (x *SaveProviderRequest) SetType(v ProviderType) {
+	x.xxx_hidden_Type = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+}
+
+func (x *SaveProviderRequest) SetBaseUrl(v string) {
+	x.xxx_hidden_BaseUrl = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+}
+
+func (x *SaveProviderRequest) SetApiKey(v string) {
+	x.xxx_hidden_ApiKey = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+}
+
+func (x *SaveProviderRequest) SetModelOverrides(v []*Model) {
+	x.xxx_hidden_ModelOverrides = &v
+}
+
+func (x *SaveProviderRequest) HasId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *SaveProviderRequest) HasName() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *SaveProviderRequest) HasType() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *SaveProviderRequest) HasBaseUrl() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *SaveProviderRequest) HasApiKey() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *SaveProviderRequest) ClearId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Id = nil
+}
+
+func (x *SaveProviderRequest) ClearName() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Name = nil
+}
+
+func (x *SaveProviderRequest) ClearType() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Type = ProviderType_PROVIDER_TYPE_UNSPECIFIED
+}
+
+func (x *SaveProviderRequest) ClearBaseUrl() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_BaseUrl = nil
+}
+
+func (x *SaveProviderRequest) ClearApiKey() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_ApiKey = nil
+}
+
+type SaveProviderRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Id   *string
+	Name *string
+	// Built-in providers must retain their predefined type.
+	Type *ProviderType
+	// An empty base_url restores the adapter default.
+	BaseUrl *string
+	// An omitted api_key preserves the stored key; an explicitly empty value clears it.
+	ApiKey *string
+	// model_overrides add custom models or override bundled/discovered metadata by ID.
+	ModelOverrides []*Model
+}
+
+func (b0 SaveProviderRequest_builder) Build() *SaveProviderRequest {
+	m0 := &SaveProviderRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Id != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		x.xxx_hidden_Id = b.Id
+	}
+	if b.Name != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
+		x.xxx_hidden_Name = b.Name
+	}
+	if b.Type != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
+		x.xxx_hidden_Type = *b.Type
+	}
+	if b.BaseUrl != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		x.xxx_hidden_BaseUrl = b.BaseUrl
+	}
+	if b.ApiKey != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		x.xxx_hidden_ApiKey = b.ApiKey
+	}
+	x.xxx_hidden_ModelOverrides = &b.ModelOverrides
+	return m0
+}
+
 // SaveProviderResponse returns the saved provider without its API key.
 type SaveProviderResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Provider      *Provider              `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Provider *Provider              `protobuf:"bytes,1,opt,name=provider"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *SaveProviderResponse) Reset() {
@@ -3962,24 +8004,50 @@ func (x *SaveProviderResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SaveProviderResponse.ProtoReflect.Descriptor instead.
-func (*SaveProviderResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{47}
-}
-
 func (x *SaveProviderResponse) GetProvider() *Provider {
 	if x != nil {
-		return x.Provider
+		return x.xxx_hidden_Provider
 	}
 	return nil
 }
 
+func (x *SaveProviderResponse) SetProvider(v *Provider) {
+	x.xxx_hidden_Provider = v
+}
+
+func (x *SaveProviderResponse) HasProvider() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Provider != nil
+}
+
+func (x *SaveProviderResponse) ClearProvider() {
+	x.xxx_hidden_Provider = nil
+}
+
+type SaveProviderResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Provider *Provider
+}
+
+func (b0 SaveProviderResponse_builder) Build() *SaveProviderResponse {
+	m0 := &SaveProviderResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Provider = b.Provider
+	return m0
+}
+
 // DeleteProviderRequest identifies a user-defined provider to delete.
 type DeleteProviderRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ProviderId    string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_ProviderId  *string                `protobuf:"bytes,1,opt,name=provider_id,json=providerId"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *DeleteProviderRequest) Reset() {
@@ -4007,21 +8075,53 @@ func (x *DeleteProviderRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteProviderRequest.ProtoReflect.Descriptor instead.
-func (*DeleteProviderRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{48}
-}
-
 func (x *DeleteProviderRequest) GetProviderId() string {
 	if x != nil {
-		return x.ProviderId
+		if x.xxx_hidden_ProviderId != nil {
+			return *x.xxx_hidden_ProviderId
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *DeleteProviderRequest) SetProviderId(v string) {
+	x.xxx_hidden_ProviderId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
+}
+
+func (x *DeleteProviderRequest) HasProviderId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *DeleteProviderRequest) ClearProviderId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_ProviderId = nil
+}
+
+type DeleteProviderRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	ProviderId *string
+}
+
+func (b0 DeleteProviderRequest_builder) Build() *DeleteProviderRequest {
+	m0 := &DeleteProviderRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.ProviderId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_ProviderId = b.ProviderId
+	}
+	return m0
+}
+
 // DeleteProviderResponse acknowledges provider deletion.
 type DeleteProviderResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4051,17 +8151,26 @@ func (x *DeleteProviderResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteProviderResponse.ProtoReflect.Descriptor instead.
-func (*DeleteProviderResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{49}
+type DeleteProviderResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 DeleteProviderResponse_builder) Build() *DeleteProviderResponse {
+	m0 := &DeleteProviderResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
 }
 
 // ListModelsRequest requests known models for a provider.
 type ListModelsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ProviderId    string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_ProviderId  *string                `protobuf:"bytes,1,opt,name=provider_id,json=providerId"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ListModelsRequest) Reset() {
@@ -4089,28 +8198,60 @@ func (x *ListModelsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListModelsRequest.ProtoReflect.Descriptor instead.
-func (*ListModelsRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{50}
-}
-
 func (x *ListModelsRequest) GetProviderId() string {
 	if x != nil {
-		return x.ProviderId
+		if x.xxx_hidden_ProviderId != nil {
+			return *x.xxx_hidden_ProviderId
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *ListModelsRequest) SetProviderId(v string) {
+	x.xxx_hidden_ProviderId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
+}
+
+func (x *ListModelsRequest) HasProviderId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ListModelsRequest) ClearProviderId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_ProviderId = nil
+}
+
+type ListModelsRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	ProviderId *string
+}
+
+func (b0 ListModelsRequest_builder) Build() *ListModelsRequest {
+	m0 := &ListModelsRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.ProviderId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_ProviderId = b.ProviderId
+	}
+	return m0
+}
+
 // ListModelsResponse returns known models for a provider.
 type ListModelsResponse struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	ProviderId string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	Models     []*Model               `protobuf:"bytes,2,rep,name=models,proto3" json:"models,omitempty"`
-	// refreshed_at is the Unix timestamp in milliseconds of the last successful
-	// provider API discovery, or zero when no discovery snapshot exists.
-	RefreshedAt   int64 `protobuf:"varint,3,opt,name=refreshed_at,json=refreshedAt,proto3" json:"refreshed_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_ProviderId  *string                `protobuf:"bytes,1,opt,name=provider_id,json=providerId"`
+	xxx_hidden_Models      *[]*Model              `protobuf:"bytes,2,rep,name=models"`
+	xxx_hidden_RefreshedAt int64                  `protobuf:"varint,3,opt,name=refreshed_at,json=refreshedAt"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ListModelsResponse) Reset() {
@@ -4138,38 +8279,104 @@ func (x *ListModelsResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListModelsResponse.ProtoReflect.Descriptor instead.
-func (*ListModelsResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{51}
-}
-
 func (x *ListModelsResponse) GetProviderId() string {
 	if x != nil {
-		return x.ProviderId
+		if x.xxx_hidden_ProviderId != nil {
+			return *x.xxx_hidden_ProviderId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *ListModelsResponse) GetModels() []*Model {
 	if x != nil {
-		return x.Models
+		if x.xxx_hidden_Models != nil {
+			return *x.xxx_hidden_Models
+		}
 	}
 	return nil
 }
 
 func (x *ListModelsResponse) GetRefreshedAt() int64 {
 	if x != nil {
-		return x.RefreshedAt
+		return x.xxx_hidden_RefreshedAt
 	}
 	return 0
 }
 
+func (x *ListModelsResponse) SetProviderId(v string) {
+	x.xxx_hidden_ProviderId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *ListModelsResponse) SetModels(v []*Model) {
+	x.xxx_hidden_Models = &v
+}
+
+func (x *ListModelsResponse) SetRefreshedAt(v int64) {
+	x.xxx_hidden_RefreshedAt = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *ListModelsResponse) HasProviderId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *ListModelsResponse) HasRefreshedAt() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *ListModelsResponse) ClearProviderId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_ProviderId = nil
+}
+
+func (x *ListModelsResponse) ClearRefreshedAt() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_RefreshedAt = 0
+}
+
+type ListModelsResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	ProviderId *string
+	Models     []*Model
+	// refreshed_at is the Unix timestamp in milliseconds of the last successful
+	// provider API discovery, or zero when no discovery snapshot exists.
+	RefreshedAt *int64
+}
+
+func (b0 ListModelsResponse_builder) Build() *ListModelsResponse {
+	m0 := &ListModelsResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.ProviderId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_ProviderId = b.ProviderId
+	}
+	x.xxx_hidden_Models = &b.Models
+	if b.RefreshedAt != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_RefreshedAt = *b.RefreshedAt
+	}
+	return m0
+}
+
 // RefreshModelsRequest refreshes models for a provider.
 type RefreshModelsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ProviderId    string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_ProviderId  *string                `protobuf:"bytes,1,opt,name=provider_id,json=providerId"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *RefreshModelsRequest) Reset() {
@@ -4197,27 +8404,60 @@ func (x *RefreshModelsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RefreshModelsRequest.ProtoReflect.Descriptor instead.
-func (*RefreshModelsRequest) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{52}
-}
-
 func (x *RefreshModelsRequest) GetProviderId() string {
 	if x != nil {
-		return x.ProviderId
+		if x.xxx_hidden_ProviderId != nil {
+			return *x.xxx_hidden_ProviderId
+		}
+		return ""
 	}
 	return ""
 }
 
+func (x *RefreshModelsRequest) SetProviderId(v string) {
+	x.xxx_hidden_ProviderId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
+}
+
+func (x *RefreshModelsRequest) HasProviderId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *RefreshModelsRequest) ClearProviderId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_ProviderId = nil
+}
+
+type RefreshModelsRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	ProviderId *string
+}
+
+func (b0 RefreshModelsRequest_builder) Build() *RefreshModelsRequest {
+	m0 := &RefreshModelsRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.ProviderId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_ProviderId = b.ProviderId
+	}
+	return m0
+}
+
 // RefreshModelsResponse returns the refreshed model list.
 type RefreshModelsResponse struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	ProviderId string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
-	Models     []*Model               `protobuf:"bytes,2,rep,name=models,proto3" json:"models,omitempty"`
-	// refreshed_at is the Unix timestamp in milliseconds of this successful refresh.
-	RefreshedAt   int64 `protobuf:"varint,3,opt,name=refreshed_at,json=refreshedAt,proto3" json:"refreshed_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_ProviderId  *string                `protobuf:"bytes,1,opt,name=provider_id,json=providerId"`
+	xxx_hidden_Models      *[]*Model              `protobuf:"bytes,2,rep,name=models"`
+	xxx_hidden_RefreshedAt int64                  `protobuf:"varint,3,opt,name=refreshed_at,json=refreshedAt"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *RefreshModelsResponse) Reset() {
@@ -4245,30 +8485,93 @@ func (x *RefreshModelsResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RefreshModelsResponse.ProtoReflect.Descriptor instead.
-func (*RefreshModelsResponse) Descriptor() ([]byte, []int) {
-	return file_koda_v1_service_proto_rawDescGZIP(), []int{53}
-}
-
 func (x *RefreshModelsResponse) GetProviderId() string {
 	if x != nil {
-		return x.ProviderId
+		if x.xxx_hidden_ProviderId != nil {
+			return *x.xxx_hidden_ProviderId
+		}
+		return ""
 	}
 	return ""
 }
 
 func (x *RefreshModelsResponse) GetModels() []*Model {
 	if x != nil {
-		return x.Models
+		if x.xxx_hidden_Models != nil {
+			return *x.xxx_hidden_Models
+		}
 	}
 	return nil
 }
 
 func (x *RefreshModelsResponse) GetRefreshedAt() int64 {
 	if x != nil {
-		return x.RefreshedAt
+		return x.xxx_hidden_RefreshedAt
 	}
 	return 0
+}
+
+func (x *RefreshModelsResponse) SetProviderId(v string) {
+	x.xxx_hidden_ProviderId = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *RefreshModelsResponse) SetModels(v []*Model) {
+	x.xxx_hidden_Models = &v
+}
+
+func (x *RefreshModelsResponse) SetRefreshedAt(v int64) {
+	x.xxx_hidden_RefreshedAt = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+}
+
+func (x *RefreshModelsResponse) HasProviderId() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *RefreshModelsResponse) HasRefreshedAt() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *RefreshModelsResponse) ClearProviderId() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_ProviderId = nil
+}
+
+func (x *RefreshModelsResponse) ClearRefreshedAt() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_RefreshedAt = 0
+}
+
+type RefreshModelsResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	ProviderId *string
+	Models     []*Model
+	// refreshed_at is the Unix timestamp in milliseconds of this successful refresh.
+	RefreshedAt *int64
+}
+
+func (b0 RefreshModelsResponse_builder) Build() *RefreshModelsResponse {
+	m0 := &RefreshModelsResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.ProviderId != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_ProviderId = b.ProviderId
+	}
+	x.xxx_hidden_Models = &b.Models
+	if b.RefreshedAt != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_RefreshedAt = *b.RefreshedAt
+	}
+	return m0
 }
 
 var File_koda_v1_service_proto protoreflect.FileDescriptor
@@ -4394,27 +8697,19 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\x06offset\x18\x02 \x01(\x03R\x06offset\"Z\n" +
 	"\x14ListSessionsResponse\x12,\n" +
 	"\bsessions\x18\x01 \x03(\v2\x10.koda.v1.SessionR\bsessions\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x03R\x05total\"\xc7\x03\n" +
+	"\x05total\x18\x02 \x01(\x03R\x05total\"\xec\x02\n" +
 	"\x14UpdateSessionRequest\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x19\n" +
-	"\x05title\x18\x02 \x01(\tH\x00R\x05title\x88\x01\x01\x12\x1d\n" +
-	"\aworkdir\x18\x03 \x01(\tH\x01R\aworkdir\x88\x01\x01\x12$\n" +
-	"\vprovider_id\x18\x04 \x01(\tH\x02R\n" +
-	"providerId\x88\x01\x01\x12\x1e\n" +
-	"\bmodel_id\x18\x05 \x01(\tH\x03R\amodelId\x88\x01\x01\x12.\n" +
-	"\x10reasoning_effort\x18\x06 \x01(\tH\x04R\x0freasoningEffort\x88\x01\x01\x129\n" +
-	"\vfile_access\x18\a \x01(\x0e2\x13.koda.v1.FileAccessH\x05R\n" +
-	"fileAccess\x88\x01\x01\x12<\n" +
-	"\fshell_access\x18\b \x01(\x0e2\x14.koda.v1.ShellAccessH\x06R\vshellAccess\x88\x01\x01B\b\n" +
-	"\x06_titleB\n" +
-	"\n" +
-	"\b_workdirB\x0e\n" +
-	"\f_provider_idB\v\n" +
-	"\t_model_idB\x13\n" +
-	"\x11_reasoning_effortB\x0e\n" +
-	"\f_file_accessB\x0f\n" +
-	"\r_shell_access\"C\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1b\n" +
+	"\x05title\x18\x02 \x01(\tB\x05\xaa\x01\x02\b\x01R\x05title\x12\x1f\n" +
+	"\aworkdir\x18\x03 \x01(\tB\x05\xaa\x01\x02\b\x01R\aworkdir\x12&\n" +
+	"\vprovider_id\x18\x04 \x01(\tB\x05\xaa\x01\x02\b\x01R\n" +
+	"providerId\x12 \n" +
+	"\bmodel_id\x18\x05 \x01(\tB\x05\xaa\x01\x02\b\x01R\amodelId\x120\n" +
+	"\x10reasoning_effort\x18\x06 \x01(\tB\x05\xaa\x01\x02\b\x01R\x0freasoningEffort\x12;\n" +
+	"\vfile_access\x18\a \x01(\x0e2\x13.koda.v1.FileAccessB\x05\xaa\x01\x02\b\x01R\n" +
+	"fileAccess\x12>\n" +
+	"\fshell_access\x18\b \x01(\x0e2\x14.koda.v1.ShellAccessB\x05\xaa\x01\x02\b\x01R\vshellAccess\"C\n" +
 	"\x15UpdateSessionResponse\x12*\n" +
 	"\asession\x18\x01 \x01(\v2\x10.koda.v1.SessionR\asession\"5\n" +
 	"\x14DeleteSessionRequest\x12\x1d\n" +
@@ -4525,16 +8820,14 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\x18default_reasoning_effort\x18\x04 \x01(\tR\x16defaultReasoningEffort\"\x16\n" +
 	"\x14ListProvidersRequest\"H\n" +
 	"\x15ListProvidersResponse\x12/\n" +
-	"\tproviders\x18\x01 \x03(\v2\x11.koda.v1.ProviderR\tproviders\"\xe2\x01\n" +
+	"\tproviders\x18\x01 \x03(\v2\x11.koda.v1.ProviderR\tproviders\"\xd8\x01\n" +
 	"\x13SaveProviderRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12)\n" +
 	"\x04type\x18\x03 \x01(\x0e2\x15.koda.v1.ProviderTypeR\x04type\x12\x19\n" +
-	"\bbase_url\x18\x04 \x01(\tR\abaseUrl\x12\x1c\n" +
-	"\aapi_key\x18\x05 \x01(\tH\x00R\x06apiKey\x88\x01\x01\x127\n" +
-	"\x0fmodel_overrides\x18\x06 \x03(\v2\x0e.koda.v1.ModelR\x0emodelOverridesB\n" +
-	"\n" +
-	"\b_api_key\"E\n" +
+	"\bbase_url\x18\x04 \x01(\tR\abaseUrl\x12\x1e\n" +
+	"\aapi_key\x18\x05 \x01(\tB\x05\xaa\x01\x02\b\x01R\x06apiKey\x127\n" +
+	"\x0fmodel_overrides\x18\x06 \x03(\v2\x0e.koda.v1.ModelR\x0emodelOverrides\"E\n" +
 	"\x14SaveProviderResponse\x12-\n" +
 	"\bprovider\x18\x01 \x01(\v2\x11.koda.v1.ProviderR\bprovider\"8\n" +
 	"\x15DeleteProviderRequest\x12\x1f\n" +
@@ -4634,19 +8927,7 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\n" +
 	"ListModels\x12\x1a.koda.v1.ListModelsRequest\x1a\x1b.koda.v1.ListModelsResponse\x12N\n" +
 	"\rRefreshModels\x12\x1d.koda.v1.RefreshModelsRequest\x1a\x1e.koda.v1.RefreshModelsResponseB\x84\x01\n" +
-	"\vcom.koda.v1B\fServiceProtoP\x01Z*github.com/soasurs/koda/gen/koda/v1;kodav1\xa2\x02\x03KXX\xaa\x02\aKoda.V1\xca\x02\aKoda\\V1\xe2\x02\x13Koda\\V1\\GPBMetadata\xea\x02\bKoda::V1b\x06proto3"
-
-var (
-	file_koda_v1_service_proto_rawDescOnce sync.Once
-	file_koda_v1_service_proto_rawDescData []byte
-)
-
-func file_koda_v1_service_proto_rawDescGZIP() []byte {
-	file_koda_v1_service_proto_rawDescOnce.Do(func() {
-		file_koda_v1_service_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_koda_v1_service_proto_rawDesc), len(file_koda_v1_service_proto_rawDesc)))
-	})
-	return file_koda_v1_service_proto_rawDescData
-}
+	"\vcom.koda.v1B\fServiceProtoP\x01Z*github.com/soasurs/koda/gen/koda/v1;kodav1\xa2\x02\x03KXX\xaa\x02\aKoda.V1\xca\x02\aKoda\\V1\xe2\x02\x13Koda\\V1\\GPBMetadata\xea\x02\bKoda::V1b\beditionsp\xe8\a"
 
 var file_koda_v1_service_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
 var file_koda_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 54)
@@ -4811,29 +9092,27 @@ func file_koda_v1_service_proto_init() {
 		return
 	}
 	file_koda_v1_service_proto_msgTypes[1].OneofWrappers = []any{
-		(*RunResponse_Event)(nil),
-		(*RunResponse_Approval)(nil),
-		(*RunResponse_Completed)(nil),
-		(*RunResponse_QuestionPrompt)(nil),
+		(*runResponse_Event)(nil),
+		(*runResponse_Approval)(nil),
+		(*runResponse_Completed)(nil),
+		(*runResponse_QuestionPrompt)(nil),
 	}
 	file_koda_v1_service_proto_msgTypes[4].OneofWrappers = []any{
-		(*Part_Text)(nil),
-		(*Part_Image)(nil),
+		(*part_Text)(nil),
+		(*part_Image)(nil),
 	}
 	file_koda_v1_service_proto_msgTypes[5].OneofWrappers = []any{
-		(*Image_Url)(nil),
-		(*Image_Data)(nil),
+		(*image_Url)(nil),
+		(*image_Data)(nil),
 	}
 	file_koda_v1_service_proto_msgTypes[12].OneofWrappers = []any{
-		(*SubmitQuestionAnswersRequest_Answers)(nil),
-		(*SubmitQuestionAnswersRequest_Canceled)(nil),
+		(*submitQuestionAnswersRequest_Answers)(nil),
+		(*submitQuestionAnswersRequest_Canceled)(nil),
 	}
-	file_koda_v1_service_proto_msgTypes[23].OneofWrappers = []any{}
 	file_koda_v1_service_proto_msgTypes[30].OneofWrappers = []any{
-		(*ToolResponse_Result)(nil),
-		(*ToolResponse_Error)(nil),
+		(*toolResponse_Result)(nil),
+		(*toolResponse_Error)(nil),
 	}
-	file_koda_v1_service_proto_msgTypes[46].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

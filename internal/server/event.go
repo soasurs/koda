@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/store"
+	"google.golang.org/protobuf/proto"
 )
 
 // Run validates transport input and forwards events from an injected
@@ -20,15 +21,15 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	if request == nil {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("run request must not be nil"))
 	}
-	id, err := sessionIDFromRequest(request.SessionId)
+	id, err := sessionIDFromRequest(request.GetSessionId())
 	if err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	mode, err := agentModeFromProto(request.Mode)
+	mode, err := agentModeFromProto(request.GetMode())
 	if err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	input, err := inputFromProto(request.Input)
+	input, err := inputFromProto(request.GetInput())
 	if err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -54,7 +55,9 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		if err != nil {
 			return connect.NewError(connect.CodeInternal, errors.New("convert agent event"))
 		}
-		if err := stream.Send(&v1.RunResponse{Payload: &v1.RunResponse_Event{Event: converted}}); err != nil {
+		resp := new(v1.RunResponse)
+		resp.SetEvent(converted)
+		if err := stream.Send(resp); err != nil {
 			return err
 		}
 	}
@@ -66,19 +69,19 @@ func (h *Handler) ListEvents(ctx context.Context, request *v1.ListEventsRequest)
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("list events request must not be nil"))
 	}
-	id, err := sessionIDFromRequest(request.SessionId)
+	id, err := sessionIDFromRequest(request.GetSessionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if request.Limit < 0 {
+	if request.GetLimit() < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("event list limit must not be negative"))
 	}
-	if request.Offset < 0 {
+	if request.GetOffset() < 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("event list offset must not be negative"))
 	}
 	events, total, err := h.store.ListEvents(ctx, id, store.ListEventsParams{
-		Limit:  int(request.Limit),
-		Offset: request.Offset,
+		Limit:  int(request.GetLimit()),
+		Offset: request.GetOffset(),
 	})
 	if err != nil {
 		return nil, sessionError(err)
@@ -87,7 +90,10 @@ func (h *Handler) ListEvents(ctx context.Context, request *v1.ListEventsRequest)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.New("convert stored events"))
 	}
-	return &v1.ListEventsResponse{Events: converted, Total: total}, nil
+	return v1.ListEventsResponse_builder{
+		Events: converted,
+		Total:  proto.Int64(total),
+	}.Build(), nil
 }
 
 // UndoLastMessage deletes the most recent active user turn and returns its
@@ -96,7 +102,7 @@ func (h *Handler) UndoLastMessage(ctx context.Context, request *v1.UndoLastMessa
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("undo last message request must not be nil"))
 	}
-	id, err := sessionIDFromRequest(request.SessionId)
+	id, err := sessionIDFromRequest(request.GetSessionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -104,10 +110,9 @@ func (h *Handler) UndoLastMessage(ctx context.Context, request *v1.UndoLastMessa
 	if err != nil {
 		return nil, sessionError(err)
 	}
-	response := &v1.UndoLastMessageResponse{
-		TurnId:            result.TurnID,
-		DeletedEventCount: result.DeletedEventCount,
-	}
+	response := new(v1.UndoLastMessageResponse)
+	response.SetTurnId(result.TurnID)
+	response.SetDeletedEventCount(result.DeletedEventCount)
 	if result.TurnID == "" {
 		return response, nil
 	}
@@ -115,6 +120,6 @@ func (h *Handler) UndoLastMessage(ctx context.Context, request *v1.UndoLastMessa
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.New("convert removed user input"))
 	}
-	response.Input = input
+	response.SetInput(input)
 	return response, nil
 }
