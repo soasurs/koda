@@ -23,16 +23,10 @@ type RunInteractions struct {
 // WithRunInteractions returns a child context carrying interactions for one
 // active Run. ctx must not be nil.
 func WithRunInteractions(ctx context.Context, interactions RunInteractions) context.Context {
-	if ctx == nil {
-		panic("agent: context must not be nil")
-	}
 	return context.WithValue(ctx, runInteractionsContextKey{}, interactions)
 }
 
 func runInteractionsFromContext(ctx context.Context) (RunInteractions, bool) {
-	if ctx == nil {
-		return RunInteractions{}, false
-	}
 	interactions, ok := ctx.Value(runInteractionsContextKey{}).(RunInteractions)
 	return interactions, ok
 }

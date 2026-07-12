@@ -93,9 +93,6 @@ func New(config Config) (*Factory, error) {
 // model defaults locally and creates a distinct entry when session-scoped tool
 // settings or workspace instructions change.
 func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) (*runner.Runner, error) {
-	if ctx == nil {
-		return nil, errors.New("agent: context must not be nil")
-	}
 	if err := validateSession(session); err != nil {
 		return nil, err
 	}

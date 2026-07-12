@@ -43,15 +43,6 @@ func TestRuntimeInteractionsDelegateToRunContext(t *testing.T) {
 	}
 }
 
-func TestWithRunInteractionsPanicsOnNilContext(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("WithRunInteractions(nil) did not panic")
-		}
-	}()
-	WithRunInteractions(nil, RunInteractions{})
-}
-
 type authorizerFunc func(context.Context, tools.Approval) error
 
 func (f authorizerFunc) Authorize(ctx context.Context, approval tools.Approval) error {

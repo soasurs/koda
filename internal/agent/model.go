@@ -23,9 +23,6 @@ var (
 type providerModelFactory func(context.Context, provider.Provider, string, string) (model.LLM, error)
 
 func newProviderModel(ctx context.Context, value provider.Provider, modelID, reasoningEffort string) (model.LLM, error) {
-	if ctx == nil {
-		return nil, errors.New("agent: context must not be nil")
-	}
 	if !value.Configured() {
 		return nil, fmt.Errorf("agent: provider %q: %w", value.ID, ErrProviderNotConfigured)
 	}
