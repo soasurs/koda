@@ -37,11 +37,13 @@ Available today:
   reasoning effort, and workspace `AGENTS.md` instructions.
 - Context-scoped approval/question adapters that preserve provider tool-call
   metadata and convert Broker waits into transient Run frames.
+- Live streamed `Run` handling that initializes ADK sessions, reuses cached
+  runners, serializes event and interaction frames, and emits completion only
+  after a successful, terminal assistant response.
 
-The next implementation slice wires the cached runner and interaction adapters
-into live streamed Run handling, including completion and rollback semantics. See
-[AGENTS.md](AGENTS.md) for the current architecture decisions and development
-order.
+The remaining runtime work is the HTTP server and `cmd/koda` process lifecycle.
+See [AGENTS.md](AGENTS.md) for the current architecture decisions and
+development order.
 
 ## Architecture
 
@@ -135,7 +137,7 @@ their location.
 `read_file` and `search_text` return a file revision and `LINE:HASH` anchors;
 `edit_file` verifies both before applying a batch atomically.
 
-An approval may synchronously pause a tool call. The future Run runtime emits a
+An approval may synchronously pause a tool call. The Run runtime emits a
 `ToolApproval` frame with a proposed structured diff where it is predictable;
 the client resolves it through `ResolveToolApproval`. Pending approvals are
 in-process, run-scoped, cancellation-safe, and discarded after resolution.
@@ -225,9 +227,7 @@ under `gen/` are committed but must not be edited manually.
 
 The current implementation order is:
 
-1. Live streamed Run, including cached-runner use, interactions, completion,
-   cancellation, and rollback.
-2. Process lifecycle and end-to-end tests.
+1. Process lifecycle and end-to-end tests.
 
 ## License
 

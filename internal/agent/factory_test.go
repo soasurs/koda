@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"iter"
 	"os"
@@ -197,6 +198,43 @@ func TestFactoryRunnerPassesRunInteractionsIntoCachedTools(t *testing.T) {
 	}
 	if string(contents) != "created\n" || len(approvals) != 1 || approvals[0].ToolCallID != "call-1" || approvals[0].ToolName != "create_file" {
 		t.Fatalf("contents = %q, approvals = %+v", contents, approvals)
+	}
+}
+
+func TestFactoryRunnerRollsBackIncompleteTurn(t *testing.T) {
+	factory, _ := newTestFactory(t)
+	session := testSession(t.TempDir())
+	if _, err := factory.sessions.CreateSession(t.Context(), adksession.CreateSessionRequest{
+		SessionID: session.ID,
+		AppID:     "koda",
+		UserID:    "local",
+	}); err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+	factory.newModel = func(context.Context, provider.Provider, string, string) (model.LLM, error) {
+		return fakeModel{name: "empty"}, nil
+	}
+	runner, err := factory.Runner(t.Context(), session, ModePlan)
+	if err != nil {
+		t.Fatalf("Runner() error = %v", err)
+	}
+	var runErr error
+	for _, err := range runner.Run(t.Context(), session.ID, model.Content{Content: "hello"}) {
+		runErr = err
+	}
+	if !errors.Is(runErr, errTurnIncomplete) {
+		t.Fatalf("Runner.Run() error = %v, want errTurnIncomplete", runErr)
+	}
+	adkSession, err := factory.sessions.GetSession(t.Context(), session.ID)
+	if err != nil {
+		t.Fatalf("GetSession() error = %v", err)
+	}
+	events, err := adkSession.ListEvents(t.Context())
+	if err != nil {
+		t.Fatalf("ListEvents() error = %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("persisted events = %+v, want rollback", events)
 	}
 }
 

@@ -155,7 +155,7 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 	if err != nil {
 		return nil, fmt.Errorf("agent: construct %s agent: %w", mode, err)
 	}
-	result, err := runner.New(llmAgent, f.sessions)
+	result, err := runner.New(turnCompletionAgent{delegate: llmAgent}, f.sessions)
 	if err != nil {
 		return nil, fmt.Errorf("agent: construct runner: %w", err)
 	}

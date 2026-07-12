@@ -38,12 +38,13 @@ Implemented today:
   workspace `AGENTS.md` instructions when they change.
 - Context-scoped Approval/Question adapters that preserve provider tool-call
   metadata and translate the existing brokers into transient Run frames.
+- A live streamed `Run` handler that initializes ADK sessions, reuses cached
+  runners, serializes event and interaction frames, touches sessions after
+  successful turns, validates terminal assistant responses before ADK commits,
+  and relies on ADK for cancellation rollback.
 
 Not implemented yet:
 
-- LLM-backed Run handling: ADK session initialization, Factory integration,
-  streamed events/interactions, completion framing, session touching, and
-  rollback semantics.
 - HTTP server and `cmd/koda` entry point.
 - A runnable CLI or UI.
 
@@ -207,9 +208,9 @@ Model Catalog invariants:
 
 OpenAI Chat Completions and OpenAI Responses are distinct provider types and
 distinct built-in registry entries. They share `OPENAI_API_KEY`, but keep model
-catalogs and revisions separate. When the runtime is implemented, use ADK's
-Chat Completions adapter for `openai` and the Responses adapter for
-`openai-responses`. ADK session history remains the source of truth.
+catalogs and revisions separate. The live runtime uses ADK's Chat Completions
+adapter for `openai` and the Responses adapter for `openai-responses`. ADK
+session history remains the source of truth.
 
 ### Deferred scope
 
@@ -220,10 +221,7 @@ Chat Completions adapter for `openai` and the Responses adapter for
 
 ## Recommended implementation order
 
-1. Implement the live streamed `Run`: initialize ADK sessions, obtain the
-   cached Factory runner, attach interactions, serialize outbound frames, and
-   enforce cancellation, rollback, completion, and session-touch semantics.
-2. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
+1. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
 
 Review this order after each completed slice; do not build all layers at once.
 

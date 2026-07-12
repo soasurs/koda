@@ -5,21 +5,21 @@ import (
 	"fmt"
 
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
+	"github.com/soasurs/koda/internal/agent"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
 )
 
-// Handler implements the Koda Connect service methods that do not require an
-// LLM runtime. Unimplemented methods retain Connect's CodeUnimplemented
-// behavior until their corresponding runtime layer is available.
+// Handler implements the Koda Connect service methods.
 type Handler struct {
 	kodav1connect.UnimplementedKodaServiceHandler
 
-	registry  *provider.Registry
-	catalog   *provider.Catalog
-	store     *store.Store
-	approvals *ApprovalBroker
-	questions *QuestionBroker
+	registry     *provider.Registry
+	catalog      *provider.Catalog
+	store        *store.Store
+	approvals    *ApprovalBroker
+	questions    *QuestionBroker
+	agentFactory *agent.Factory
 
 	newSessionID      func() (string, error)
 	turnRunnerFactory turnRunnerFactory
@@ -39,12 +39,21 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 	if sessionStore == nil {
 		return nil, fmt.Errorf("server: session store must not be nil")
 	}
+	agentFactory, err := agent.New(agent.Config{
+		Registry: registry,
+		Catalog:  catalog,
+		Sessions: sessionStore.ADKSessionService(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("server: construct agent factory: %w", err)
+	}
 	return &Handler{
 		registry:     registry,
 		catalog:      catalog,
 		store:        sessionStore,
 		approvals:    NewApprovalBroker(),
 		questions:    NewQuestionBroker(),
+		agentFactory: agentFactory,
 		newSessionID: newSessionID,
 	}, nil
 }

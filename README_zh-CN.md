@@ -31,10 +31,11 @@ Protocol Buffer 契约、Connect RPC 和
   失效、Plan/Build 工具集、Model 默认 reasoning effort 与 workspace `AGENTS.md` 指令。
 - 基于 Run context 的 approval/question adapter，会保留 Provider tool-call metadata，
   并将 Broker 等待转换为瞬态 Run frame。
+- 已接入真实流式 `Run`：初始化 ADK session、复用缓存 runner、串行化事件和交互帧，
+  并仅在 terminal assistant response 的 turn 成功后更新时间和发送完成帧。
 
-下一阶段将把缓存 runner 和 interaction adapter 接入真实的流式 Run，补齐完成帧与回滚语义。
-当前架构决策和开发顺序见
-[AGENTS.md](AGENTS.md)。
+剩余工作主要是 HTTP server、`cmd/koda` 进程生命周期和端到端测试。当前架构决策和
+开发顺序见 [AGENTS.md](AGENTS.md)。
 
 ## 架构
 
@@ -117,7 +118,7 @@ Plan agent 提供 `read_file`、`list_directory`、`search_text`、`find_files`�
 的 `edit_file` 和 `run_shell`。文件工具会先解析符号链接再判断是否位于 workspace 内。`read_file` 和
 `search_text` 返回文件 revision 与 `LINE:HASH` 锚点；`edit_file` 会在原子写入前校验两者。
 
-审批可以同步暂停工具调用。未来的 Run runtime 会在可预测的文件修改场景发送带 proposed
+审批可以同步暂停工具调用。Run runtime 会在可预测的文件修改场景发送带 proposed
 structured diff 的 `ToolApproval` 帧，客户端通过 `ResolveToolApproval` 返回批准或拒绝。
 Pending approval 仅存在于当前进程，绑定活跃 Run，支持 context 取消，并会在完成后清理。
 `ask_questions` 在工具内部等待；前端提交的答案成为正常持久化的 ToolResult，
@@ -199,8 +200,7 @@ go test -cover ./...
 
 当前实现顺序：
 
-1. 真实流式 Run：使用缓存 runner，接入 interaction，补齐完成、取消与回滚。
-2. 进程生命周期和端到端测试。
+1. 进程生命周期和端到端测试。
 
 ## License
 
