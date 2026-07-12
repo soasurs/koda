@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/soasurs/adk/tool"
+
 	"github.com/soasurs/koda/internal/permission"
 )
 
@@ -190,51 +191,61 @@ func (s service) newWriteFileTool() (tool.Tool, error) {
 }
 
 func (s service) writeFile(ctx context.Context, input writeFileInput) (fileWriteOutput, error) {
-	path, err := s.resolver.writeTarget(input.Path)
+	plan, err := s.planWrite(input)
 	if err != nil {
 		return fileWriteOutput{}, handled(err)
 	}
-	before, err := loadTextFileIfExists(path.real)
-	if err != nil {
-		return fileWriteOutput{}, handled(err)
-	}
-	if input.ExpectedRevision != "" && input.ExpectedRevision != before.revision() {
-		return fileWriteOutput{}, handled(errors.New("stale file revision; read the file again before overwriting it"))
-	}
-	after := parseTextFile(input.Content)
-	change := wholeFileChange(path.display, before, after, fileChangeKind(path.exists))
-	if err := s.authorize(ctx, permission.KindFileWrite, path.scope, absoluteTargets(path), "write "+path.display, []FileChange{change}); err != nil {
-		return fileWriteOutput{}, err
-	}
-	// Re-plan after a possibly long approval wait so the returned diff is the
-	// actual mutation. An explicit expected revision remains a strict guard.
-	approvedPath := path
-	path, err = s.resolver.writeTarget(input.Path)
-	if err != nil {
-		return fileWriteOutput{}, handled(err)
-	}
-	before, err = loadTextFileIfExists(path.real)
-	if err != nil {
-		return fileWriteOutput{}, handled(err)
-	}
-	if input.ExpectedRevision != "" && input.ExpectedRevision != before.revision() {
-		return fileWriteOutput{}, handled(errors.New("stale file revision; read the file again before overwriting it"))
-	}
-	change = wholeFileChange(path.display, before, after, fileChangeKind(path.exists))
-	if !sameTarget(approvedPath, path) {
-		if err := s.authorize(ctx, permission.KindFileWrite, path.scope, absoluteTargets(path), "write "+path.display, []FileChange{change}); err != nil {
+	for {
+		if err := s.authorize(ctx, permission.KindFileWrite, plan.path.scope, absoluteTargets(plan.path), "write "+plan.path.display, []FileChange{plan.change}); err != nil {
 			return fileWriteOutput{}, err
 		}
+		approvedPath := plan.path
+		approvedRevision := plan.before.revision()
+		plan, err = s.planWrite(input)
+		if err != nil {
+			return fileWriteOutput{}, handled(err)
+		}
+		if sameTarget(approvedPath, plan.path) && approvedRevision == plan.before.revision() {
+			break
+		}
 	}
-	if err := writeAtomic(path.real, input.Content, path.info); err != nil {
+	if err := writeAtomic(plan.path.real, input.Content, plan.path.info); err != nil {
 		return fileWriteOutput{}, handled(err)
 	}
 	return fileWriteOutput{
-		Path:        path.display,
+		Path:        plan.path.display,
 		Bytes:       len(input.Content),
-		Lines:       len(after.lines),
-		Revision:    after.revision(),
-		FileChanges: []FileChange{change},
+		Lines:       len(plan.after.lines),
+		Revision:    plan.after.revision(),
+		FileChanges: []FileChange{plan.change},
+	}, nil
+}
+
+type wholeWritePlan struct {
+	path   resolvedPath
+	before textFile
+	after  textFile
+	change FileChange
+}
+
+func (s service) planWrite(input writeFileInput) (wholeWritePlan, error) {
+	path, err := s.resolver.writeTarget(input.Path)
+	if err != nil {
+		return wholeWritePlan{}, err
+	}
+	before, err := loadTextFileIfExists(path.real)
+	if err != nil {
+		return wholeWritePlan{}, err
+	}
+	if input.ExpectedRevision != "" && input.ExpectedRevision != before.revision() {
+		return wholeWritePlan{}, errors.New("stale file revision; read the file again before overwriting it")
+	}
+	after := parseTextFile(input.Content)
+	return wholeWritePlan{
+		path:   path,
+		before: before,
+		after:  after,
+		change: wholeFileChange(path.display, before, after, fileChangeKind(path.exists)),
 	}, nil
 }
 
@@ -537,7 +548,12 @@ func wholeFileChange(path string, before, after textFile, kind FileChangeKind) F
 		newEnd--
 	}
 	if oldStart > oldEnd && oldStart > newEnd {
-		return FileChange{Path: path, Kind: kind}
+		if before.trailingNewline == after.trailingNewline || len(before.lines) == 0 || len(after.lines) == 0 {
+			return FileChange{Path: path, Kind: kind}
+		}
+		oldStart = len(before.lines) - 1
+		oldEnd = oldStart
+		newEnd = len(after.lines) - 1
 	}
 	removed := before.lines[oldStart : oldEnd+1]
 	added := after.lines[oldStart : newEnd+1]

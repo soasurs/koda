@@ -228,8 +228,8 @@ func (s *Store) TouchSession(ctx context.Context, id string) error {
 	return nil
 }
 
-// DeleteSession hides the Koda session and its ADK event history from future
-// access. Historical rows are soft-deleted by the underlying ADK store.
+// DeleteSession atomically soft-deletes the Koda session, its ADK ledger, and
+// every active or archived event in that ledger.
 func (s *Store) DeleteSession(ctx context.Context, id string) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -247,14 +247,14 @@ func (s *Store) DeleteSession(ctx context.Context, id string) error {
 	}
 	defer unlock()
 
-	exists, err := s.sessionExists(ctx, id)
+	tx, err := s.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("store: begin delete session %q: %w", id, err)
 	}
-	if !exists {
-		return fmt.Errorf("store: delete session %q: %w", id, ErrNotFound)
-	}
-	result, err := s.db.ExecContext(ctx, s.queries.deleteSession, s.now().UTC().UnixMilli(), id)
+	defer tx.Rollback() //nolint:errcheck // Commit below completes the transaction.
+
+	deletedAt := s.now().UTC().UnixMilli()
+	result, err := tx.ExecContext(ctx, s.queries.deleteSession, deletedAt, id)
 	if err != nil {
 		return fmt.Errorf("store: delete session %q: %w", id, err)
 	}
@@ -265,8 +265,14 @@ func (s *Store) DeleteSession(ctx context.Context, id string) error {
 	if deleted == 0 {
 		return fmt.Errorf("store: delete session %q: %w", id, ErrNotFound)
 	}
-	if err := s.adkSessions.DeleteSession(ctx, id); err != nil {
+	if _, err := tx.ExecContext(ctx, s.queries.deleteADKSession, deletedAt, id); err != nil {
 		return fmt.Errorf("store: delete ADK session %q: %w", id, err)
+	}
+	if _, err := tx.ExecContext(ctx, s.queries.deleteEvents, deletedAt, id); err != nil {
+		return fmt.Errorf("store: delete ADK events for %q: %w", id, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("store: commit delete session %q: %w", id, err)
 	}
 	return nil
 }

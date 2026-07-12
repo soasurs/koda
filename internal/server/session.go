@@ -10,10 +10,11 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
+
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/permission"
 	"github.com/soasurs/koda/internal/store"
-	"google.golang.org/protobuf/proto"
 )
 
 // CreateSession creates a new session with a validated execution configuration.

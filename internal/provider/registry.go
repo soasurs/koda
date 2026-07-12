@@ -354,10 +354,14 @@ func (r *Registry) saveLocked(ctx context.Context, p Provider, apiKey *string) (
 	next := cloneProviderMap(r.providers)
 	next[p.ID] = cloneProvider(p)
 	nextSnapshots := cloneSnapshotMap(r.snapshots)
+	if connectionChanged {
+		delete(nextSnapshots, p.ID)
+	}
 	if err := r.persist(ctx, next, nextSnapshots); err != nil {
 		return Provider{}, err
 	}
 	r.providers = next
+	r.snapshots = nextSnapshots
 	if connectionChanged {
 		r.nextRevision++
 	}

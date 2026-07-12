@@ -14,6 +14,7 @@ import (
 	"github.com/soasurs/adk/model"
 	adksession "github.com/soasurs/adk/session"
 	"github.com/soasurs/adk/session/memory"
+
 	"github.com/soasurs/koda/internal/permission"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
@@ -144,8 +145,8 @@ func TestToolsForMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toolsForMode(build) error = %v", err)
 	}
-	if len(plan) != 6 || len(build) != 10 {
-		t.Fatalf("tool counts = %d, %d; want 6, 10", len(plan), len(build))
+	if len(plan) != 6 || len(build) != 9 {
+		t.Fatalf("tool counts = %d, %d; want 6, 9", len(plan), len(build))
 	}
 }
 

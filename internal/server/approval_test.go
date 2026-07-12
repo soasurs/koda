@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"google.golang.org/protobuf/proto"
+
+	v1 "github.com/soasurs/koda/gen/koda/v1"
 )
 
 func TestApprovalBrokerResolvesAndCleansUp(t *testing.T) {
@@ -109,6 +110,16 @@ func TestResolveToolApprovalHandler(t *testing.T) {
 	}
 	if _, err := client.ResolveToolApproval(t.Context(), v1.ResolveToolApprovalRequest_builder{ApprovalId: proto.String("approval-1")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ResolveToolApproval(expired) code = %v, want not_found; error = %v", connect.CodeOf(err), err)
+	}
+}
+
+func TestResolveToolApprovalMapsExpiredContext(t *testing.T) {
+	client, _, _ := newTestService(t, staticDiscoverer{})
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
+	defer cancel()
+	_, err := client.ResolveToolApproval(ctx, v1.ResolveToolApprovalRequest_builder{ApprovalId: proto.String("approval-1")}.Build())
+	if connect.CodeOf(err) != connect.CodeDeadlineExceeded {
+		t.Fatalf("ResolveToolApproval() code = %v, want deadline_exceeded; error = %v", connect.CodeOf(err), err)
 	}
 }
 

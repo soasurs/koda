@@ -251,6 +251,31 @@ func TestRegistryModelSnapshotPersistsReturnsClonesAndPreservesRevision(t *testi
 	}
 }
 
+func TestRegistryClearsModelSnapshotWhenConnectionChanges(t *testing.T) {
+	r := openTestRegistry(t)
+	p, err := r.Get(t.Context(), "deepseek")
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	if _, err := r.SetModelSnapshot(t.Context(), p.ID, p.Revision(), ModelSnapshot{
+		Models:      []Model{{ID: "old-model"}},
+		RefreshedAt: time.Now(),
+	}); err != nil {
+		t.Fatalf("SetModelSnapshot() error = %v", err)
+	}
+	p.BaseURL = "https://deepseek.example/v1"
+	if _, err := r.Save(t.Context(), p, nil); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+	snapshot, err := r.ModelSnapshot(t.Context(), p.ID)
+	if err != nil {
+		t.Fatalf("ModelSnapshot() error = %v", err)
+	}
+	if !snapshot.RefreshedAt.IsZero() || len(snapshot.Models) != 0 {
+		t.Fatalf("ModelSnapshot() = %+v, want cleared snapshot", snapshot)
+	}
+}
+
 func TestRegistryPersistsEmptyModelSnapshot(t *testing.T) {
 	r := openTestRegistry(t)
 	p, err := r.Get(t.Context(), "gemini")

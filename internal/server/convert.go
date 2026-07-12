@@ -12,9 +12,10 @@ import (
 
 	"github.com/soasurs/adk/model"
 	"github.com/soasurs/adk/tool"
+	"google.golang.org/protobuf/proto"
+
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/tools"
-	"google.golang.org/protobuf/proto"
 )
 
 // inputFromProto converts user-authored multimodal input into the ADK content

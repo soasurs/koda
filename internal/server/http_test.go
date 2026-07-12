@@ -12,11 +12,12 @@ import (
 	"time"
 
 	"github.com/soasurs/adk/model"
+	"google.golang.org/protobuf/proto"
+
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestHTTPServerServesConnectRunAndShutsDown(t *testing.T) {
@@ -70,6 +71,47 @@ func TestHTTPServerServesConnectRunAndShutsDown(t *testing.T) {
 		t.Fatalf("Run() event = %+v, completed = %+v", event, completed)
 	}
 }
+
+func TestHTTPServerRejectsNonLocalHostAndOrigin(t *testing.T) {
+	handler := newHTTPTestHandler(t)
+	server, err := NewHTTPServer(handler, HTTPServerConfig{})
+	if err != nil {
+		t.Fatalf("NewHTTPServer() error = %v", err)
+	}
+	for _, test := range []struct {
+		name   string
+		host   string
+		origin string
+		want   int
+	}{
+		{name: "loopback", host: "127.0.0.1:8080", origin: "http://localhost:3000", want: http.StatusNotFound},
+		{name: "host rebinding", host: "attacker.example", want: http.StatusForbidden},
+		{name: "remote origin", host: "localhost:8080", origin: "https://attacker.example", want: http.StatusForbidden},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost/not-a-connect-route", nil)
+			if err != nil {
+				t.Fatalf("NewRequestWithContext() error = %v", err)
+			}
+			request.Host = test.host
+			request.Header.Set("Origin", test.origin)
+			response := &statusRecorder{header: make(http.Header)}
+			server.server.Handler.ServeHTTP(response, request)
+			if response.status != test.want {
+				t.Fatalf("status = %d, want %d", response.status, test.want)
+			}
+		})
+	}
+}
+
+type statusRecorder struct {
+	header http.Header
+	status int
+}
+
+func (r *statusRecorder) Header() http.Header       { return r.header }
+func (r *statusRecorder) Write([]byte) (int, error) { return 0, nil }
+func (r *statusRecorder) WriteHeader(status int)    { r.status = status }
 
 func TestHTTPServerServesInteractionRPCs(t *testing.T) {
 	handler := newHTTPTestHandler(t)

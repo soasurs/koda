@@ -1,158 +1,39 @@
 # koda
 
-`koda` 是一个使用 Go 编写、运行在本机的 coding agent 服务。项目正在围绕版本化
-Protocol Buffer 契约、Connect RPC 和
-[`github.com/soasurs/adk`](https://github.com/soasurs/adk) agent 框架重新实现。
+`koda` 是一个本地 coding agent 服务，使用 Go、Protocol Buffers、Connect RPC 和
+[`github.com/soasurs/adk`](https://github.com/soasurs/adk) 构建。它为客户端提供
+流式 agent turn、workspace 工具、操作审批、结构化提问、Provider 配置和持久化对话
+历史等运行时能力。
 
 [English](README.md)
 
-## 当前状态
+Koda 当前只提供无界面的本地服务，不包含 UI。
 
-仓库正处于重写阶段，但现在已经提供可运行的本地 Connect 服务端和 CLI 入口。
+## 启动服务
 
-已经完成：
+环境要求：
 
-- `koda.v1.KodaService` Protocol Buffer 契约。
-- 生成的 Go 和 Connect bindings。
-- 多模态 Run 输入，以及流式事件、工具审批和完成帧定义。
-- Provider、Model、Session、历史事件和 Undo API 契约。
-- 可持久化且并发安全的 Provider Registry。
-- 内置模型目录，以及 Anthropic、OpenAI-compatible、Gemini 和 DeepSeek
-  的远程模型发现与 last-known-good snapshot。
-- 基于 SQLite 的 Session Store，负责 Koda session metadata 和 ADK 对话历史。
-- Provider 和 Model 的 Connect handlers，以及协议级测试。
-- Session CRUD Connect handlers，以及协议级测试。
-- 历史事件与 Undo Connect handlers，以及协议级测试。
-- 具备 workspace 感知能力的文件、搜索、Git 和 Shell 工具，实现了 Hashline 编辑和结构化文件 diff。
-- Plan 和 Build agent 可用的 `ask_questions` 工具，包含类型化前端问题、答案校验和取消语义。
-- Session 级文件/Shell 权限契约，以及支持取消的进程内 approval broker。
-- Proto/ADK 多模态输入和事件转换，包含结构化工具结果/file diff，以及 fake `TurnRunner` test seam。
-- 覆盖全部已注册 Provider adapter 的缓存 ADK agent Factory，支持 Provider revision
-  失效、Plan/Build 工具集、Model 默认 reasoning effort 与 workspace `AGENTS.md` 指令。
-- 基于 Run context 的 approval/question adapter，会保留 Provider tool-call metadata，
-  并将 Broker 等待转换为瞬态 Run frame。
-- 已接入真实流式 `Run`：初始化 ADK session、复用缓存 runner、串行化事件和交互帧，
-  并仅在 terminal assistant response 的 turn 成功后更新时间和发送完成帧。
-- 默认仅监听 loopback 的 Connect HTTP server，以及具备优雅退出的 `cmd/koda` 进程入口。
-- 覆盖 Run、approval、question 和 shutdown 的端到端 Connect 测试。
+- Go 1.26，或 `go.mod` 声明的版本；
+- 至少配置一个 Provider 的 API key。
 
-当前架构决策和开发顺序见 [AGENTS.md](AGENTS.md)。
-
-## 架构
-
-```text
-Provider Registry ─┐
-Session Store ─────┼──> Agent Runtime ──> Connect Server ──> 本地客户端
-Tools + Prompts ───┘
-```
-
-当前源码结构：
-
-```text
-proto/koda/v1/service.proto              API 契约源文件
-gen/koda/v1/                             生成的 Go/Connect bindings
-internal/provider/                       Provider Registry 和模型目录
-internal/server/                          Connect handlers
-internal/store/                          SQLite 生命周期和 Session Catalog
-internal/tools/                           Workspace 感知的 coding tools
-internal/permission/                      Session 权限策略
-internal/agent/                           缓存 ADK agent、prompt 与 Run context
-cmd/koda/                                  本地 HTTP 服务入口
-buf.yaml / buf.gen.yaml                  lint 和代码生成配置
-```
-
-## 本地运行
+启动 Connect API server：
 
 ```bash
 go run ./cmd/koda serve
 ```
 
-`serve` 只启动 Connect API server，不会打开浏览器。它会先尝试监听
-`localhost:8080`；若端口已被占用，则让操作系统分配另一个 loopback 端口，并在启动时
-输出实际地址。Provider 配置固定在 `~/.koda/providers.json`，SQLite 数据库固定在
-`~/.koda/koda.db`。
+Koda 会先尝试 `localhost:8080`。若端口已被占用，它会选择另一个 loopback 端口并
+输出实际地址。也可以显式指定端口：
 
 ```bash
 go run ./cmd/koda serve --addr 127.0.0.1:8787
 ```
 
-CLI option 只接受双横杠形式，且始终拒绝非 loopback 地址；Koda 可以执行 Shell 命令并
-修改文件。未来的 `koda studio` command 会负责浏览器和 UI 行为。
+服务只接受 loopback 地址，并且不会打开浏览器。
 
-## API 模型
+## Provider 与本地数据
 
-### Run
-
-`Run` 通过 server stream 执行一个用户 turn。流中可能包含：
-
-- `Event`：增量文本/reasoning，或者完整的持久化事件。
-- `ToolApproval`：等待用户批准的文件、Git 或 Shell 工具调用。
-- `QuestionPrompt`：等待前端返回用户答案的 `ask_questions` 调用。
-- `RunCompleted`：表示 turn 成功完成的终止帧。
-
-一个 turn 从一条多模态用户输入开始，包含模型产生的所有工具调用、工具结果和后续
-模型调用，直到模型返回一条不再请求工具调用的最终响应。
-
-Run 输入支持有序的文本和图片 part。图片可以通过 HTTPS URL 提供，也可以通过带
-MIME type 的原始 bytes 提供；Connect JSON 会将 protobuf bytes 表示为 base64。
-
-### Session
-
-Provider 和 Model 的选择属于 Session，而不是全局配置。Session 保存：
-
-- Provider ID 和 Model ID；
-- Provider-specific reasoning effort；
-- 文件访问级别；
-- Shell 访问级别；
-- 工作目录；
-- 标题和时间戳。
-
-`RunRequest` 只携带 Session ID、用户输入和 build/plan 模式。
-
-创建或更新 Session 时，workdir 会归一化为存在且解析过符号链接的绝对目录。Provider、
-Model 和 reasoning effort 只根据本地 Model Catalog 校验，不会隐式触发网络发现。
-
-### Session Store
-
-默认数据库位于 `~/.koda/koda.db`。Koda metadata 存在 `koda_sessions`，ADK 的
-历史表以独立前缀存放在同一个 SQLite 数据库中。创建 Koda session 时不会创建空的
-ADK ledger；它会在第一次 Run 前创建，从而无需复制 ADK 的存储写入，也能保持
-metadata 创建原子。完整 turn 通过支持 context 取消的进程内 session lock 串行化。
-
-### 工具与审批
-
-文件访问是 Session 级配置，自动放行能力分为三个等级：
-
-| 级别 | Workspace 内读取 | Workspace 内写入 | Workspace 外访问 |
-|---|---:|---:|---:|
-| `WORKSPACE_READ` | 允许 | 审批 | 审批 |
-| `WORKSPACE_WRITE` | 允许 | 允许 | 审批 |
-| `UNRESTRICTED` | 允许 | 允许 | 允许 |
-
-Shell 权限独立配置：默认每次都需要审批；放开后有任意进程执行和实际上的全文件系统访问能力。
-
-Plan agent 提供 `read_file`、`list_directory`、`search_text`、`find_files`、只读白名单
-`git` 和 `ask_questions`；Build agent 额外提供 `write_file`、`create_file`、基于 Hashline
-的 `edit_file` 和 `run_shell`。文件工具会先解析符号链接再判断是否位于 workspace 内。`read_file` 和
-`search_text` 返回文件 revision 与 `LINE:HASH` 锚点；`edit_file` 会在原子写入前校验两者。
-
-审批可以同步暂停工具调用。Run runtime 会在可预测的文件修改场景发送带 proposed
-structured diff 的 `ToolApproval` 帧，客户端通过 `ResolveToolApproval` 返回批准或拒绝。
-Pending approval 仅存在于当前进程，绑定活跃 Run，支持 context 取消，并会在完成后清理。
-`ask_questions` 在工具内部等待；前端提交的答案成为正常持久化的 ToolResult，
-QuestionPrompt frame 本身只用于瞬态 UI。
-
-## Provider Registry
-
-Registry 将 Provider 定义、凭据、用户模型 override 和远程发现 snapshot 存储在：
-
-```text
-~/.koda/providers.json
-```
-
-目录权限为 `0700`，文件权限为 `0600`。写入过程使用临时文件和原子 rename。
-
-内置 Provider：
+Koda 内置以下 Provider：
 
 | ID | API | 环境变量 |
 |---|---|---|
@@ -162,57 +43,77 @@ Registry 将 Provider 定义、凭据、用户模型 override 和远程发现 sn
 | `gemini` | Gemini GenerateContent | `GEMINI_API_KEY` |
 | `deepseek` | DeepSeek | `DEEPSEEK_API_KEY` |
 
-环境变量中的凭据优先于文件中保存的凭据，并且不会被复制进 Registry 文件。自定义
-Provider 可以选择任意受支持的 adapter type，也可以提供 HTTP(S) Base URL。
+环境变量中的凭据优先于已保存的凭据，并且不会被复制到 Koda 配置文件中。客户端可以
+通过 `koda.v1.KodaService` 管理自定义 endpoint 和模型 override。
 
-模型列表由三层组成：
+Koda 将状态保存在 `~/.koda`：
 
-1. 经过 review 并打包进二进制的目录，为使用默认地址的内置 Provider 提供离线基线。
-2. `RefreshModels` 调用 Provider API，并持久化最近一次成功发现的 snapshot。
-3. Provider 的 `model_overrides` 可以添加私有模型，或者按 Model ID 覆盖元数据。
+```text
+~/.koda/providers.json   Provider 定义与凭据
+~/.koda/koda.db          Session 与 ADK 对话历史
+```
 
-`ListModels` 只读取本地状态，不会隐式发起网络请求。刷新失败会保留最近一次成功的
-snapshot。自定义 endpoint 在没有成功 snapshot 时只暴露显式 override。模型目录刷新
-不会改变 Provider 的连接 revision，也不会导致缓存的 LLM client 失效。
+Provider 文件仅允许当前用户访问。模型列表只读取本地状态；只有客户端显式调用
+`RefreshModels` 时才会访问网络。Provider 连接发生变化后，之前发现的模型 snapshot
+会失效。
 
-Reasoning effort 属于具体 Model。模型目录可以声明 `minimal`、`low`、`medium`、
-`high`、`xhigh`、`max` 或 `ultra` 等值；agent Factory 会根据 Session 选择的模型进行
-校验。
+## Agent Run
+
+`Run` 通过 server stream 执行一个多模态用户 turn。输入可以按顺序包含文本、HTTPS
+图片 URL，或带 MIME type 的内联图片 bytes。流中有四种 frame：
+
+- `Event`：模型增量或完整对话事件；
+- `ToolApproval`：等待用户批准的操作；
+- `QuestionPrompt`：agent 发起的结构化提问；
+- `RunCompleted`：turn 成功提交后的完成信号。
+
+每个 Session 独立选择 Provider、Model、reasoning effort、workspace 和权限策略。同一
+Session 的 Run 会串行执行；如果已经提交的 turn 无法通过 `RunCompleted` 被确认，历史
+会回滚。
+
+## 工具与权限
+
+Plan agent 可以读取文件、列目录、搜索内容、查找文件、提问，并可通过 `run_shell`
+执行一条白名单内的只读 Git 命令。其他命令和会修改仓库的 Git 操作都会被拒绝。
+
+Build agent 额外提供整文件创建和写入、Hashline 编辑，以及支持任意命令语法的
+`run_shell`。Build 模式的 Shell 执行仍受 Session 的 Shell 审批策略控制。
+
+文件访问按 Session 配置：
+
+| 级别 | Workspace 内读取 | Workspace 内写入 | Workspace 外访问 |
+|---|---:|---:|---:|
+| `WORKSPACE_READ` | 允许 | 审批 | 审批 |
+| `WORKSPACE_WRITE` | 允许 | 允许 | 审批 |
+| `UNRESTRICTED` | 允许 | 允许 | 允许 |
+
+工具会先解析符号链接，再判断路径是否位于 workspace 内。Shell 权限独立配置，因为
+不受限的进程实际上可以访问整个文件系统。
+
+`read_file` 和 `search_text` 会返回内容 revision 与 `LINE:HASH` 锚点；`edit_file`
+在原子应用修改前再次校验它们。可预测的文件写入会在审批帧和结果帧中携带结构化 diff。
 
 ## 开发
 
-环境要求：
+API 的源文件是 [`proto/koda/v1/service.proto`](proto/koda/v1/service.proto)。`gen/`
+下的生成文件需要提交，但不能手工修改。
 
-- Go 1.26，或 `go.mod` 声明的版本。
-- Buf CLI。
-
-验证当前仓库：
+修改 Go 代码后运行：
 
 ```bash
-buf lint
-buf build
+gofmt -w .
 go build ./...
 go vet ./...
 go test ./...
 go test -cover ./...
 go test -race ./...
+git diff --check
 ```
 
-修改 `proto/koda/v1/service.proto` 后：
+修改 Protocol Buffer 契约后，先运行 `buf format -w`、`buf lint`、`buf build` 和
+`buf generate`，再执行上述 Go 检查。
 
-```bash
-buf format -w
-buf lint
-buf build
-buf generate
-go build ./...
-go vet ./...
-go test ./...
-go test -cover ./...
-```
-
-生成器以 Go tool dependency 的形式固定在 `go.mod` 中。`gen/` 下的生成文件需要提交，
-但不能手工修改。
+贡献者需要遵循的仓库规则见 [AGENTS.md](AGENTS.md)。
 
 ## License
 

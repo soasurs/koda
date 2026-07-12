@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -55,12 +56,48 @@ func NewHTTPServer(handler *Handler, config HTTPServerConfig) (*HTTPServer, erro
 	return &HTTPServer{
 		server: &http.Server{
 			Addr:              address,
-			Handler:           mux,
+			Handler:           localRequestOnly(mux),
 			ReadHeaderTimeout: 10 * time.Second,
 			IdleTimeout:       2 * time.Minute,
 		},
 		shutdownTimeout: shutdownTimeout,
 	}, nil
+}
+
+func localRequestOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if !isLoopbackHTTPHost(request.Host) || !isLocalOrigin(request.Header.Get("Origin")) {
+			http.Error(response, "forbidden", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(response, request)
+	})
+}
+
+func isLocalOrigin(origin string) bool {
+	if origin == "" {
+		return true
+	}
+	parsed, err := url.Parse(origin)
+	if err != nil || parsed.User != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return false
+	}
+	return isLoopbackHTTPHost(parsed.Host)
+}
+
+func isLoopbackHTTPHost(value string) bool {
+	host := value
+	if parsedHost, _, err := net.SplitHostPort(value); err == nil {
+		host = parsedHost
+	} else if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+		host = strings.TrimSuffix(strings.TrimPrefix(value, "["), "]")
+	}
+	host = strings.TrimSuffix(strings.ToLower(host), ".")
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // Address returns the configured listen address.

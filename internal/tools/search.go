@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/soasurs/adk/tool"
+
 	"github.com/soasurs/koda/internal/permission"
 )
 
@@ -87,7 +88,7 @@ func (s service) searchText(ctx context.Context, input searchTextInput) (searchT
 		return searchTextOutput{}, err
 	}
 
-	args := []string{"--json", "--line-number", "--no-messages"}
+	args := []string{"--no-config", "--json", "--line-number", "--no-messages"}
 	if input.FixedStrings {
 		args = append(args, "--fixed-strings")
 	}
@@ -229,7 +230,7 @@ func (s service) findFiles(ctx context.Context, input findFilesInput) (findFiles
 		return findFilesOutput{}, err
 	}
 
-	args := []string{"--files", "--no-messages"}
+	args := []string{"--no-config", "--files", "--no-messages"}
 	if input.IncludeHidden {
 		args = append(args, "--hidden", "--glob", "!.git")
 	}

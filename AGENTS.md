@@ -1,256 +1,143 @@
-# AGENTS.md — koda repository guide
+# AGENTS.md — koda contributor guide
 
-This file is the repository-local memory for coding agents and contributors.
-Keep it aligned with the live implementation whenever architecture, workflows,
-or public contracts change.
+This file contains repository-specific instructions for coding agents and
+contributors. Product usage belongs in `README.md`; temporary implementation
+status and roadmaps do not belong here.
 
-## Project status
+## Scope and architecture
 
-`koda` is being rebuilt as a local, single-process coding-agent service in Go
-1.26. The public API is defined with Protocol Buffers and Connect RPC.
+Koda is a local, single-process coding-agent service written in Go. Its public
+API uses Protocol Buffers and Connect RPC, and its agent runtime is built on
+`github.com/soasurs/adk`.
 
-Implemented today:
-
-- `koda.v1.KodaService` protocol and generated Go/Connect bindings.
-- Multimodal `Run` input, streamed events, tool approvals, session CRUD, event
-  history, undo, provider management, and model-listing contracts.
-- A concurrency-safe Provider Registry with built-in providers, custom
-  providers, credential persistence, and connection revision tracking.
-- Bundled model catalogs, provider-native HTTP discovery, user overrides, and
-  durable last-known-good model snapshots.
-- A SQLite-backed Session Store with Koda session metadata, ADK history schema
-  initialization, lazy ADK ledger creation, and per-session run locking.
-- Provider and model Connect handlers with protocol-level tests and explicit
-  error-code mapping.
-- Session CRUD Connect handlers with local provider/model validation and
-  per-session update serialization.
-- Workspace-aware coding tools: Hashline file editing, directory listing,
-  ripgrep-backed search and filename discovery, read-only Git, and Shell.
-- A typed `ask_questions` tool shared by Plan and Build agents, plus a
-  cancellation-safe in-process Question Broker and answer RPC.
-- Session-scoped filesystem and Shell permission types, structured file-diff
-  protocol types, and a cancellation-safe in-process Approval Broker.
-- Proto/ADK multimodal input and event conversion, including structured tool
-  outcomes and file diffs, with a fake TurnRunner test seam.
-- Event-history and undo Connect handlers with per-session serialization.
-- A cached ADK agent factory that maps every registered provider type, resolves
-  model-default reasoning effort, builds Plan/Build tool sets, and reloads
-  workspace `AGENTS.md` instructions when they change.
-- Context-scoped Approval/Question adapters that preserve provider tool-call
-  metadata and translate the existing brokers into transient Run frames.
-- A live streamed `Run` handler that initializes ADK sessions, reuses cached
-  runners, serializes event and interaction frames, touches sessions after
-  successful turns, validates terminal assistant responses before ADK commits,
-  and relies on ADK for cancellation rollback.
-- A local Connect HTTP server with graceful shutdown and a `cmd/koda` entry
-  point whose `serve` command starts a loopback-only API server.
-- End-to-end Connect coverage for server lifecycle, Run, approvals, and
-  questions over a real TCP listener.
-
-Not implemented yet:
-
-- A UI.
-
-Do not document or present roadmap items as working features.
-
-## Current repository layout
+Package responsibilities:
 
 ```text
-koda/
-├── proto/koda/v1/service.proto              # source API contract
-├── gen/koda/v1/                             # generated protobuf code
-│   ├── service.pb.go
-│   └── kodav1connect/service.connect.go
-├── internal/provider/                       # provider registry + model catalog
-├── internal/server/                          # Connect handlers
-├── internal/store/                          # SQLite lifecycle + session catalog
-├── internal/tools/                          # workspace-aware coding tools
-├── internal/permission/                     # session permission policy
-├── internal/agent/                          # cached ADK agents, prompts, runtime context
-├── cmd/koda/                                # local HTTP service entry point
-├── buf.yaml
-├── buf.gen.yaml
-├── go.mod
-├── README.md
-└── README_zh-CN.md
+proto/koda/v1/       public API source
+gen/koda/v1/         generated Protobuf and Connect bindings
+internal/server/     transport handlers and Proto/domain conversion
+internal/agent/      ADK agent construction, caching, prompts, Run context
+internal/provider/   provider registry, model catalogs, discovery
+internal/store/      SQLite session metadata and ADK history integration
+internal/tools/      workspace-aware coding tools
+internal/permission/ session permission types and policy
+cmd/koda/            command-line service entry point
 ```
 
-Keep generated Proto types at the server boundary. Core packages should prefer
-their own domain types or ADK types rather than depending on `gen/koda/v1`.
+Keep generated Proto types at the server boundary. Core packages should use
+their own domain types or ADK types.
 
-## Settled design decisions
+## Public contracts
 
-### API and turn lifecycle
-
-- Connect uses the generated `simple` handler signatures.
-- `Run` is server-streaming and emits exactly four frame kinds: `Event`,
-  `ToolApproval`, `QuestionPrompt`, and `RunCompleted`.
-- One turn starts with one user input and includes every assistant tool-call
-  message, tool result, and subsequent model invocation until the final
-  assistant response has a finish reason other than `tool_calls`.
-- `stop` is the normal terminal reason, but `length` and `content_filter` also
-  terminate a successful agent sequence.
-- `RunCompleted` is emitted only after the turn finishes successfully.
-- Failed, canceled, or prematurely abandoned turns must not remain in durable
+- `proto/koda/v1/service.proto` is the API source of truth. Never edit `gen/`
+  directly; regenerate it with Buf.
+- `Run` is server-streaming and emits only `Event`, `ToolApproval`,
+  `QuestionPrompt`, and `RunCompleted` frames.
+- A successful turn includes every tool-call round through the final assistant
+  response. `RunCompleted` is sent only after durable history and session
+  metadata are consistent.
+- Failed, canceled, abandoned, or unacknowledged turns must not remain in active
   ADK history.
-- Tool approval may block synchronously in an ADK hook. This is acceptable for
-  the intended single-machine service. Pending approvals must be scoped to the
-  active run, observe context cancellation, and always be cleaned up.
+- Partial events are transient. Complete user events must preserve multimodal
+  parts so history and undo can round-trip the original input.
+- Event IDs cross the API as decimal strings; timestamps use Unix milliseconds.
+- Provider/model selection and permissions are session-scoped. Do not add a
+  global active-provider setting.
+- Reasoning effort is a provider/model-specific string.
 
-### Input and event model
+When a public contract, command, or user-visible behavior changes, update both
+READMEs in the same change.
 
-- Run input is an ordered list of text or image parts.
-- Inline image data is raw protobuf `bytes`; Connect JSON handles base64.
-- Image MIME type is required for inline bytes. URL images must use HTTPS.
-- Event IDs are exposed as decimal strings to avoid JavaScript integer loss.
-- Timestamps are Unix milliseconds.
-- Partial events contain text/reasoning deltas, are transient, and are never
-  persisted.
-- Complete user events must preserve their multimodal parts so `ListEvents` and
-  `UndoLastMessage` can round-trip the original input.
+## Runtime and storage invariants
 
-### Provider and session scope
+- ADK session history is the conversation source of truth.
+- Serialize Run, history mutation, session update, and deletion per session.
+  Preserve context cancellation while waiting for a lock.
+- Hold the Run serialization boundary until the completion frame is accepted;
+  roll back committed events and metadata if acknowledgment fails.
+- Creating Koda session metadata may lazily create its ADK ledger before the
+  first Run. Deleting a session must remove its active metadata and history as
+  one logical operation.
+- Agent cache keys must cover provider ID and connection revision, model,
+  resolved reasoning effort, mode, tool permissions, workdir, and workspace
+  instruction fingerprint. Do not rebuild agents merely to inject per-Run
+  metadata.
+- Approval and question handlers are resolved from Run context. Preserve the
+  provider tool-call ID and publish transient interaction frames through the
+  Run's concurrency-safe publisher.
+- Do not add compaction or summary persistence without a complete durable
+  design.
 
-- There is no global active provider/model configuration.
-- The global Provider Registry stores connection definitions, credentials,
-  model overrides, and the last successful discovery snapshots.
-- Sessions store `provider_id`, `model_id`, `reasoning_effort`, `file_access`,
-  `shell_access`, and `workdir`.
-- `RunRequest` carries only `session_id`, multimodal input, and build/plan mode.
-- Reasoning effort is a provider/model-specific string, not a shared enum.
-- Agent instances are cached by provider ID/revision, model ID, resolved
-  reasoning effort, mode, Session tool configuration, and the workspace
-  instruction fingerprint. Do not rebuild an agent on every turn merely to
-  inject Run metadata.
+## Tools and permissions
 
-Tool permission invariants:
+- Resolve paths relative to the session workdir. Symlink-resolve existing paths
+  and the closest existing ancestor of new paths before classifying scope.
+- `WORKSPACE_READ` permits workspace reads only. Workspace writes and all
+  outside-workspace access require approval.
+- `WORKSPACE_WRITE` also permits workspace writes. Outside-workspace access
+  still requires approval.
+- `UNRESTRICTED` permits all filesystem reads and writes.
+- Shell approval is independent. Unrestricted Shell implies effective access
+  to the full filesystem.
+- Plan agents receive read-only file/search tools, `ask_questions`, and
+  `run_shell` restricted to one allowlisted read-only Git command. Reject other
+  commands, mutating Git subcommands, unsafe Git options, environment overrides,
+  and external Git helpers. Include repository/worktree metadata in scope
+  classification.
+- Build agents additionally receive file creation/writing, Hashline editing,
+  and general `run_shell`.
+- Disable user ripgrep configuration so tool behavior is determined by Koda's
+  arguments.
+- Cancel the full process group for timed-out Build shell commands.
+- File approvals must describe the exact target and proposed content revision.
+  Re-resolve and re-plan after a blocking approval; request approval again if
+  either changes.
+- `read_file` and `search_text` expose a content revision and `LINE:HASH`
+  anchors. `edit_file` validates both immediately before an atomic write.
 
-- `FileAccessWorkspaceRead` automatically permits only reads inside `workdir`.
-  Workspace writes and every outside-workspace access require approval.
-- `FileAccessWorkspaceWrite` automatically permits workspace reads and writes;
-  every outside-workspace access still requires approval.
-- `FileAccessUnrestricted` automatically permits filesystem reads and writes
-  everywhere.
-- Shell approval is independent. `ShellAccessUnrestricted` intentionally grants
-  arbitrary process execution and effective unrestricted filesystem access.
-- All file paths are resolved relative to `workdir`; existing paths and the
-  closest existing ancestor of new paths are symlink-resolved before scope is
-  classified. An internal symlink to an external target is external.
-- Plan agents receive only `read_file`, `list_directory`, `search_text`,
-  `find_files`, read-only allowlisted `git`, and `ask_questions`. Build agents
-  additionally receive `write_file`, `create_file`, Hashline `edit_file`, and
-  `run_shell`.
-- `read_file` and `search_text` expose a content revision plus `LINE:HASH`
-  anchors. `edit_file` requires the revision, verifies all anchors, rejects
-  stale input, applies a non-overlapping batch atomically, and returns fresh
-  anchors plus structured file changes.
-- ToolApproval may cover external reads as well as writes. It carries the
-  capability kind, widest scope, resolved targets, and a proposed `FileChange`
-  diff where the operation is predictable. `ToolResult` carries the actual
-  applied changes.
-- `ask_questions` blocks inside its custom `tool.Tool` implementation so it can
-  retain the provider tool-call ID. `QuestionPrompt` is transient; validated
-  frontend answers are returned and persisted as the normal ToolResult. An
-  explicit frontend cancellation is a model-visible handled failure.
-- Cached tools resolve approval/question handlers from the Run context. The
-  live Run handler must provide Session/Turn metadata and a concurrency-safe
-  outbound frame publisher; it must not rebuild agents or tools per turn to
-  inject this metadata.
+## Provider rules
 
-Built-in Provider Registry entries:
+- Built-in environment credentials override stored credentials and are never
+  persisted or returned.
+- Registry reads return deep copies of mutable data.
+- Built-in providers cannot be deleted or changed to another adapter type.
+- Connection revisions change only when adapter type, Base URL, or stored
+  credentials change. A connection change clears its discovery snapshot.
+- `Catalog.List` is local-only. `Catalog.Refresh` performs explicit
+  provider-native discovery and commits a snapshot only if the connection
+  revision is still current.
+- Failed refreshes preserve the previous snapshot. Custom endpoints without a
+  snapshot list only explicit overrides.
+- Discovery credentials belong in headers, never URLs or errors.
+- OpenAI Chat Completions and OpenAI Responses remain distinct provider types.
 
-| ID | Type | Environment key |
-|---|---|---|
-| `anthropic` | Anthropic Messages | `ANTHROPIC_API_KEY` |
-| `openai` | OpenAI Chat Completions | `OPENAI_API_KEY` |
-| `openai-responses` | OpenAI Responses | `OPENAI_API_KEY` |
-| `gemini` | Gemini GenerateContent | `GEMINI_API_KEY` |
-| `deepseek` | DeepSeek | `DEEPSEEK_API_KEY` |
+## Server security
 
-Provider Registry invariants:
+- `koda serve` listens on loopback only and does not open a browser.
+- Reject non-loopback HTTP Host values and non-local browser Origin values to
+  prevent DNS-rebinding access to local capabilities.
+- Never log, return, or commit API keys or other credentials.
+- Provider Base URLs must not contain user-info credentials.
+- Preserve `0700` registry directories, `0600` provider files, and atomic
+  replacement.
 
-- Default path: `~/.koda/providers.json`.
-- Registry directory mode: `0700`; file mode: `0600`.
-- Built-in environment keys override stored keys and are never persisted.
-- A nil key passed to `Registry.Save` preserves the stored key; an explicitly
-  empty key clears it.
-- Provider JSON returned to ordinary callers never serializes the API key.
-- Built-in providers cannot be deleted or changed to a different adapter type.
-- Provider connection revisions change only when adapter type, Base URL, or
-  stored credentials change. Names, model overrides, and model snapshots do
-  not invalidate cached LLM clients.
-- Registry reads return deep copies; callers must not gain mutable access to
-  registry-owned slices.
+## Go conventions
 
-Model Catalog invariants:
+- Follow the Go version in `go.mod`; do not change it unless requested.
+- Preserve standard initialisms: `ID`, `URL`, `API`, `HTTP`, `JSON`, and `LLM`.
+- Exported symbols need doc comments beginning with the symbol name.
+- Error messages start lowercase, have no trailing punctuation, and wrap causes
+  with `%w` when useful.
+- Never pass a nil `context.Context`. Propagate cancellation through storage,
+  tools, hooks, streams, and provider calls.
+- Keep mutable state concurrency-safe and return clones of owned slices/maps.
+- Prefer the standard library in tests and use `t.Context()` for test-scoped
+  operations.
+- Group imports as standard library, third-party packages, then local module
+  packages. Use the repository's import formatter when available.
+- Do not add dependencies unless the requested behavior requires them.
 
-- Bundled catalogs under `internal/provider/catalog/` are embedded into the
-  binary, validated at startup, and used only for default built-in endpoints.
-- `Catalog.List` is local-only. It never performs implicit network I/O.
-- `Catalog.Refresh` uses provider-native discovery and persists only a
-  successful snapshot. Errors leave the previous snapshot unchanged.
-- A refresh snapshot is committed only if the provider connection revision is
-  unchanged; results from an old credential or Base URL are rejected.
-- A discovered model is enriched with bundled metadata by ID. User overrides
-  are applied last and may also add private model IDs.
-- A custom endpoint without a successful snapshot lists only explicit user
-  overrides; it does not assume that official provider models exist there.
-- Anthropic and Gemini discovery handle pagination. Gemini discovery filters
-  out models that do not advertise `generateContent`.
-- Discovery credentials are sent in headers, never URL query strings or error
-  messages.
-
-### OpenAI APIs
-
-OpenAI Chat Completions and OpenAI Responses are distinct provider types and
-distinct built-in registry entries. They share `OPENAI_API_KEY`, but keep model
-catalogs and revisions separate. The live runtime uses ADK's Chat Completions
-adapter for `openai` and the Responses adapter for `openai-responses`. ADK
-session history remains the source of truth.
-
-### Deferred scope
-
-- Compaction is intentionally absent from the first API contract. Do not add a
-  placeholder RPC without a complete summary-persistence design.
-- Project instructions come from the session workdir and its `AGENTS.md`
-  hierarchy. They are not global server configuration.
-
-## Recommended implementation order
-
-No next implementation slice is selected. Review the product surface before
-adding a UI or an interactive client.
-
-Review this order after each completed slice; do not build all layers at once.
-
-## Proto workflow
-
-`proto/koda/v1/service.proto` is the source of truth. Never edit files under
-`gen/` directly.
-
-After changing the contract, run:
-
-```bash
-buf format -w
-buf lint
-buf build
-buf generate
-go build ./...
-go vet ./...
-go test ./...
-go test -cover ./...
-```
-
-Generation uses Go tool dependencies pinned in `go.mod`:
-
-- `protoc-gen-go`
-- `protoc-gen-connect-go`
-
-Commit generated bindings with the Proto source.
-
-## Go workflow
-
-Follow the Go version declared in `go.mod`. Run ordinary Go commands without a
-custom cache path unless a real environment error requires one.
+## Verification
 
 After Go edits:
 
@@ -264,50 +151,31 @@ go test -race ./...
 git diff --check
 ```
 
-Focused tests are encouraged before the full pipeline:
+Run focused package tests first when useful. Use the ordinary Go cache unless a
+real environment error requires an override.
+
+After changing `proto/koda/v1/service.proto`:
 
 ```bash
-go test ./internal/provider/...
-go test -cover ./internal/provider/...
-go test -race ./internal/provider/...
+buf format -w
+buf lint
+buf build
+buf generate
+go build ./...
+go vet ./...
+go test ./...
+go test -cover ./...
 ```
 
-Documentation-only changes do not require the full Go pipeline unless they
-change examples, generated output, or documented commands that need checking.
+Generation tools are pinned in `go.mod`; commit generated bindings with their
+Proto source.
 
-## Go conventions
+## Change discipline
 
-- Use standard Go naming and preserve initialisms: `ID`, `URL`, `API`, `HTTP`,
-  `JSON`, `LLM`.
-- Exported symbols require doc comments that begin with the symbol name.
-- Error messages start lowercase and have no trailing punctuation.
-- Wrap errors with operation context and `%w`.
-- Never pass a nil `context.Context`; propagate cancellation through storage,
-  tools, hooks, streams, and provider calls.
-- Prefer the standard library in tests. Use `t.Context()` for operation
-  lifetimes tied to a test.
-- Keep mutable state concurrency-safe and return clones of owned slices/maps.
-- Add dependencies only when the requested implementation needs them.
-
-## Security rules
-
-- Never log, return, or include API keys in errors.
-- Never serialize real credentials into Proto responses, tests, examples, or
-  documentation.
-- Use fake placeholders in examples.
-- Provider Base URLs must not contain user-info credentials.
-- Preserve secure permissions and atomic replacement for credential files.
-- The `koda serve` command only starts the Connect API server; it never opens a
-  browser. A future `studio` command may own browser and UI behavior.
-- The HTTP server listens on loopback only. `koda serve` first tries
-  `localhost:8080` and selects another loopback port when it is occupied.
-
-## Git and documentation
-
-- Do not commit, push, stage, amend, rebase, or create pull requests unless the
+- Make the smallest complete change and preserve unrelated user work.
+- Do not edit generated or vendored files directly.
+- Do not claim checks passed unless they were run.
+- Do not commit, stage, push, amend, rebase, or create a pull request unless the
   user explicitly requests it.
-- Preserve unrelated user changes.
-- Commit messages use Conventional Commits with a required scope:
-  `<type>(<scope>): <subject>`.
-- Keep `README.md`, `README_zh-CN.md`, and this file synchronized when public
-  APIs, architecture, commands, or implementation status change.
+- When requested, commit only related changes with a scoped Conventional Commit
+  message: `<type>(<scope>): <subject>`.

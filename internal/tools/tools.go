@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/soasurs/adk/tool"
+
 	"github.com/soasurs/koda/internal/permission"
 )
 
@@ -205,7 +206,11 @@ func NewReadOnly(config Config) ([]tool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	return withToolCallContext(values), nil
+	runShell, err := s.newPlanShellTool()
+	if err != nil {
+		return nil, err
+	}
+	return withToolCallContext(append(values, runShell)), nil
 }
 
 // NewBuild constructs the tools available in Build mode.
@@ -254,15 +259,11 @@ func (s service) readOnlyTools() ([]tool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	gitTool, err := s.newGitTool()
-	if err != nil {
-		return nil, err
-	}
 	askQuestions, err := s.newAskQuestionsTool()
 	if err != nil {
 		return nil, err
 	}
-	return []tool.Tool{readFile, listDirectory, searchText, findFiles, gitTool, askQuestions}, nil
+	return []tool.Tool{readFile, listDirectory, searchText, findFiles, askQuestions}, nil
 }
 
 type toolCallContextKey struct{}

@@ -10,7 +10,10 @@ type queries struct {
 	listSessions     string
 	updateSession    string
 	touchSession     string
+	restoreUpdatedAt string
 	deleteSession    string
+	deleteADKSession string
+	deleteEvents     string
 	sessionExists    string
 	countEvents      string
 	listEvents       string
@@ -20,6 +23,7 @@ type queries struct {
 
 func newQueries(adkTablePrefix string) queries {
 	adkEventsTable := adkTablePrefix + "events"
+	adkSessionsTable := adkTablePrefix + "sessions"
 	const eventColumns = `
 		event_id,
 		session_id,
@@ -113,10 +117,25 @@ func newQueries(adkTablePrefix string) queries {
 			SET updated_at = $1
 			WHERE id = $2 AND deleted_at = 0
 		`,
+		restoreUpdatedAt: `
+			UPDATE koda_sessions
+			SET updated_at = $1
+			WHERE id = $2 AND deleted_at = 0
+		`,
 		deleteSession: `
 			UPDATE koda_sessions
 			SET deleted_at = $1
 			WHERE id = $2 AND deleted_at = 0
+		`,
+		deleteADKSession: `
+			UPDATE ` + adkSessionsTable + `
+			SET deleted_at = $1
+			WHERE session_id = $2 AND deleted_at = 0
+		`,
+		deleteEvents: `
+			UPDATE ` + adkEventsTable + `
+			SET deleted_at = $1
+			WHERE session_id = $2 AND deleted_at = 0
 		`,
 		sessionExists: `
 			SELECT 1

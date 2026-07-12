@@ -9,9 +9,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
+
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/provider"
-	"google.golang.org/protobuf/proto"
 )
 
 // ListProviders returns every configured and built-in provider.

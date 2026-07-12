@@ -1,183 +1,40 @@
 # koda
 
-`koda` is a local coding-agent service written in Go. It is being rebuilt around
-a versioned Protocol Buffer contract, Connect RPC, and the
-[`github.com/soasurs/adk`](https://github.com/soasurs/adk) agent framework.
+`koda` is a local coding-agent service built with Go, Protocol Buffers,
+Connect RPC, and [`github.com/soasurs/adk`](https://github.com/soasurs/adk).
+It provides the runtime and API for clients that need streamed agent turns,
+workspace tools, approvals, questions, provider configuration, and durable
+conversation history.
 
 [中文说明](README_zh-CN.md)
 
-## Status
+Koda currently ships as a headless local service. A UI is not included.
 
-The repository is in an active rewrite, but it now provides a runnable local
-Connect server and CLI entry point.
+## Run the service
 
-Available today:
+Requirements:
 
-- The `koda.v1.KodaService` Protocol Buffer contract.
-- Generated Go and Connect bindings.
-- Multimodal Run input and streamed event/approval/completion types.
-- Provider, model, session, history, and undo API contracts.
-- A persistent, concurrency-safe Provider Registry.
-- Bundled model catalogs plus live Anthropic, OpenAI-compatible, Gemini, and
-  DeepSeek model discovery with durable last-known-good snapshots.
-- A SQLite-backed Session Store for Koda metadata and ADK conversation history.
-- Provider and model Connect handlers with protocol-level tests.
-- Session CRUD Connect handlers with protocol-level tests.
-- Event-history and undo Connect handlers with protocol-level tests.
-- Workspace-aware file, search, Git, and Shell tool implementations, including
-  Hashline editing and structured file diffs.
-- An `ask_questions` tool for Plan and Build agents, with typed frontend
-  prompts, validated answers, and cancellation semantics.
-- Session-scoped filesystem and Shell permission contracts plus an in-process,
-  cancellation-safe approval broker.
-- Proto/ADK multimodal input and event conversion, including structured tool
-  outcomes and file diffs, plus a fake `TurnRunner` test seam.
-- A cached ADK agent factory for all registered provider adapters, with
-  provider-revision invalidation, Plan/Build tool sets, model-default
-  reasoning effort, and workspace `AGENTS.md` instructions.
-- Context-scoped approval/question adapters that preserve provider tool-call
-  metadata and convert Broker waits into transient Run frames.
-- Live streamed `Run` handling that initializes ADK sessions, reuses cached
-  runners, serializes event and interaction frames, and emits completion only
-  after a successful, terminal assistant response.
-- A loopback-only Connect HTTP server with graceful shutdown and a `cmd/koda`
-  process entry point.
-- End-to-end Connect tests for Run, approval, question, and shutdown flows.
+- Go 1.26, or the version declared by `go.mod`;
+- a configured API key for at least one provider.
 
-See [AGENTS.md](AGENTS.md) for the current architecture decisions and
-development order.
-
-## Architecture
-
-```text
-Provider Registry ─┐
-Session Store ─────┼──> Agent Runtime ──> Connect Server ──> Local clients
-Tools + Prompts ───┘
-```
-
-Current source layout:
-
-```text
-proto/koda/v1/service.proto              API source of truth
-gen/koda/v1/                             generated Go/Connect bindings
-internal/provider/                       Provider Registry and model catalog
-internal/server/                          Connect handlers
-internal/store/                          SQLite lifecycle and session catalog
-internal/tools/                          Workspace-aware coding tools
-internal/permission/                     Session permission policy
-internal/agent/                          Cached ADK agents, prompts, and Run context
-cmd/koda/                                 Local HTTP service entry point
-buf.yaml / buf.gen.yaml                  lint and generation configuration
-```
-
-## Run locally
+Start the Connect API server:
 
 ```bash
 go run ./cmd/koda serve
 ```
 
-`serve` starts only the Connect API server; it does not open a browser. It first
-tries `localhost:8080`, then asks the operating system for another loopback
-port if that address is occupied. The startup line prints the actual address.
-Provider settings live at `~/.koda/providers.json`, and its SQLite database is
-always `~/.koda/koda.db`.
+Koda first tries `localhost:8080`. If that port is occupied, it selects another
+loopback port and prints the actual address. To select a port explicitly:
 
 ```bash
 go run ./cmd/koda serve --addr 127.0.0.1:8787
 ```
 
-The CLI accepts only double-dash options. It always rejects non-loopback
-addresses because Koda can execute shell commands and modify files. A future
-`koda studio` command will own browser and UI behavior.
+The server accepts loopback addresses only and never opens a browser.
 
-## API model
+## Providers and local data
 
-### Run
-
-`Run` executes one user turn as a server stream. A stream may contain:
-
-- `Event`: partial text/reasoning deltas or complete durable events.
-- `ToolApproval`: a file, Git, or Shell operation waiting for approval.
-- `QuestionPrompt`: an `ask_questions` call waiting for frontend-authored input.
-- `RunCompleted`: the successful terminal frame for the turn.
-
-A turn starts with one multimodal user input and includes all model tool calls,
-tool results, and subsequent model invocations until the model returns a final
-response that does not request another tool call.
-
-Run input supports ordered text and image parts. Images may use an HTTPS URL or
-inline bytes with a MIME type. Connect JSON represents protobuf bytes as base64.
-
-### Sessions
-
-Provider and model selection is session-scoped rather than global. A session
-stores:
-
-- provider and model IDs;
-- provider-specific reasoning effort;
-- filesystem access level;
-- Shell access level;
-- working directory;
-- title and timestamps.
-
-`RunRequest` carries only the session ID, input, and build/plan mode.
-
-Session workdirs are normalized to existing, symlink-resolved absolute
-directories when a session is created or updated. Provider, model, and
-reasoning-effort selections are validated from the local model catalog; the
-validation never performs network discovery.
-
-### Session Store
-
-The default database is `~/.koda/koda.db`. Koda metadata lives in
-`koda_sessions`; ADK owns its prefixed history tables in the same SQLite
-database. Creating a Koda session does not create an empty ADK ledger: it is
-created immediately before the first Run, which keeps metadata creation atomic
-without duplicating ADK's storage writes. Complete runs share a context-aware,
-per-session in-process lock.
-
-### Tools and approval
-
-File access is session-scoped and has three automatic permission levels:
-
-| Level | Workspace read | Workspace write | Outside-workspace access |
-|---|---:|---:|---:|
-| `WORKSPACE_READ` | allowed | approval | approval |
-| `WORKSPACE_WRITE` | allowed | allowed | approval |
-| `UNRESTRICTED` | allowed | allowed | allowed |
-
-Shell access is independent: it requires approval by default, while its
-unrestricted level intentionally grants arbitrary process and effective
-filesystem access.
-
-Plan agents receive `read_file`, `list_directory`, `search_text`,
-`find_files`, a read-only allowlisted `git` tool, and `ask_questions`. Build
-agents additionally receive `write_file`, `create_file`, Hashline-based
-`edit_file`, and `run_shell`. File tools resolve symlinks before classifying
-their location.
-`read_file` and `search_text` return a file revision and `LINE:HASH` anchors;
-`edit_file` verifies both before applying a batch atomically.
-
-An approval may synchronously pause a tool call. The Run runtime emits a
-`ToolApproval` frame with a proposed structured diff where it is predictable;
-the client resolves it through `ResolveToolApproval`. Pending approvals are
-in-process, run-scoped, cancellation-safe, and discarded after resolution.
-`ask_questions` blocks inside the tool itself; submitted frontend answers become
-the normal persisted ToolResult, while the QuestionPrompt frame is transient.
-
-## Provider Registry
-
-The registry stores provider definitions, credentials, user model overrides,
-and discovered model snapshots at:
-
-```text
-~/.koda/providers.json
-```
-
-The directory is written with mode `0700` and the file with mode `0600`.
-Writes use a temporary file and atomic rename.
-
-Built-in providers:
+The following providers are built in:
 
 | ID | API | Environment variable |
 |---|---|---|
@@ -187,62 +44,84 @@ Built-in providers:
 | `gemini` | Gemini GenerateContent | `GEMINI_API_KEY` |
 | `deepseek` | DeepSeek | `DEEPSEEK_API_KEY` |
 
-Environment credentials take precedence over stored credentials and are never
-copied into the registry file. Custom providers can select any supported
-adapter type and may provide an HTTP(S) Base URL.
+Environment credentials take precedence over stored credentials and are not
+copied into Koda's configuration file. Custom endpoints and model overrides can
+be managed through `koda.v1.KodaService`.
 
-Model listing is layered:
+Koda keeps its state under `~/.koda`:
 
-1. Bundled, reviewed catalogs provide an offline baseline for default built-in
-   providers.
-2. `RefreshModels` discovers the models exposed by the configured provider API
-   and persists the last successful snapshot.
-3. Provider-specific `model_overrides` add private models or override metadata
-   by model ID.
+```text
+~/.koda/providers.json   provider definitions and credentials
+~/.koda/koda.db          sessions and ADK conversation history
+```
 
-`ListModels` is local-only and never performs an implicit network request. A
-failed refresh preserves the last successful snapshot. Custom endpoints without
-a successful snapshot expose only their explicit overrides. Catalog refreshes
-do not change the provider connection revision or invalidate cached LLM clients.
+The provider file is private to the current user. Model listing is local-only;
+network discovery occurs only when a client explicitly calls `RefreshModels`.
+Changing a provider connection invalidates its previously discovered snapshot.
 
-Reasoning effort is model-specific. Model catalogs may advertise values such as
-`minimal`, `low`, `medium`, `high`, `xhigh`, `max`, or `ultra`; the agent
-factory validates the selected value against the session's model.
+## Agent runs
+
+`Run` executes one multimodal user turn as a server stream. Inputs may contain
+ordered text parts, HTTPS image URLs, or inline image bytes with a MIME type.
+The stream emits four frame kinds:
+
+- `Event` for model deltas and complete conversation events;
+- `ToolApproval` when an operation needs user consent;
+- `QuestionPrompt` when the agent asks for structured user input;
+- `RunCompleted` after the turn has been committed successfully.
+
+Sessions select their own provider, model, reasoning effort, workspace, and
+permission policy. Runs for the same session are serialized. If a turn cannot
+be acknowledged with `RunCompleted`, its committed history is rolled back.
+
+## Tools and permissions
+
+Plan agents can read files, list directories, search text, find files, ask
+questions, and use `run_shell` for one allowlisted read-only Git command.
+Other commands and mutating Git operations are rejected in Plan mode.
+
+Build agents additionally receive whole-file creation and writing, Hashline
+editing, and unrestricted command syntax through `run_shell`. Build shell
+execution still follows the session's Shell approval policy.
+
+Filesystem access is configured per session:
+
+| Level | Workspace read | Workspace write | Outside workspace |
+|---|---:|---:|---:|
+| `WORKSPACE_READ` | allowed | approval | approval |
+| `WORKSPACE_WRITE` | allowed | allowed | approval |
+| `UNRESTRICTED` | allowed | allowed | allowed |
+
+Paths are resolved through symlinks before their scope is classified. Shell
+permission is independent because an unrestricted process can effectively
+access the whole filesystem.
+
+`read_file` and `search_text` return a content revision and `LINE:HASH`
+anchors. `edit_file` validates them immediately before applying an atomic edit.
+Predictable writes include a structured diff in both approval and result
+frames.
 
 ## Development
 
-Requirements:
+The API source of truth is [`proto/koda/v1/service.proto`](proto/koda/v1/service.proto).
+Generated files under `gen/` are committed and must not be edited manually.
 
-- Go 1.26 or the version declared by `go.mod`.
-- Buf CLI.
-
-Validate the current repository:
+After changing Go code, run:
 
 ```bash
-buf lint
-buf build
+gofmt -w .
 go build ./...
 go vet ./...
 go test ./...
 go test -cover ./...
 go test -race ./...
+git diff --check
 ```
 
-After changing `proto/koda/v1/service.proto`:
+After changing the Protocol Buffer contract, run `buf format -w`, `buf lint`,
+`buf build`, and `buf generate` before the Go checks above.
 
-```bash
-buf format -w
-buf lint
-buf build
-buf generate
-go build ./...
-go vet ./...
-go test ./...
-go test -cover ./...
-```
-
-The generators are pinned as Go tool dependencies in `go.mod`. Generated files
-under `gen/` are committed but must not be edited manually.
+Contributor-specific repository rules are in [AGENTS.md](AGENTS.md).
 
 ## License
 

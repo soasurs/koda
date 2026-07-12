@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"google.golang.org/protobuf/proto"
+
+	v1 "github.com/soasurs/koda/gen/koda/v1"
 )
 
 func TestSessionHandlers(t *testing.T) {

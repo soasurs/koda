@@ -6,11 +6,12 @@ import (
 	"fmt"
 
 	adktrace "github.com/soasurs/adk/trace"
+	"google.golang.org/protobuf/proto"
+
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/agent"
 	"github.com/soasurs/koda/internal/permission"
 	"github.com/soasurs/koda/internal/tools"
-	"google.golang.org/protobuf/proto"
 )
 
 // runInteractions builds the context-scoped interaction adapters used by a

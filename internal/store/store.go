@@ -192,6 +192,25 @@ func (s *Store) LockRun(ctx context.Context, id string) (func(), error) {
 	return unlock, nil
 }
 
+// LockRunContext acquires the run lock for id and returns a context that makes
+// nested acquisitions by the ADK Runner reentrant. The caller must invoke the
+// returned unlock function after all post-run persistence and stream work is
+// complete.
+func (s *Store) LockRunContext(ctx context.Context, id string) (context.Context, func(), error) {
+	id, err := normalizeSessionID(id)
+	if err != nil {
+		return nil, nil, err
+	}
+	lockedCtx, unlock, err := s.runLocker.lockContext(ctx, adksession.RunLockKey{
+		AppID:     appID,
+		SessionID: id,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("store: lock run for %q: %w", id, err)
+	}
+	return lockedCtx, unlock, nil
+}
+
 func sqliteDSN(path string) string {
 	u := &url.URL{
 		Scheme:   "file",

@@ -5,10 +5,55 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/soasurs/adk/model"
 	sessionevent "github.com/soasurs/adk/session/event"
 )
+
+// RollbackTurn removes a turn that the ADK Runner completed but the Run RPC
+// could not acknowledge. previousUpdatedAt restores the session ordering
+// timestamp when TouchSession had already succeeded.
+func (s *Store) RollbackTurn(ctx context.Context, id, turnID string, previousUpdatedAt time.Time) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := s.checkClosed(); err != nil {
+		return err
+	}
+	id, err := normalizeSessionID(id)
+	if err != nil {
+		return err
+	}
+	turnID = strings.TrimSpace(turnID)
+	if turnID == "" {
+		return errors.New("store: turn ID must not be empty")
+	}
+	unlock, err := s.LockRun(ctx, id)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	tx, err := s.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("store: begin rollback turn %q: %w", turnID, err)
+	}
+	defer tx.Rollback() //nolint:errcheck // Commit below completes the transaction.
+	if _, err := tx.ExecContext(ctx, s.queries.deleteTurnEvents, s.now().UTC().UnixMilli(), id, turnID); err != nil {
+		return fmt.Errorf("store: rollback turn %q: %w", turnID, err)
+	}
+	if !previousUpdatedAt.IsZero() {
+		if _, err := tx.ExecContext(ctx, s.queries.restoreUpdatedAt, previousUpdatedAt.UTC().UnixMilli(), id); err != nil {
+			return fmt.Errorf("store: restore session %q update time: %w", id, err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("store: commit rollback turn %q: %w", turnID, err)
+	}
+	return nil
+}
 
 // ListEventsParams selects one page of active events in conversation order.
 type ListEventsParams struct {

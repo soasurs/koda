@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
+
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 )
 
@@ -109,7 +110,11 @@ func (h *Handler) ResolveToolApproval(ctx context.Context, request *v1.ResolveTo
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("resolve tool approval request must not be nil"))
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, connect.NewError(connect.CodeCanceled, err)
+		code := connect.CodeCanceled
+		if errors.Is(err, context.DeadlineExceeded) {
+			code = connect.CodeDeadlineExceeded
+		}
+		return nil, connect.NewError(code, err)
 	}
 	if err := h.approvals.Resolve(request.GetApprovalId(), request.GetApproved()); err != nil {
 		if errors.Is(err, ErrApprovalNotFound) {

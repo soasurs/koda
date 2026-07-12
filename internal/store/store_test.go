@@ -10,6 +10,7 @@ import (
 
 	"github.com/soasurs/adk/model"
 	"github.com/soasurs/adk/session/event"
+
 	"github.com/soasurs/koda/internal/permission"
 )
 
@@ -169,6 +170,12 @@ func TestEnsureADKSessionAndDelete(t *testing.T) {
 	if first.GetSessionID() != "session-1" || second.GetSessionID() != "session-1" {
 		t.Fatalf("EnsureADKSession() IDs = %q, %q; want session-1", first.GetSessionID(), second.GetSessionID())
 	}
+	if err := first.CreateEvent(t.Context(), &event.Event{
+		EventID: 1, TurnID: "turn-1", Role: string(model.RoleUser), Content: "hello",
+		CreatedAt: time.Now().UnixMilli(), UpdatedAt: time.Now().UnixMilli(),
+	}); err != nil {
+		t.Fatalf("CreateEvent() error = %v", err)
+	}
 
 	if err := store.DeleteSession(t.Context(), "session-1"); err != nil {
 		t.Fatalf("DeleteSession() error = %v", err)
@@ -179,6 +186,13 @@ func TestEnsureADKSessionAndDelete(t *testing.T) {
 	}
 	if adkSession != nil {
 		t.Fatalf("ADK session after delete = %v, want nil", adkSession)
+	}
+	var activeEvents int
+	if err := store.db.GetContext(t.Context(), &activeEvents, `SELECT COUNT(*) FROM adk_events WHERE session_id = $1 AND deleted_at = 0`, "session-1"); err != nil {
+		t.Fatalf("count active events: %v", err)
+	}
+	if activeEvents != 0 {
+		t.Fatalf("active events after delete = %d, want 0", activeEvents)
 	}
 	if _, err := store.EnsureADKSession(t.Context(), "session-1"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("EnsureADKSession(deleted) error = %v, want ErrNotFound", err)
@@ -377,6 +391,59 @@ func TestRunLockerHonorsContextAndSeparatesSessions(t *testing.T) {
 		t.Fatalf("LockRun(other session) error = %v", err)
 	}
 	otherUnlock()
+}
+
+func TestLockRunContextIsReentrantAndRollbackTurnRestoresSession(t *testing.T) {
+	store := openTestStore(t)
+	createdAt := time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC)
+	store.now = func() time.Time { return createdAt }
+	created, err := store.CreateSession(t.Context(), CreateSessionParams{
+		ID: "session-1", Workdir: "/workspace", ProviderID: "openai", ModelID: "gpt-5",
+	})
+	if err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+	lockedCtx, unlock, err := store.LockRunContext(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("LockRunContext() error = %v", err)
+	}
+	defer unlock()
+	nestedUnlock, err := store.LockRun(lockedCtx, "session-1")
+	if err != nil {
+		t.Fatalf("LockRun(reentrant) error = %v", err)
+	}
+	nestedUnlock()
+	adkSession, err := store.EnsureADKSession(lockedCtx, "session-1")
+	if err != nil {
+		t.Fatalf("EnsureADKSession() error = %v", err)
+	}
+	if err := adkSession.CreateEvent(lockedCtx, &event.Event{
+		EventID: 1, TurnID: "turn-1", Role: string(model.RoleUser), Content: "hello",
+		CreatedAt: createdAt.UnixMilli(), UpdatedAt: createdAt.UnixMilli(),
+	}); err != nil {
+		t.Fatalf("CreateEvent() error = %v", err)
+	}
+	store.now = func() time.Time { return createdAt.Add(time.Hour) }
+	if err := store.TouchSession(lockedCtx, "session-1"); err != nil {
+		t.Fatalf("TouchSession() error = %v", err)
+	}
+	if err := store.RollbackTurn(lockedCtx, "session-1", "turn-1", created.UpdatedAt); err != nil {
+		t.Fatalf("RollbackTurn() error = %v", err)
+	}
+	listed, total, err := store.ListEvents(lockedCtx, "session-1", ListEventsParams{})
+	if err != nil {
+		t.Fatalf("ListEvents() error = %v", err)
+	}
+	if total != 0 || len(listed) != 0 {
+		t.Fatalf("ListEvents() = %+v, total %d; want empty", listed, total)
+	}
+	got, err := store.GetSession(lockedCtx, "session-1")
+	if err != nil {
+		t.Fatalf("GetSession() error = %v", err)
+	}
+	if !got.UpdatedAt.Equal(created.UpdatedAt) {
+		t.Fatalf("UpdatedAt = %v, want %v", got.UpdatedAt, created.UpdatedAt)
+	}
 }
 
 func openTestStore(t *testing.T) *Store {

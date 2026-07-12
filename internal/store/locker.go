@@ -17,11 +17,22 @@ type runLock struct {
 	refs  int
 }
 
+type runLockContextKey struct{}
+
+type runLockOwnership struct {
+	locker *runLocker
+	key    adksession.RunLockKey
+}
+
 func newRunLocker() *runLocker {
 	return &runLocker{entries: make(map[adksession.RunLockKey]*runLock)}
 }
 
 func (l *runLocker) LockRun(ctx context.Context, key adksession.RunLockKey) (func(), error) {
+	if ownership, ok := ctx.Value(runLockContextKey{}).(runLockOwnership); ok && ownership.locker == l && ownership.key == key {
+		return func() {}, nil
+	}
+
 	l.mu.Lock()
 	entry := l.entries[key]
 	if entry == nil {
@@ -46,6 +57,14 @@ func (l *runLocker) LockRun(ctx context.Context, key adksession.RunLockKey) (fun
 			l.releaseRef(key, entry)
 		})
 	}, nil
+}
+
+func (l *runLocker) lockContext(ctx context.Context, key adksession.RunLockKey) (context.Context, func(), error) {
+	unlock, err := l.LockRun(ctx, key)
+	if err != nil {
+		return nil, nil, err
+	}
+	return context.WithValue(ctx, runLockContextKey{}, runLockOwnership{locker: l, key: key}), unlock, nil
 }
 
 func (l *runLocker) releaseRef(key adksession.RunLockKey, entry *runLock) {

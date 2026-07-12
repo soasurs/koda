@@ -7,10 +7,11 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/soasurs/adk/model"
+	"google.golang.org/protobuf/proto"
+
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
-	"google.golang.org/protobuf/proto"
 )
 
 type fakeTurnRunner struct {
