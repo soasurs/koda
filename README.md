@@ -20,10 +20,11 @@ Available today:
 - A persistent, concurrency-safe Provider Registry.
 - Bundled model catalogs plus live Anthropic, OpenAI-compatible, Gemini, and
   DeepSeek model discovery with durable last-known-good snapshots.
+- A SQLite-backed Session Store for Koda metadata and ADK conversation history.
 
-The next implementation slice is the SQLite-backed session store. See
-[AGENTS.md](AGENTS.md) for the current architecture decisions and development
-order.
+The next implementation slice is Connect handlers for providers, models, and
+sessions that do not require an LLM. See [AGENTS.md](AGENTS.md) for the current
+architecture decisions and development order.
 
 ## Architecture
 
@@ -39,11 +40,12 @@ Current source layout:
 proto/koda/v1/service.proto              API source of truth
 gen/koda/v1/                             generated Go/Connect bindings
 internal/provider/                       Provider Registry and model catalog
+internal/store/                          SQLite lifecycle and session catalog
 buf.yaml / buf.gen.yaml                  lint and generation configuration
 ```
 
-Planned packages include `internal/store`, `internal/agent`, `internal/tools`,
-`internal/server`, and `cmd/koda`.
+Planned packages include `internal/agent`, `internal/tools`, `internal/server`,
+and `cmd/koda`.
 
 ## API model
 
@@ -74,6 +76,15 @@ stores:
 - title and timestamps.
 
 `RunRequest` carries only the session ID, input, and build/plan mode.
+
+### Session Store
+
+The default database is `~/.koda/koda.db`. Koda metadata lives in
+`koda_sessions`; ADK owns its prefixed history tables in the same SQLite
+database. Creating a Koda session does not create an empty ADK ledger: it is
+created immediately before the first Run, which keeps metadata creation atomic
+without duplicating ADK's storage writes. Complete runs share a context-aware,
+per-session in-process lock.
 
 ### Tool approval
 
@@ -163,11 +174,10 @@ under `gen/` are committed but must not be edited manually.
 
 The current implementation order is:
 
-1. SQLite lifecycle, session metadata, and run locking.
-2. Provider/session/model Connect handlers.
-3. Proto-to-ADK input/event conversion and runtime test seams.
-4. Cached build/plan agents, coding tools, and Safe-mode approval.
-5. Streamed Run handling, process lifecycle, and end-to-end tests.
+1. Provider/session/model Connect handlers.
+2. Proto-to-ADK input/event conversion and runtime test seams.
+3. Cached build/plan agents, coding tools, and Safe-mode approval.
+4. Streamed Run handling, process lifecycle, and end-to-end tests.
 
 ## License
 

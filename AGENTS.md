@@ -18,10 +18,11 @@ Implemented today:
   providers, credential persistence, and connection revision tracking.
 - Bundled model catalogs, provider-native HTTP discovery, user overrides, and
   durable last-known-good model snapshots.
+- A SQLite-backed Session Store with Koda session metadata, ADK history schema
+  initialization, lazy ADK ledger creation, and per-session run locking.
 
 Not implemented yet:
 
-- SQLite-backed session metadata and ADK session initialization.
 - LLM/agent construction and caching.
 - Coding tools, prompts, Safe-mode hooks, and approval broker.
 - Connect handlers, HTTP server, and `cmd/koda` entry point.
@@ -38,6 +39,7 @@ koda/
 │   ├── service.pb.go
 │   └── kodav1connect/service.connect.go
 ├── internal/provider/                       # provider registry + model catalog
+├── internal/store/                          # SQLite lifecycle + session catalog
 ├── buf.yaml
 ├── buf.gen.yaml
 ├── go.mod
@@ -48,7 +50,6 @@ koda/
 Expected future packages:
 
 ```text
-internal/store/   # SQLite lifecycle, session catalog, run locker
 internal/agent/   # LLM factory, prompts, runtime, agent cache
 internal/tools/   # file, search, shell, and git tools
 internal/server/  # Proto conversion, Connect handlers, approval broker
@@ -161,15 +162,13 @@ Chat Completions adapter for `openai` and the Responses adapter for
 
 ## Recommended implementation order
 
-1. Add SQLite lifecycle, ADK schema initialization, session catalog, and shared
-   run locker under `internal/store`.
-2. Implement provider, model, and session Connect handlers that do not require
+1. Implement provider, model, and session Connect handlers that do not require
    an LLM.
-3. Add Proto/ADK input and event conversion plus a fake-LLM runtime test seam.
-4. Implement the LLM factory and cached build/plan agents.
-5. Implement read-only tools, then mutating tools and Safe-mode approval.
-6. Implement streamed `Run`, cancellation, rollback, and completion semantics.
-7. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
+2. Add Proto/ADK input and event conversion plus a fake-LLM runtime test seam.
+3. Implement the LLM factory and cached build/plan agents.
+4. Implement read-only tools, then mutating tools and Safe-mode approval.
+5. Implement streamed `Run`, cancellation, rollback, and completion semantics.
+6. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
 
 Review this order after each completed slice; do not build all layers at once.
 
