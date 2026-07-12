@@ -1,0 +1,388 @@
+syntax = "proto3";
+
+package koda.v1;
+
+// KodaService exposes the local coding-agent runtime.
+service KodaService {
+  // Run executes one agent turn and streams its observable state.
+  rpc Run(RunRequest) returns (stream RunResponse);
+  // ResolveToolApproval approves or rejects a pending mutating tool call.
+  rpc ResolveToolApproval(ResolveToolApprovalRequest) returns (ResolveToolApprovalResponse);
+
+  // CreateSession creates a new coding session.
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+  // GetSession returns one coding session.
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
+  // ListSessions returns a page of coding sessions.
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  // UpdateSession updates mutable session metadata and execution settings.
+  rpc UpdateSession(UpdateSessionRequest) returns (UpdateSessionResponse);
+  // DeleteSession deletes a coding session and its event history.
+  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
+
+  // ListEvents returns a page of active events in a session.
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+  // UndoLastMessage removes the most recent user turn.
+  rpc UndoLastMessage(UndoLastMessageRequest) returns (UndoLastMessageResponse);
+
+  // ListProviders returns built-in and user-defined providers.
+  rpc ListProviders(ListProvidersRequest) returns (ListProvidersResponse);
+  // SaveProvider creates or replaces a provider configuration.
+  rpc SaveProvider(SaveProviderRequest) returns (SaveProviderResponse);
+  // DeleteProvider deletes a user-defined provider configuration.
+  rpc DeleteProvider(DeleteProviderRequest) returns (DeleteProviderResponse);
+  // ListModels returns known models for a provider.
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+  // RefreshModels refreshes a provider's model list from its API.
+  rpc RefreshModels(RefreshModelsRequest) returns (RefreshModelsResponse);
+}
+
+// AgentMode selects the tool and instruction policy used for a turn.
+enum AgentMode {
+  AGENT_MODE_UNSPECIFIED = 0;
+  AGENT_MODE_BUILD = 1;
+  AGENT_MODE_PLAN = 2;
+}
+
+// Role identifies the participant represented by a message.
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_SYSTEM = 1;
+  ROLE_USER = 2;
+  ROLE_ASSISTANT = 3;
+  ROLE_TOOL = 4;
+}
+
+// FinishReason identifies why a model generation ended.
+enum FinishReason {
+  FINISH_REASON_UNSPECIFIED = 0;
+  FINISH_REASON_STOP = 1;
+  FINISH_REASON_LENGTH = 2;
+  FINISH_REASON_TOOL_CALLS = 3;
+  FINISH_REASON_CONTENT_FILTER = 4;
+}
+
+// ProviderType selects the adapter used to communicate with a provider.
+enum ProviderType {
+  PROVIDER_TYPE_UNSPECIFIED = 0;
+  PROVIDER_TYPE_ANTHROPIC = 1;
+  PROVIDER_TYPE_OPENAI = 2;
+  PROVIDER_TYPE_GEMINI = 3;
+  PROVIDER_TYPE_DEEPSEEK = 4;
+}
+
+// ImageDetail controls the fidelity at which a model processes an image.
+enum ImageDetail {
+  IMAGE_DETAIL_UNSPECIFIED = 0;
+  IMAGE_DETAIL_AUTO = 1;
+  IMAGE_DETAIL_LOW = 2;
+  IMAGE_DETAIL_HIGH = 3;
+}
+
+// RunRequest starts one user turn in an existing session.
+message RunRequest {
+  string session_id = 1;
+  Input input = 2;
+  AgentMode mode = 3;
+}
+
+// RunResponse is one frame in a running turn.
+message RunResponse {
+  oneof payload {
+    Event event = 1;
+    ToolApproval approval = 2;
+    RunCompleted completed = 3;
+  }
+}
+
+// RunCompleted marks the successful end of a turn stream.
+message RunCompleted {
+  string turn_id = 1;
+}
+
+// Input is the user-authored content that starts a turn.
+message Input {
+  repeated Part parts = 1;
+}
+
+// Part is one item in a multimodal user input.
+message Part {
+  oneof content {
+    string text = 1;
+    Image image = 2;
+  }
+}
+
+// Image is an HTTPS URL or inline image payload.
+message Image {
+  oneof source {
+    string url = 1;
+    bytes data = 2;
+  }
+  string mime_type = 3;
+  ImageDetail detail = 4;
+}
+
+// ToolApproval describes a mutating tool call awaiting a decision.
+message ToolApproval {
+  string id = 1;
+  string session_id = 2;
+  string turn_id = 3;
+  string tool_call_id = 4;
+  string tool_name = 5;
+  string summary = 6;
+  string arguments_json = 7;
+}
+
+// ResolveToolApprovalRequest resolves one pending approval exactly once.
+message ResolveToolApprovalRequest {
+  string approval_id = 1;
+  bool approved = 2;
+}
+
+// ResolveToolApprovalResponse acknowledges a recorded decision.
+message ResolveToolApprovalResponse {}
+
+// Session contains metadata and execution settings for one coding session.
+message Session {
+  string id = 1;
+  string title = 2;
+  string workdir = 3;
+  string provider_id = 4;
+  string model_id = 5;
+  string reasoning_effort = 6;
+  bool safe_mode = 7;
+  int64 created_at = 8;
+  int64 updated_at = 9;
+  int64 event_count = 10;
+}
+
+// CreateSessionRequest creates a session with an initial execution configuration.
+message CreateSessionRequest {
+  string workdir = 1;
+  string provider_id = 2;
+  string model_id = 3;
+  string reasoning_effort = 4;
+  bool safe_mode = 5;
+}
+
+// CreateSessionResponse returns the created session.
+message CreateSessionResponse {
+  Session session = 1;
+}
+
+// GetSessionRequest identifies a session.
+message GetSessionRequest {
+  string session_id = 1;
+}
+
+// GetSessionResponse returns the requested session.
+message GetSessionResponse {
+  Session session = 1;
+}
+
+// ListSessionsRequest selects a page ordered by most recently updated first.
+message ListSessionsRequest {
+  int32 limit = 1;
+  int64 offset = 2;
+}
+
+// ListSessionsResponse contains one page and the unpaginated total.
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+  int64 total = 2;
+}
+
+// UpdateSessionRequest updates fields that are present.
+message UpdateSessionRequest {
+  string session_id = 1;
+  optional string title = 2;
+  optional string workdir = 3;
+  optional string provider_id = 4;
+  optional string model_id = 5;
+  optional string reasoning_effort = 6;
+  optional bool safe_mode = 7;
+}
+
+// UpdateSessionResponse returns the updated session.
+message UpdateSessionResponse {
+  Session session = 1;
+}
+
+// DeleteSessionRequest identifies a session to delete.
+message DeleteSessionRequest {
+  string session_id = 1;
+}
+
+// DeleteSessionResponse acknowledges session deletion.
+message DeleteSessionResponse {}
+
+// Event is an agent-runtime event exposed to clients.
+message Event {
+  string id = 1;
+  string session_id = 2;
+  string turn_id = 3;
+  string author = 4;
+  Message message = 5;
+  FinishReason finish_reason = 6;
+  TokenUsage usage = 7;
+  bool partial = 8;
+  int64 created_at = 9;
+  int64 updated_at = 10;
+}
+
+// Message is the provider-neutral content carried by an event.
+message Message {
+  Role role = 1;
+  string text = 2;
+  repeated Part parts = 3;
+  string reasoning = 4;
+  repeated ToolCall tool_calls = 5;
+  ToolResponse tool_response = 6;
+}
+
+// ToolCall is one model-requested tool invocation.
+message ToolCall {
+  string id = 1;
+  string name = 2;
+  string arguments_json = 3;
+}
+
+// ToolResponse is the completed outcome of one tool invocation.
+message ToolResponse {
+  string tool_call_id = 1;
+  string name = 2;
+  oneof outcome {
+    ToolResult result = 3;
+    ToolError error = 4;
+  }
+}
+
+// ToolResult contains a successful tool outcome.
+message ToolResult {
+  string content = 1;
+  string structured_content_json = 2;
+}
+
+// ToolError contains a model-visible handled tool failure.
+message ToolError {
+  string content = 1;
+  string structured_content_json = 2;
+}
+
+// TokenUsage contains aggregate and provider-neutral token accounting.
+message TokenUsage {
+  int64 prompt_tokens = 1;
+  int64 completion_tokens = 2;
+  int64 total_tokens = 3;
+  TokenUsageDetails details = 4;
+}
+
+// TokenUsageDetails contains optional provider-reported token breakdowns.
+message TokenUsageDetails {
+  int64 cached_prompt_tokens = 1;
+  int64 cache_creation_prompt_tokens = 2;
+  int64 cache_read_prompt_tokens = 3;
+  int64 reasoning_tokens = 4;
+  int64 tool_use_prompt_tokens = 5;
+  int64 audio_prompt_tokens = 6;
+  int64 audio_completion_tokens = 7;
+  int64 accepted_prediction_tokens = 8;
+  int64 rejected_prediction_tokens = 9;
+}
+
+// ListEventsRequest selects a page of active events in conversation order.
+message ListEventsRequest {
+  string session_id = 1;
+  int32 limit = 2;
+  int64 offset = 3;
+}
+
+// ListEventsResponse contains one page and the unpaginated active-event total.
+message ListEventsResponse {
+  repeated Event events = 1;
+  int64 total = 2;
+}
+
+// UndoLastMessageRequest identifies the session to modify.
+message UndoLastMessageRequest {
+  string session_id = 1;
+}
+
+// UndoLastMessageResponse describes the removed user turn.
+message UndoLastMessageResponse {
+  string turn_id = 1;
+  int64 deleted_event_count = 2;
+  Input input = 3;
+}
+
+// Provider describes one built-in or user-defined model provider.
+message Provider {
+  string id = 1;
+  string name = 2;
+  ProviderType type = 3;
+  string base_url = 4;
+  bool configured = 5;
+  bool builtin = 6;
+}
+
+// Model describes one model exposed by a provider.
+message Model {
+  string id = 1;
+  string name = 2;
+  repeated string reasoning_efforts = 3;
+  string default_reasoning_effort = 4;
+}
+
+// ListProvidersRequest requests all registered providers.
+message ListProvidersRequest {}
+
+// ListProvidersResponse returns all registered providers.
+message ListProvidersResponse {
+  repeated Provider providers = 1;
+}
+
+// SaveProviderRequest creates or replaces a provider. An omitted API key is preserved.
+message SaveProviderRequest {
+  string id = 1;
+  string name = 2;
+  ProviderType type = 3;
+  string base_url = 4;
+  optional string api_key = 5;
+  repeated Model models = 6;
+}
+
+// SaveProviderResponse returns the saved provider without its API key.
+message SaveProviderResponse {
+  Provider provider = 1;
+}
+
+// DeleteProviderRequest identifies a user-defined provider to delete.
+message DeleteProviderRequest {
+  string provider_id = 1;
+}
+
+// DeleteProviderResponse acknowledges provider deletion.
+message DeleteProviderResponse {}
+
+// ListModelsRequest requests known models for a provider.
+message ListModelsRequest {
+  string provider_id = 1;
+}
+
+// ListModelsResponse returns known models for a provider.
+message ListModelsResponse {
+  string provider_id = 1;
+  repeated Model models = 2;
+}
+
+// RefreshModelsRequest refreshes models for a provider.
+message RefreshModelsRequest {
+  string provider_id = 1;
+}
+
+// RefreshModelsResponse returns the refreshed model list.
+message RefreshModelsResponse {
+  string provider_id = 1;
+  repeated Model models = 2;
+}
