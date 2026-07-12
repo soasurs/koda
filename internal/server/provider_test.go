@@ -13,6 +13,7 @@ import (
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
 	"github.com/soasurs/koda/internal/provider"
+	"github.com/soasurs/koda/internal/store"
 )
 
 func TestProviderAndModelHandlers(t *testing.T) {
@@ -140,31 +141,44 @@ func TestProviderAndModelHandlersMapErrors(t *testing.T) {
 }
 
 func TestNewHandlerRequiresDependencies(t *testing.T) {
-	if _, err := NewHandler(nil, nil); err == nil {
-		t.Fatal("NewHandler(nil, nil) error = nil, want error")
+	if _, err := NewHandler(nil, nil, nil); err == nil {
+		t.Fatal("NewHandler(nil, nil, nil) error = nil, want error")
 	}
 
 	registry, err := provider.Open(filepath.Join(t.TempDir(), "providers.json"))
 	if err != nil {
 		t.Fatalf("provider.Open() error = %v", err)
 	}
-	if _, err := NewHandler(registry, nil); err == nil {
-		t.Fatal("NewHandler(registry, nil) error = nil, want error")
+	if _, err := NewHandler(registry, nil, nil); err == nil {
+		t.Fatal("NewHandler(registry, nil, nil) error = nil, want error")
 	}
+	catalog, err := provider.NewCatalog(registry, staticDiscoverer{})
+	if err != nil {
+		t.Fatalf("provider.NewCatalog() error = %v", err)
+	}
+	if _, err := NewHandler(registry, catalog, nil); err == nil {
+		t.Fatal("NewHandler(registry, catalog, nil) error = nil, want error")
+	}
+	sessionStore := openTestStore(t)
 	otherRegistry, err := provider.Open(filepath.Join(t.TempDir(), "other-providers.json"))
 	if err != nil {
 		t.Fatalf("provider.Open(other) error = %v", err)
 	}
-	catalog, err := provider.NewCatalog(otherRegistry, staticDiscoverer{})
+	otherCatalog, err := provider.NewCatalog(otherRegistry, staticDiscoverer{})
 	if err != nil {
 		t.Fatalf("provider.NewCatalog(other) error = %v", err)
 	}
-	if _, err := NewHandler(registry, catalog); err == nil {
+	if _, err := NewHandler(registry, otherCatalog, sessionStore); err == nil {
 		t.Fatal("NewHandler(mismatched dependencies) error = nil, want error")
 	}
 }
 
 func newTestClient(t *testing.T, discoverer provider.Discoverer) (kodav1connect.KodaServiceClient, *provider.Registry) {
+	client, registry, _ := newTestService(t, discoverer)
+	return client, registry
+}
+
+func newTestService(t *testing.T, discoverer provider.Discoverer) (kodav1connect.KodaServiceClient, *provider.Registry, *Handler) {
 	t.Helper()
 	registry, err := provider.Open(filepath.Join(t.TempDir(), "providers.json"))
 	if err != nil {
@@ -174,7 +188,8 @@ func newTestClient(t *testing.T, discoverer provider.Discoverer) (kodav1connect.
 	if err != nil {
 		t.Fatalf("provider.NewCatalog() error = %v", err)
 	}
-	handler, err := NewHandler(registry, catalog)
+	sessionStore := openTestStore(t)
+	handler, err := NewHandler(registry, catalog, sessionStore)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
@@ -183,7 +198,21 @@ func newTestClient(t *testing.T, discoverer provider.Discoverer) (kodav1connect.
 	mux.Handle(path, serviceHandler)
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
-	return kodav1connect.NewKodaServiceClient(server.Client(), server.URL), registry
+	return kodav1connect.NewKodaServiceClient(server.Client(), server.URL), registry, handler
+}
+
+func openTestStore(t *testing.T) *store.Store {
+	t.Helper()
+	sessionStore, err := store.Open(t.Context(), filepath.Join(t.TempDir(), "koda.db"))
+	if err != nil {
+		t.Fatalf("store.Open() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := sessionStore.Close(); err != nil {
+			t.Errorf("Store.Close() error = %v", err)
+		}
+	})
+	return sessionStore
 }
 
 func containsModel(models []*v1.Model, id string) bool {

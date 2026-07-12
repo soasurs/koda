@@ -22,10 +22,11 @@ Available today:
   DeepSeek model discovery with durable last-known-good snapshots.
 - A SQLite-backed Session Store for Koda metadata and ADK conversation history.
 - Provider and model Connect handlers with protocol-level tests.
+- Session CRUD Connect handlers with protocol-level tests.
 
-The next implementation slice is Session Connect handlers that do not require
-an LLM. See [AGENTS.md](AGENTS.md) for the current architecture decisions and
-development order.
+The next implementation slice is Proto/ADK input and event conversion with a
+fake-runtime test seam. See [AGENTS.md](AGENTS.md) for the current architecture
+decisions and development order.
 
 ## Architecture
 
@@ -77,6 +78,11 @@ stores:
 - title and timestamps.
 
 `RunRequest` carries only the session ID, input, and build/plan mode.
+
+Session workdirs are normalized to existing absolute directories when a session
+is created or updated. Provider, model, and reasoning-effort selections are
+validated from the local model catalog; the validation never performs network
+discovery.
 
 ### Session Store
 
@@ -175,10 +181,9 @@ under `gen/` are committed but must not be edited manually.
 
 The current implementation order is:
 
-1. Session Connect handlers.
-2. Proto-to-ADK input/event conversion and runtime test seams.
-3. Cached build/plan agents, coding tools, and Safe-mode approval.
-4. Streamed Run handling, process lifecycle, and end-to-end tests.
+1. Proto-to-ADK input/event conversion and runtime test seams.
+2. Cached build/plan agents, coding tools, and Safe-mode approval.
+3. Streamed Run handling, process lifecycle, and end-to-end tests.
 
 ## License
 

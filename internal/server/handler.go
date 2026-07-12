@@ -6,6 +6,7 @@ import (
 
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
 	"github.com/soasurs/koda/internal/provider"
+	"github.com/soasurs/koda/internal/store"
 )
 
 // Handler implements the Koda Connect service methods that do not require an
@@ -16,10 +17,13 @@ type Handler struct {
 
 	registry *provider.Registry
 	catalog  *provider.Catalog
+	store    *store.Store
+
+	newSessionID func() (string, error)
 }
 
-// NewHandler constructs a Handler backed by registry and catalog.
-func NewHandler(registry *provider.Registry, catalog *provider.Catalog) (*Handler, error) {
+// NewHandler constructs a Handler backed by registry, catalog, and store.
+func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionStore *store.Store) (*Handler, error) {
 	if registry == nil {
 		return nil, fmt.Errorf("server: provider registry must not be nil")
 	}
@@ -29,5 +33,13 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog) (*Handle
 	if catalog.Registry() != registry {
 		return nil, fmt.Errorf("server: provider catalog belongs to a different registry")
 	}
-	return &Handler{registry: registry, catalog: catalog}, nil
+	if sessionStore == nil {
+		return nil, fmt.Errorf("server: session store must not be nil")
+	}
+	return &Handler{
+		registry:     registry,
+		catalog:      catalog,
+		store:        sessionStore,
+		newSessionID: newSessionID,
+	}, nil
 }

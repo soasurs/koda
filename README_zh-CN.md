@@ -21,9 +21,9 @@ Protocol Buffer 契约、Connect RPC 和
   的远程模型发现与 last-known-good snapshot。
 - 基于 SQLite 的 Session Store，负责 Koda session metadata 和 ADK 对话历史。
 - Provider 和 Model 的 Connect handlers，以及协议级测试。
+- Session CRUD Connect handlers，以及协议级测试。
 
-下一阶段将实现不依赖 LLM 的 Session Connect handlers。当前架构决策和开发顺序见
-[AGENTS.md](AGENTS.md)。
+下一阶段将实现 Proto/ADK 输入和事件转换，以及 fake-runtime test seam。当前架构决策和开发顺序见 [AGENTS.md](AGENTS.md)。
 
 ## 架构
 
@@ -73,6 +73,9 @@ Provider 和 Model 的选择属于 Session，而不是全局配置。Session 保
 - 标题和时间戳。
 
 `RunRequest` 只携带 Session ID、用户输入和 build/plan 模式。
+
+创建或更新 Session 时，workdir 会归一化为存在的绝对目录。Provider、Model 和
+reasoning effort 只根据本地 Model Catalog 校验，不会隐式触发网络发现。
 
 ### Session Store
 
@@ -161,10 +164,9 @@ go test ./...
 
 当前实现顺序：
 
-1. Session Connect handlers。
-2. Proto 与 ADK 之间的输入/事件转换，以及 Runtime 测试 seam。
-3. 可缓存的 build/plan agents、coding tools 和 Safe-mode approval。
-4. 流式 Run、进程生命周期和端到端测试。
+1. Proto 与 ADK 之间的输入/事件转换，以及 Runtime 测试 seam。
+2. 可缓存的 build/plan agents、coding tools 和 Safe-mode approval。
+3. 流式 Run、进程生命周期和端到端测试。
 
 ## License
 

@@ -22,12 +22,14 @@ Implemented today:
   initialization, lazy ADK ledger creation, and per-session run locking.
 - Provider and model Connect handlers with protocol-level tests and explicit
   error-code mapping.
+- Session CRUD Connect handlers with local provider/model validation and
+  per-session update serialization.
 
 Not implemented yet:
 
 - LLM/agent construction and caching.
 - Coding tools, prompts, Safe-mode hooks, and approval broker.
-- Session, event-history, and agent-runtime Connect handlers.
+- Event-history and agent-runtime Connect handlers.
 - HTTP server and `cmd/koda` entry point.
 - A runnable CLI or UI.
 
@@ -56,7 +58,7 @@ Expected future packages:
 ```text
 internal/agent/   # LLM factory, prompts, runtime, agent cache
 internal/tools/   # file, search, shell, and git tools
-internal/server/  # Proto conversion, remaining Connect handlers, approval broker
+internal/server/  # Proto conversion, event/runtime handlers, approval broker
 cmd/koda/         # process lifecycle and HTTP server
 ```
 
@@ -166,12 +168,11 @@ Chat Completions adapter for `openai` and the Responses adapter for
 
 ## Recommended implementation order
 
-1. Implement session Connect handlers that do not require an LLM.
-2. Add Proto/ADK input and event conversion plus a fake-LLM runtime test seam.
-3. Implement the LLM factory and cached build/plan agents.
-4. Implement read-only tools, then mutating tools and Safe-mode approval.
-5. Implement streamed `Run`, cancellation, rollback, and completion semantics.
-6. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
+1. Add Proto/ADK input and event conversion plus a fake-LLM runtime test seam.
+2. Implement the LLM factory and cached build/plan agents.
+3. Implement read-only tools, then mutating tools and Safe-mode approval.
+4. Implement streamed `Run`, cancellation, rollback, and completion semantics.
+5. Add `cmd/koda`, graceful shutdown, and end-to-end Connect tests.
 
 Review this order after each completed slice; do not build all layers at once.
 
