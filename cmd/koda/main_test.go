@@ -64,7 +64,7 @@ func TestApplyFileConfig(t *testing.T) {
 
 func TestListenForServeFallsBackWhenDefaultPortIsOccupied(t *testing.T) {
 	var addresses []string
-	listener, err := listenForServe(serveConfig{}, func(_ string, address string) (net.Listener, error) {
+	listener, fallback, err := listenForServe(serveConfig{}, func(_ string, address string) (net.Listener, error) {
 		addresses = append(addresses, address)
 		if address == kodaserver.DefaultAddress {
 			return nil, &net.OpError{Op: "listen", Net: "tcp", Err: syscall.EADDRINUSE}
@@ -73,6 +73,9 @@ func TestListenForServeFallsBackWhenDefaultPortIsOccupied(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("listenForServe() error = %v", err)
+	}
+	if !fallback {
+		t.Fatal("listenForServe() fallback = false")
 	}
 	defer listener.Close()
 	if len(addresses) != 2 || addresses[1] != "localhost:0" {
@@ -240,7 +243,7 @@ func TestRunHelpForCommandsAndUnknownCommand(t *testing.T) {
 
 func TestListenForServeDoesNotFallbackForExplicitAddress(t *testing.T) {
 	var attempts int
-	_, err := listenForServe(serveConfig{address: "127.0.0.1:8787", explicitly: true}, func(string, string) (net.Listener, error) {
+	_, _, err := listenForServe(serveConfig{address: "127.0.0.1:8787", explicitly: true}, func(string, string) (net.Listener, error) {
 		attempts++
 		return nil, syscall.EADDRINUSE
 	})

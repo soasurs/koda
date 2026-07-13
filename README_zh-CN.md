@@ -47,17 +47,22 @@ go run ./cmd/koda serve --addr 127.0.0.1:8787
 ```
 
 服务只接受 loopback 地址，并且不会打开浏览器。Koda 还会从
-`~/.koda/koda.yaml` 读取进程级配置；命令行参数优先于配置文件。配置文件可选，
-第一版仅包含服务地址：
+`~/.koda/koda.yaml` 读取进程级配置；命令行参数优先于配置文件。配置文件可选，可配置
+服务地址和诊断日志级别：
 
 ```yaml
 version: 1
 server:
   address: 127.0.0.1:8080
+log:
+  level: info
 ```
 
 `--addr` 会覆盖 `server.address`。两者都未设置时，Koda 会尝试默认地址；如果
-默认端口已被占用，则回退到可用的 loopback 端口。
+默认端口已被占用，则回退到可用的 loopback 端口。日志级别支持 `debug`、`info`、
+`warn` 和 `error`，默认为 `info`。所有级别的日志都是诊断信息并写入 stderr，监听
+地址仍写入 stdout。DEBUG 日志包含操作耗时、工具名称等安全的 ADK 运行时元数据，
+但不会记录 prompt、工具参数、命令输出、文件内容或凭据。
 
 ## Provider 与本地数据
 

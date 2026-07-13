@@ -18,6 +18,7 @@ import (
 	"time"
 
 	kodaconfig "github.com/soasurs/koda/internal/config"
+	"github.com/soasurs/koda/internal/logging"
 	"github.com/soasurs/koda/internal/provider"
 	kodaserver "github.com/soasurs/koda/internal/server"
 	"github.com/soasurs/koda/internal/store"
@@ -125,8 +126,10 @@ func runServer(ctx context.Context, config serveConfig, stdout, stderr io.Writer
 	if dependencies.openRegistry == nil || dependencies.openStore == nil || dependencies.listen == nil {
 		return errors.New("command dependencies must not be nil")
 	}
+	fileConfig := kodaconfig.Config{}
 	if dependencies.loadConfig != nil {
-		fileConfig, err := dependencies.loadConfig()
+		var err error
+		fileConfig, err = dependencies.loadConfig()
 		if err != nil {
 			return fmt.Errorf("load configuration: %w", err)
 		}
@@ -134,6 +137,10 @@ func runServer(ctx context.Context, config serveConfig, stdout, stderr io.Writer
 		if err != nil {
 			return err
 		}
+	}
+	logger, err := logging.New(stderr, fileConfig.Log.Level)
+	if err != nil {
+		return err
 	}
 	registry, err := dependencies.openRegistry()
 	if err != nil {
@@ -147,37 +154,51 @@ func runServer(ctx context.Context, config serveConfig, stdout, stderr io.Writer
 	if err != nil {
 		return fmt.Errorf("open session store: %w", err)
 	}
-	defer sessionStore.Close() //nolint:errcheck // Serve errors remain more actionable.
-	handler, err := kodaserver.NewHandler(registry, catalog, sessionStore)
+	defer func() {
+		if err := sessionStore.Close(); err != nil {
+			logger.WarnContext(ctx, "session store close failed", "error", err)
+		}
+	}()
+	handler, err := kodaserver.NewHandler(registry, catalog, sessionStore, logger)
 	if err != nil {
 		return fmt.Errorf("create service handler: %w", err)
 	}
-	listener, err := listenForServe(config, dependencies.listen)
+	listener, fallback, err := listenForServe(config, dependencies.listen)
 	if err != nil {
 		return err
+	}
+	if fallback {
+		logger.InfoContext(ctx, "default address unavailable; using fallback",
+			"default_address", kodaserver.DefaultAddress,
+			"address", listener.Addr().String(),
+		)
 	}
 	server, err := kodaserver.NewHTTPServer(handler, kodaserver.HTTPServerConfig{
 		Address:         listener.Addr().String(),
 		ShutdownTimeout: shutdownTimeout,
 		WebHandler:      webHandler,
+		Logger:          logger,
 	})
 	if err != nil {
 		listener.Close() //nolint:errcheck // Preserve the server construction error.
 		return fmt.Errorf("create HTTP server: %w", err)
 	}
 	url := "http://" + listener.Addr().String()
+	serverMode := "serve"
 	if launchBrowser {
+		serverMode = "studio"
 		fmt.Fprintf(stdout, "Koda Studio listening on %s\n", url)
 		if dependencies.openBrowser == nil {
 			listener.Close() //nolint:errcheck // Preserve the dependency error.
 			return errors.New("browser dependency must not be nil")
 		}
 		if err := dependencies.openBrowser(url); err != nil {
-			fmt.Fprintf(stderr, "koda: open browser: %v\n", err)
+			logger.WarnContext(ctx, "open browser failed", "error", err)
 		}
 	} else {
 		fmt.Fprintf(stdout, "koda API listening on %s\n", url)
 	}
+	logger.InfoContext(ctx, "server started", "mode", serverMode, "address", listener.Addr().String())
 	if err := server.Serve(ctx, listener); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}
@@ -257,26 +278,26 @@ func applyFileConfig(cli serveConfig, file kodaconfig.Config) (serveConfig, erro
 	return cli, nil
 }
 
-func listenForServe(config serveConfig, listen func(network, address string) (net.Listener, error)) (net.Listener, error) {
+func listenForServe(config serveConfig, listen func(network, address string) (net.Listener, error)) (net.Listener, bool, error) {
 	if config.explicitly {
 		listener, err := listen("tcp", config.address)
 		if err != nil {
-			return nil, fmt.Errorf("listen on %q: %w", config.address, err)
+			return nil, false, fmt.Errorf("listen on %q: %w", config.address, err)
 		}
-		return listener, nil
+		return listener, false, nil
 	}
 	listener, err := listen("tcp", kodaserver.DefaultAddress)
 	if err == nil {
-		return listener, nil
+		return listener, false, nil
 	}
 	if !errors.Is(err, syscall.EADDRINUSE) {
-		return nil, fmt.Errorf("listen on %q: %w", kodaserver.DefaultAddress, err)
+		return nil, false, fmt.Errorf("listen on %q: %w", kodaserver.DefaultAddress, err)
 	}
 	listener, fallbackErr := listen("tcp", "localhost:0")
 	if fallbackErr != nil {
-		return nil, fmt.Errorf("listen on an available loopback port: %w", fallbackErr)
+		return nil, false, fmt.Errorf("listen on an available loopback port: %w", fallbackErr)
 	}
-	return listener, nil
+	return listener, true, nil
 }
 
 func loopbackAddress(address string) bool {

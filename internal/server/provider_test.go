@@ -1,12 +1,14 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -14,9 +16,34 @@ import (
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
+	"github.com/soasurs/koda/internal/logging"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
 )
+
+func TestSaveProviderLogsCredentialActionWithoutCredential(t *testing.T) {
+	client, _, handler := newTestService(t, staticDiscoverer{})
+	var output bytes.Buffer
+	logger, err := logging.New(&output, "info")
+	if err != nil {
+		t.Fatalf("logging.New() error = %v", err)
+	}
+	handler.logger = logger
+	const apiKey = "top-secret-provider-key"
+	if _, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
+		Id: proto.String("custom"), Name: proto.String("Custom"),
+		Type: v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES.Enum(), ApiKey: proto.String(apiKey),
+	}.Build()); err != nil {
+		t.Fatalf("SaveProvider() error = %v", err)
+	}
+	got := output.String()
+	if !strings.Contains(got, "msg=\"provider saved\"") || !strings.Contains(got, "credential_action=set") {
+		t.Fatalf("logger output = %q", got)
+	}
+	if strings.Contains(got, apiKey) {
+		t.Fatalf("logger output contains API key: %q", got)
+	}
+}
 
 func TestProviderAndModelHandlers(t *testing.T) {
 	client, registry := newTestClient(t, staticDiscoverer{models: []provider.Model{{ID: "discovered-model"}}})
@@ -143,7 +170,7 @@ func TestProviderAndModelHandlersMapErrors(t *testing.T) {
 }
 
 func TestNewHandlerRequiresDependencies(t *testing.T) {
-	if _, err := NewHandler(nil, nil, nil); err == nil {
+	if _, err := NewHandler(nil, nil, nil, nil); err == nil {
 		t.Fatal("NewHandler(nil, nil, nil) error = nil, want error")
 	}
 
@@ -151,14 +178,14 @@ func TestNewHandlerRequiresDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("provider.Open() error = %v", err)
 	}
-	if _, err := NewHandler(registry, nil, nil); err == nil {
+	if _, err := NewHandler(registry, nil, nil, nil); err == nil {
 		t.Fatal("NewHandler(registry, nil, nil) error = nil, want error")
 	}
 	catalog, err := provider.NewCatalog(registry, staticDiscoverer{})
 	if err != nil {
 		t.Fatalf("provider.NewCatalog() error = %v", err)
 	}
-	if _, err := NewHandler(registry, catalog, nil); err == nil {
+	if _, err := NewHandler(registry, catalog, nil, nil); err == nil {
 		t.Fatal("NewHandler(registry, catalog, nil) error = nil, want error")
 	}
 	sessionStore := openTestStore(t)
@@ -170,7 +197,7 @@ func TestNewHandlerRequiresDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("provider.NewCatalog(other) error = %v", err)
 	}
-	if _, err := NewHandler(registry, otherCatalog, sessionStore); err == nil {
+	if _, err := NewHandler(registry, otherCatalog, sessionStore, nil); err == nil {
 		t.Fatal("NewHandler(mismatched dependencies) error = nil, want error")
 	}
 }
@@ -191,7 +218,7 @@ func newTestService(t *testing.T, discoverer provider.Discoverer) (kodav1connect
 		t.Fatalf("provider.NewCatalog() error = %v", err)
 	}
 	sessionStore := openTestStore(t)
-	handler, err := NewHandler(registry, catalog, sessionStore)
+	handler, err := NewHandler(registry, catalog, sessionStore, nil)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}

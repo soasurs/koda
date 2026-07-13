@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"time"
@@ -19,7 +20,7 @@ import (
 func (h *Handler) ListProviders(ctx context.Context, _ *v1.ListProvidersRequest) (*v1.ListProvidersResponse, error) {
 	providers, err := h.registry.List(ctx)
 	if err != nil {
-		return nil, providerError(err)
+		return nil, h.providerFailure(ctx, "list providers", err)
 	}
 	return v1.ListProvidersResponse_builder{Providers: providersToProto(providers)}.Build(), nil
 }
@@ -38,7 +39,7 @@ func (h *Handler) SaveProvider(ctx context.Context, request *v1.SaveProviderRequ
 			)
 		}
 	} else if !errors.Is(err, provider.ErrNotFound) {
-		return nil, providerError(err)
+		return nil, h.providerFailure(ctx, "load provider for save", err, slog.String("provider_id", p.ID))
 	}
 
 	var apiKey *string
@@ -46,10 +47,22 @@ func (h *Handler) SaveProvider(ctx context.Context, request *v1.SaveProviderRequ
 		value := request.GetApiKey()
 		apiKey = &value
 	}
+	credentialAction := "preserve"
+	if apiKey != nil {
+		credentialAction = "set"
+		if *apiKey == "" {
+			credentialAction = "clear"
+		}
+	}
 	saved, err := h.registry.Save(ctx, p, apiKey)
 	if err != nil {
-		return nil, providerError(err)
+		return nil, h.providerFailure(ctx, "save provider", err, slog.String("provider_id", p.ID))
 	}
+	h.log(ctx, slog.LevelInfo, "provider saved",
+		slog.String("provider_id", saved.ID),
+		slog.String("provider_type", string(saved.Type)),
+		slog.String("credential_action", credentialAction),
+	)
 	return v1.SaveProviderResponse_builder{Provider: providerToProto(saved)}.Build(), nil
 }
 
@@ -63,8 +76,9 @@ func (h *Handler) DeleteProvider(ctx context.Context, request *v1.DeleteProvider
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if err := h.registry.Delete(ctx, providerID); err != nil {
-		return nil, providerError(err)
+		return nil, h.providerFailure(ctx, "delete provider", err, slog.String("provider_id", providerID))
 	}
+	h.log(ctx, slog.LevelInfo, "provider deleted", slog.String("provider_id", providerID))
 	return v1.DeleteProviderResponse_builder{}.Build(), nil
 }
 
@@ -79,7 +93,7 @@ func (h *Handler) ListModels(ctx context.Context, request *v1.ListModelsRequest)
 	}
 	catalog, err := h.catalog.List(ctx, providerID)
 	if err != nil {
-		return nil, providerError(err)
+		return nil, h.providerFailure(ctx, "list models", err, slog.String("provider_id", providerID))
 	}
 	return v1.ListModelsResponse_builder{
 		ProviderId:  proto.String(providerID),
@@ -97,10 +111,20 @@ func (h *Handler) RefreshModels(ctx context.Context, request *v1.RefreshModelsRe
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	startedAt := time.Now()
+	h.log(ctx, slog.LevelInfo, "model refresh started", slog.String("provider_id", providerID))
 	catalog, err := h.catalog.Refresh(ctx, providerID)
 	if err != nil {
-		return nil, refreshError(err)
+		return nil, h.refreshFailure(ctx, "refresh models", err,
+			slog.String("provider_id", providerID),
+			slog.Duration("duration", time.Since(startedAt)),
+		)
 	}
+	h.log(ctx, slog.LevelInfo, "model refresh completed",
+		slog.String("provider_id", providerID),
+		slog.Int("model_count", len(catalog.Models)),
+		slog.Duration("duration", time.Since(startedAt)),
+	)
 	return v1.RefreshModelsResponse_builder{
 		ProviderId:  proto.String(providerID),
 		Models:      modelsToProto(catalog.Models),

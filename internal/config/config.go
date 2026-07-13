@@ -19,11 +19,17 @@ const currentVersion = 1
 type Config struct {
 	Version int          `yaml:"version"`
 	Server  ServerConfig `yaml:"server,omitempty"`
+	Log     LogConfig    `yaml:"log,omitempty"`
 }
 
 // ServerConfig configures the local API server.
 type ServerConfig struct {
 	Address string `yaml:"address,omitempty"`
+}
+
+// LogConfig configures process diagnostic logging.
+type LogConfig struct {
+	Level string `yaml:"level,omitempty"`
 }
 
 // DefaultPath returns the default Koda configuration path.
@@ -78,5 +84,11 @@ func Load(path string) (Config, error) {
 		return Config{}, fmt.Errorf("config: unsupported version %d", result.Version)
 	}
 	result.Server.Address = strings.TrimSpace(result.Server.Address)
+	result.Log.Level = strings.ToLower(strings.TrimSpace(result.Log.Level))
+	switch result.Log.Level {
+	case "", "debug", "info", "warn", "error":
+	default:
+		return Config{}, fmt.Errorf("config: unsupported log level %q", result.Log.Level)
+	}
 	return result, nil
 }

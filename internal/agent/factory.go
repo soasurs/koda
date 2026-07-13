@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	adksession "github.com/soasurs/adk/session"
 	"github.com/soasurs/adk/tool"
 
+	"github.com/soasurs/koda/internal/logging"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
 	"github.com/soasurs/koda/internal/tools"
@@ -39,6 +41,8 @@ type Config struct {
 	Catalog *provider.Catalog
 	// Sessions is the ADK session service shared by cached runners.
 	Sessions adksession.SessionService
+	// Logger receives diagnostic records for ADK runtime operations.
+	Logger *slog.Logger
 }
 
 // Factory creates ADK runners and caches immutable model, prompt, and tool
@@ -47,6 +51,7 @@ type Factory struct {
 	registry *provider.Registry
 	catalog  *provider.Catalog
 	sessions adksession.SessionService
+	logger   *slog.Logger
 
 	mu    sync.Mutex
 	cache map[cacheKey]*runner.Runner
@@ -85,6 +90,7 @@ func New(config Config) (*Factory, error) {
 		registry: config.Registry,
 		catalog:  config.Catalog,
 		sessions: config.Sessions,
+		logger:   logging.OrDiscard(config.Logger),
 		cache:    make(map[cacheKey]*runner.Runner),
 		newModel: newProviderModel,
 	}, nil
@@ -139,6 +145,7 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 		ShellAccess: session.ShellAccess,
 		Authorizer:  runtimeAuthorizer{},
 		Questioner:  runtimeQuestioner{},
+		Logger:      f.logger,
 	}
 	values, err := toolsForMode(mode, toolConfig)
 	if err != nil {
@@ -157,7 +164,11 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 	if err != nil {
 		return nil, fmt.Errorf("agent: construct %s agent: %w", mode, err)
 	}
-	result, err := runner.New(turnCompletionAgent{delegate: llmAgent}, f.sessions)
+	result, err := runner.New(
+		turnCompletionAgent{delegate: llmAgent},
+		f.sessions,
+		runner.WithTracer(logging.NewADKTracer(f.logger)),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("agent: construct runner: %w", err)
 	}

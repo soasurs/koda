@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"time"
 
 	adktrace "github.com/soasurs/adk/trace"
 	"google.golang.org/protobuf/proto"
@@ -20,11 +22,13 @@ import (
 func (h *Handler) runInteractions(publish func(*v1.RunResponse) error) agent.RunInteractions {
 	return agent.RunInteractions{
 		Authorizer: brokerAuthorizer{
+			handler: h,
 			broker:  h.approvals,
 			publish: publish,
 			newID:   newInteractionID,
 		},
 		Questioner: brokerQuestioner{
+			handler: h,
 			broker:  h.questions,
 			publish: publish,
 			newID:   newInteractionID,
@@ -33,6 +37,7 @@ func (h *Handler) runInteractions(publish func(*v1.RunResponse) error) agent.Run
 }
 
 type brokerAuthorizer struct {
+	handler *Handler
 	broker  *ApprovalBroker
 	publish func(*v1.RunResponse) error
 	newID   func() (string, error)
@@ -69,13 +74,42 @@ func (a brokerAuthorizer) Authorize(ctx context.Context, approval tools.Approval
 		Scope:         approvalScopeToProto(approval.Scope).Enum(),
 		TargetPaths:   append([]string(nil), approval.TargetPaths...),
 	}.Build()
+	startedAt := time.Now()
+	if a.handler != nil {
+		a.handler.log(ctx, slog.LevelInfo, "tool approval requested",
+			slog.String("approval_id", id),
+			slog.String("session_id", info.SessionID),
+			slog.String("turn_id", info.TurnID),
+			slog.String("tool_call_id", approval.ToolCallID),
+			slog.String("tool", approval.ToolName),
+			slog.String("kind", string(approval.Kind)),
+			slog.String("scope", string(approval.Scope)),
+		)
+	}
 	accepted, err := a.broker.Await(ctx, request, func(v *v1.ToolApproval) error {
 		resp := new(v1.RunResponse)
 		resp.SetApproval(v)
 		return a.publish(resp)
 	})
 	if err != nil {
+		if a.handler != nil && errors.Is(err, context.Canceled) {
+			a.handler.log(ctx, slog.LevelInfo, "tool approval canceled",
+				slog.String("approval_id", id),
+				slog.String("session_id", info.SessionID),
+				slog.String("turn_id", info.TurnID),
+				slog.Duration("duration", time.Since(startedAt)),
+			)
+		}
 		return fmt.Errorf("server: await tool approval: %w", err)
+	}
+	if a.handler != nil {
+		a.handler.log(ctx, slog.LevelInfo, "tool approval resolved",
+			slog.String("approval_id", id),
+			slog.String("session_id", info.SessionID),
+			slog.String("turn_id", info.TurnID),
+			slog.Bool("approved", accepted),
+			slog.Duration("duration", time.Since(startedAt)),
+		)
 	}
 	if !accepted {
 		return tools.ErrApprovalRejected
@@ -84,6 +118,7 @@ func (a brokerAuthorizer) Authorize(ctx context.Context, approval tools.Approval
 }
 
 type brokerQuestioner struct {
+	handler *Handler
 	broker  *QuestionBroker
 	publish func(*v1.RunResponse) error
 	newID   func() (string, error)
@@ -114,13 +149,40 @@ func (q brokerQuestioner) Ask(ctx context.Context, request tools.QuestionRequest
 		ToolCallId: proto.String(request.ToolCallID),
 		Questions:  questionsToProto(request.Questions),
 	}.Build()
+	startedAt := time.Now()
+	if q.handler != nil {
+		q.handler.log(ctx, slog.LevelInfo, "question prompt requested",
+			slog.String("prompt_id", id),
+			slog.String("session_id", info.SessionID),
+			slog.String("turn_id", info.TurnID),
+			slog.String("tool_call_id", request.ToolCallID),
+			slog.Int("question_count", len(request.Questions)),
+		)
+	}
 	answers, canceled, err := q.broker.Await(ctx, prompt, func(value *v1.QuestionPrompt) error {
 		resp := new(v1.RunResponse)
 		resp.SetQuestionPrompt(value)
 		return q.publish(resp)
 	})
 	if err != nil {
+		if q.handler != nil && errors.Is(err, context.Canceled) {
+			q.handler.log(ctx, slog.LevelInfo, "question prompt canceled",
+				slog.String("prompt_id", id),
+				slog.String("session_id", info.SessionID),
+				slog.String("turn_id", info.TurnID),
+				slog.Duration("duration", time.Since(startedAt)),
+			)
+		}
 		return tools.QuestionResolution{}, fmt.Errorf("server: await question answers: %w", err)
+	}
+	if q.handler != nil {
+		q.handler.log(ctx, slog.LevelInfo, "question prompt resolved",
+			slog.String("prompt_id", id),
+			slog.String("session_id", info.SessionID),
+			slog.String("turn_id", info.TurnID),
+			slog.Bool("canceled", canceled),
+			slog.Duration("duration", time.Since(startedAt)),
+		)
 	}
 	if canceled {
 		return tools.QuestionResolution{Canceled: true}, nil

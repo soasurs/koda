@@ -123,6 +123,7 @@ func (s service) runPlanShell(ctx context.Context, input runShellInput) (runShel
 		return runShellOutput{}, ctx.Err()
 	}
 	if commandCtx.Err() != nil {
+		s.logger.WarnContext(ctx, "Plan mode Git command timed out", "timeout", timeout, "subcommand", subcommand)
 		return runShellOutput{}, handled(fmt.Errorf("git command timed out after %s", timeout))
 	}
 	exitCode := 0

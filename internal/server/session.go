@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -40,7 +41,7 @@ func (h *Handler) CreateSession(ctx context.Context, request *v1.CreateSessionRe
 	}
 	id, err := h.newSessionID()
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("generate session ID"))
+		return nil, h.internalFailure(ctx, "generate session ID", errors.New("generate session ID"), err)
 	}
 	session, err := h.store.CreateSession(ctx, store.CreateSessionParams{
 		ID:              id,
@@ -52,8 +53,15 @@ func (h *Handler) CreateSession(ctx context.Context, request *v1.CreateSessionRe
 		ShellAccess:     shellAccess,
 	})
 	if err != nil {
-		return nil, sessionError(err)
+		return nil, h.sessionFailure(ctx, "create session", err)
 	}
+	h.log(ctx, slog.LevelInfo, "session created",
+		slog.String("session_id", session.ID),
+		slog.String("provider_id", session.ProviderID),
+		slog.String("model_id", session.ModelID),
+		slog.String("file_access", string(session.FileAccess)),
+		slog.String("shell_access", string(session.ShellAccess)),
+	)
 	return v1.CreateSessionResponse_builder{Session: sessionToProto(session)}.Build(), nil
 }
 
@@ -68,7 +76,7 @@ func (h *Handler) GetSession(ctx context.Context, request *v1.GetSessionRequest)
 	}
 	session, err := h.store.GetSession(ctx, id)
 	if err != nil {
-		return nil, sessionError(err)
+		return nil, h.sessionFailure(ctx, "get session", err, slog.String("session_id", id))
 	}
 	return v1.GetSessionResponse_builder{Session: sessionToProto(session)}.Build(), nil
 }
@@ -89,7 +97,7 @@ func (h *Handler) ListSessions(ctx context.Context, request *v1.ListSessionsRequ
 		Offset: request.GetOffset(),
 	})
 	if err != nil {
-		return nil, sessionError(err)
+		return nil, h.sessionFailure(ctx, "list sessions", err)
 	}
 	return v1.ListSessionsResponse_builder{
 		Sessions: sessionsToProto(sessions),
@@ -108,13 +116,13 @@ func (h *Handler) UpdateSession(ctx context.Context, request *v1.UpdateSessionRe
 	}
 	unlock, err := h.store.LockRun(ctx, id)
 	if err != nil {
-		return nil, sessionError(err)
+		return nil, h.sessionFailure(ctx, "lock session update", err, slog.String("session_id", id))
 	}
 	defer unlock()
 
 	current, err := h.store.GetSession(ctx, id)
 	if err != nil {
-		return nil, sessionError(err)
+		return nil, h.sessionFailure(ctx, "load session for update", err, slog.String("session_id", id))
 	}
 	params, candidate, validateConfiguration, err := updateSessionParams(request, current)
 	if err != nil {
@@ -136,8 +144,12 @@ func (h *Handler) UpdateSession(ctx context.Context, request *v1.UpdateSessionRe
 	}
 	session, err := h.store.UpdateSession(ctx, id, params)
 	if err != nil {
-		return nil, sessionError(err)
+		return nil, h.sessionFailure(ctx, "update session", err, slog.String("session_id", id))
 	}
+	h.log(ctx, slog.LevelInfo, "session updated",
+		slog.String("session_id", id),
+		slog.Any("changed_fields", changedSessionFields(request)),
+	)
 	return v1.UpdateSessionResponse_builder{Session: sessionToProto(session)}.Build(), nil
 }
 
@@ -151,9 +163,36 @@ func (h *Handler) DeleteSession(ctx context.Context, request *v1.DeleteSessionRe
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if err := h.store.DeleteSession(ctx, id); err != nil {
-		return nil, sessionError(err)
+		return nil, h.sessionFailure(ctx, "delete session", err, slog.String("session_id", id))
 	}
+	h.log(ctx, slog.LevelInfo, "session deleted", slog.String("session_id", id))
 	return v1.DeleteSessionResponse_builder{}.Build(), nil
+}
+
+func changedSessionFields(request *v1.UpdateSessionRequest) []string {
+	fields := make([]string, 0, 7)
+	if request.HasTitle() {
+		fields = append(fields, "title")
+	}
+	if request.HasWorkdir() {
+		fields = append(fields, "workdir")
+	}
+	if request.HasProviderId() {
+		fields = append(fields, "provider_id")
+	}
+	if request.HasModelId() {
+		fields = append(fields, "model_id")
+	}
+	if request.HasReasoningEffort() {
+		fields = append(fields, "reasoning_effort")
+	}
+	if request.HasFileAccess() {
+		fields = append(fields, "file_access")
+	}
+	if request.HasShellAccess() {
+		fields = append(fields, "shell_access")
+	}
+	return fields
 }
 
 type sessionConfiguration struct {
@@ -179,7 +218,9 @@ func (h *Handler) validateSessionConfiguration(
 	reasoningEffort = strings.TrimSpace(reasoningEffort)
 	catalog, err := h.catalog.List(ctx, providerID)
 	if err != nil {
-		return sessionConfiguration{}, providerError(err)
+		return sessionConfiguration{}, h.providerFailure(ctx, "validate session provider", err,
+			slog.String("provider_id", providerID),
+		)
 	}
 	for _, model := range catalog.Models {
 		if model.ID != modelID {
