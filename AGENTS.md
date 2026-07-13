@@ -21,7 +21,9 @@ internal/provider/   provider registry, model catalogs, discovery
 internal/store/      SQLite session metadata and ADK history integration
 internal/tools/      workspace-aware coding tools
 internal/permission/ session permission types and policy
+internal/studio/     embedded Studio assets and SPA HTTP handler
 cmd/koda/            command-line service entry point
+build/               release-controlled Studio version and asset build script
 ```
 
 Keep generated Proto types at the server boundary. Core packages should use
@@ -145,6 +147,13 @@ READMEs in the same change.
 - Do not add dependencies unless the requested behavior requires them.
 
 ## Verification
+
+Before the first Go build or test in a fresh checkout, and after changing
+`build/studio/version.txt`, generate the ignored Studio assets:
+
+```bash
+./build/studio.sh
+```
 
 After Go edits:
 

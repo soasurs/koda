@@ -28,6 +28,9 @@ type HTTPServerConfig struct {
 	// ShutdownTimeout bounds graceful shutdown. A non-positive value uses the
 	// default timeout.
 	ShutdownTimeout time.Duration
+	// WebHandler optionally serves a same-origin web application for requests
+	// outside the Connect API route.
+	WebHandler http.Handler
 }
 
 // HTTPServer serves Koda's Connect API and coordinates graceful shutdown.
@@ -53,6 +56,9 @@ func NewHTTPServer(handler *Handler, config HTTPServerConfig) (*HTTPServer, erro
 	path, connectHandler := kodav1connect.NewKodaServiceHandler(handler)
 	mux := http.NewServeMux()
 	mux.Handle(path, connectHandler)
+	if config.WebHandler != nil {
+		mux.Handle("/", config.WebHandler)
+	}
 	return &HTTPServer{
 		server: &http.Server{
 			Addr:              address,

@@ -31,3 +31,9 @@ go.work.sum
 # .idea/
 .vscode/
 .qoder/
+
+# Generated Koda Studio frontend assets
+/internal/studio/dist/
+
+# Generated release artifacts
+/dist/

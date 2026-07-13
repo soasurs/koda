@@ -117,6 +117,54 @@ func TestRunStartsAndStopsLocalAPIServer(t *testing.T) {
 	}
 }
 
+func TestRunStartsAndStopsStudio(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	directory := t.TempDir()
+	opened := make(chan string, 1)
+	dependencies := dependencies{
+		openRegistry: func() (*provider.Registry, error) {
+			return provider.Open(filepath.Join(directory, "providers.json"))
+		},
+		openStore: func(ctx context.Context) (*store.Store, error) {
+			return store.Open(ctx, filepath.Join(directory, "koda.db"))
+		},
+		listen: net.Listen,
+		openBrowser: func(url string) error {
+			opened <- url
+			return nil
+		},
+	}
+	done := make(chan error, 1)
+	go func() {
+		done <- runWithDependencies(ctx, []string{"studio", "--addr", "127.0.0.1:0"}, &bytes.Buffer{}, &bytes.Buffer{}, dependencies)
+	}()
+	var baseURL string
+	select {
+	case baseURL = <-opened:
+	case <-time.After(time.Second):
+		t.Fatal("runWithDependencies() did not open Koda Studio")
+	}
+	client := &http.Client{Timeout: time.Second}
+	response, err := client.Get(baseURL + "/sessions/session-1") //nolint:noctx // The client timeout bounds the local test request.
+	if err != nil {
+		t.Fatalf("GET Studio route error = %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("GET Studio route status = %d", response.StatusCode)
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("runWithDependencies() error = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("runWithDependencies() did not stop after cancellation")
+	}
+}
+
 func TestIntegrationServeRestartPreservesSessions(t *testing.T) {
 	directory := t.TempDir()
 	dependencies := dependencies{
@@ -171,17 +219,21 @@ func TestIntegrationServeRestartPreservesSessions(t *testing.T) {
 func TestRunDisplaysRootHelp(t *testing.T) {
 	stdout := new(bytes.Buffer)
 	err := run(t.Context(), nil, stdout, &bytes.Buffer{})
-	if !errors.Is(err, flag.ErrHelp) || !strings.Contains(stdout.String(), "serve   start") {
+	if !errors.Is(err, flag.ErrHelp) || !strings.Contains(stdout.String(), "serve   start") || !strings.Contains(stdout.String(), "studio  start") {
 		t.Fatalf("run() = %v, output = %q", err, stdout.String())
 	}
 }
 
-func TestRunHelpForServeAndUnknownCommand(t *testing.T) {
+func TestRunHelpForCommandsAndUnknownCommand(t *testing.T) {
 	stdout := new(bytes.Buffer)
 	if err := run(t.Context(), []string{"help", "serve"}, stdout, &bytes.Buffer{}); err != nil || !strings.Contains(stdout.String(), "--addr") {
 		t.Fatalf("run(help serve) = %v, output = %q", err, stdout.String())
 	}
-	if err := runWithDependencies(t.Context(), []string{"studio"}, &bytes.Buffer{}, &bytes.Buffer{}, dependencies{}); err == nil {
+	stdout.Reset()
+	if err := run(t.Context(), []string{"help", "studio"}, stdout, &bytes.Buffer{}); err != nil || !strings.Contains(stdout.String(), "open it in a browser") {
+		t.Fatalf("run(help studio) = %v, output = %q", err, stdout.String())
+	}
+	if err := runWithDependencies(t.Context(), []string{"missing"}, &bytes.Buffer{}, &bytes.Buffer{}, dependencies{}); err == nil {
 		t.Fatal("runWithDependencies(unknown command) error = nil")
 	}
 }

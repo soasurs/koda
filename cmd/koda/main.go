@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -18,6 +21,7 @@ import (
 	"github.com/soasurs/koda/internal/provider"
 	kodaserver "github.com/soasurs/koda/internal/server"
 	"github.com/soasurs/koda/internal/store"
+	kodastudio "github.com/soasurs/koda/internal/studio"
 )
 
 const shutdownTimeout = 10 * time.Second
@@ -32,6 +36,7 @@ type dependencies struct {
 	openRegistry func() (*provider.Registry, error)
 	openStore    func(context.Context) (*store.Store, error)
 	listen       func(network, address string) (net.Listener, error)
+	openBrowser  func(string) error
 }
 
 var productionDependencies = dependencies{
@@ -39,6 +44,7 @@ var productionDependencies = dependencies{
 	openRegistry: provider.OpenDefault,
 	openStore:    store.OpenDefault,
 	listen:       net.Listen,
+	openBrowser:  openBrowser,
 }
 
 func main() {
@@ -70,6 +76,8 @@ func runWithDependencies(ctx context.Context, args []string, stdout, stderr io.W
 		return runHelp(args[1:], stdout)
 	case "serve":
 		return runServe(ctx, args[1:], stdout, stderr, dependencies)
+	case "studio":
+		return runStudio(ctx, args[1:], stdout, stderr, dependencies)
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
@@ -80,18 +88,40 @@ func runHelp(args []string, stdout io.Writer) error {
 		printRootUsage(stdout)
 		return nil
 	}
-	if len(args) == 1 && args[0] == "serve" {
-		printServeUsage(stdout)
-		return nil
+	if len(args) == 1 {
+		switch args[0] {
+		case "serve":
+			printServeUsage(stdout)
+			return nil
+		case "studio":
+			printStudioUsage(stdout)
+			return nil
+		}
 	}
 	return fmt.Errorf("unknown command %q", args[0])
 }
 
 func runServe(ctx context.Context, args []string, stdout, stderr io.Writer, dependencies dependencies) error {
-	config, err := parseServeConfig(args, stderr)
+	config, err := parseServerConfig("serve", args, stderr, printServeUsage)
 	if err != nil {
 		return err
 	}
+	return runServer(ctx, config, stdout, stderr, nil, false, dependencies)
+}
+
+func runStudio(ctx context.Context, args []string, stdout, stderr io.Writer, dependencies dependencies) error {
+	config, err := parseServerConfig("studio", args, stderr, printStudioUsage)
+	if err != nil {
+		return err
+	}
+	webHandler, err := kodastudio.NewHandler()
+	if err != nil {
+		return err
+	}
+	return runServer(ctx, config, stdout, stderr, webHandler, true, dependencies)
+}
+
+func runServer(ctx context.Context, config serveConfig, stdout, stderr io.Writer, webHandler http.Handler, launchBrowser bool, dependencies dependencies) error {
 	if dependencies.openRegistry == nil || dependencies.openStore == nil || dependencies.listen == nil {
 		return errors.New("command dependencies must not be nil")
 	}
@@ -129,12 +159,25 @@ func runServe(ctx context.Context, args []string, stdout, stderr io.Writer, depe
 	server, err := kodaserver.NewHTTPServer(handler, kodaserver.HTTPServerConfig{
 		Address:         listener.Addr().String(),
 		ShutdownTimeout: shutdownTimeout,
+		WebHandler:      webHandler,
 	})
 	if err != nil {
 		listener.Close() //nolint:errcheck // Preserve the server construction error.
 		return fmt.Errorf("create HTTP server: %w", err)
 	}
-	fmt.Fprintf(stdout, "koda API listening on http://%s\n", listener.Addr())
+	url := "http://" + listener.Addr().String()
+	if launchBrowser {
+		fmt.Fprintf(stdout, "Koda Studio listening on %s\n", url)
+		if dependencies.openBrowser == nil {
+			listener.Close() //nolint:errcheck // Preserve the dependency error.
+			return errors.New("browser dependency must not be nil")
+		}
+		if err := dependencies.openBrowser(url); err != nil {
+			fmt.Fprintf(stderr, "koda: open browser: %v\n", err)
+		}
+	} else {
+		fmt.Fprintf(stdout, "koda API listening on %s\n", url)
+	}
 	if err := server.Serve(ctx, listener); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}
@@ -142,12 +185,16 @@ func runServe(ctx context.Context, args []string, stdout, stderr io.Writer, depe
 }
 
 func parseServeConfig(args []string, stderr io.Writer) (serveConfig, error) {
+	return parseServerConfig("serve", args, stderr, printServeUsage)
+}
+
+func parseServerConfig(command string, args []string, stderr io.Writer, usage func(io.Writer)) (serveConfig, error) {
 	if err := rejectSingleDashOptions(args); err != nil {
 		return serveConfig{}, err
 	}
-	flags := flag.NewFlagSet("serve", flag.ContinueOnError)
+	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	flags.Usage = func() { printServeUsage(stderr) }
+	flags.Usage = func() { usage(stderr) }
 	value := serveConfig{}
 	flags.StringVar(&value.address, "addr", "", "")
 	if err := flags.Parse(args); err != nil {
@@ -171,6 +218,22 @@ func parseServeConfig(args []string, stderr io.Writer) (serveConfig, error) {
 		}
 	}
 	return value, nil
+}
+
+func openBrowser(url string) error {
+	var command *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		command = exec.Command("open", url)
+	case "windows":
+		command = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
+		command = exec.Command("xdg-open", url)
+	}
+	if err := command.Run(); err != nil {
+		return fmt.Errorf("open browser: %w", err)
+	}
+	return nil
 }
 
 func rejectSingleDashOptions(args []string) error {
@@ -234,7 +297,17 @@ func printRootUsage(output io.Writer) {
 	fmt.Fprintln(output)
 	fmt.Fprintln(output, "Commands:")
 	fmt.Fprintln(output, "  serve   start the local Connect API server")
+	fmt.Fprintln(output, "  studio  start Koda Studio and open it in a browser")
 	fmt.Fprintln(output, "  help    show help for a command")
+}
+
+func printStudioUsage(output io.Writer) {
+	fmt.Fprintln(output, "Usage: koda studio [--addr ADDRESS]")
+	fmt.Fprintln(output)
+	fmt.Fprintln(output, "Start Koda Studio on a loopback address and open it in a browser.")
+	fmt.Fprintln(output, "--addr overrides server.address in ~/.koda/koda.yaml.")
+	fmt.Fprintln(output, "Without either setting, Koda tries localhost:8080 and uses an")
+	fmt.Fprintln(output, "available loopback port if it is occupied.")
 }
 
 func printServeUsage(output io.Writer) {
@@ -242,6 +315,6 @@ func printServeUsage(output io.Writer) {
 	fmt.Fprintln(output)
 	fmt.Fprintln(output, "Start the loopback-only Connect API server without opening a browser.")
 	fmt.Fprintln(output, "--addr overrides server.address in ~/.koda/koda.yaml.")
-	fmt.Fprintln(output, "Without either setting, Koda tries 127.0.0.1:8080 and uses an")
+	fmt.Fprintln(output, "Without either setting, Koda tries localhost:8080 and uses an")
 	fmt.Fprintln(output, "available loopback port if it is occupied.")
 }
