@@ -18,7 +18,7 @@ func (h *Handler) ListDirectories(ctx context.Context, request *v1.ListDirectori
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("list directories request must not be nil"))
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, filesystemError(err)
+		return nil, h.filesystemFailure(ctx, "list directories", err)
 	}
 
 	path := request.GetPath()
@@ -26,10 +26,11 @@ func (h *Handler) ListDirectories(ctx context.Context, request *v1.ListDirectori
 		var err error
 		path, err = os.UserHomeDir()
 		if err != nil {
-			return nil, filesystemError(err)
+			return nil, h.filesystemFailure(ctx, "resolve user home directory", err)
 		}
 		if !filepath.IsAbs(path) {
-			return nil, filesystemError(errors.New("user home directory is not absolute"))
+			err := errors.New("user home directory is not absolute")
+			return nil, h.filesystemFailure(ctx, "resolve user home directory", err)
 		}
 	} else if !filepath.IsAbs(path) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("directory path must be absolute"))
@@ -37,12 +38,12 @@ func (h *Handler) ListDirectories(ctx context.Context, request *v1.ListDirectori
 
 	resolved, err := filepath.EvalSymlinks(path)
 	if err != nil {
-		return nil, filesystemError(err)
+		return nil, h.filesystemFailure(ctx, "resolve directory path", err)
 	}
 	resolved = filepath.Clean(resolved)
 	info, err := os.Stat(resolved)
 	if err != nil {
-		return nil, filesystemError(err)
+		return nil, h.filesystemFailure(ctx, "stat directory", err)
 	}
 	if !info.IsDir() {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("directory path must identify a directory"))
@@ -50,12 +51,12 @@ func (h *Handler) ListDirectories(ctx context.Context, request *v1.ListDirectori
 
 	entries, err := os.ReadDir(resolved)
 	if err != nil {
-		return nil, filesystemError(err)
+		return nil, h.filesystemFailure(ctx, "read directory", err)
 	}
 	directories := make([]*v1.DirectoryEntry, 0, len(entries))
 	for _, entry := range entries {
 		if err := ctx.Err(); err != nil {
-			return nil, filesystemError(err)
+			return nil, h.filesystemFailure(ctx, "list directories", err)
 		}
 		entryPath := filepath.Join(resolved, entry.Name())
 		isDirectory := entry.IsDir()
@@ -65,7 +66,7 @@ func (h *Handler) ListDirectories(ctx context.Context, request *v1.ListDirectori
 				if errors.Is(err, os.ErrNotExist) {
 					continue
 				}
-				return nil, filesystemError(err)
+				return nil, h.filesystemFailure(ctx, "stat directory entry", err)
 			}
 			isDirectory = entryInfo.IsDir()
 		}

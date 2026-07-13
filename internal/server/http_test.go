@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"iter"
@@ -9,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -18,6 +20,7 @@ import (
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
+	"github.com/soasurs/koda/internal/logging"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
 )
@@ -104,7 +107,12 @@ func TestHTTPServerServesConnectRunAndShutsDown(t *testing.T) {
 
 func TestHTTPServerRejectsNonLocalHostAndOrigin(t *testing.T) {
 	handler := newHTTPTestHandler(t)
-	server, err := NewHTTPServer(handler, HTTPServerConfig{})
+	var output bytes.Buffer
+	logger, err := logging.New(&output, "warn")
+	if err != nil {
+		t.Fatalf("logging.New() error = %v", err)
+	}
+	server, err := NewHTTPServer(handler, HTTPServerConfig{Logger: logger})
 	if err != nil {
 		t.Fatalf("NewHTTPServer() error = %v", err)
 	}
@@ -131,6 +139,10 @@ func TestHTTPServerRejectsNonLocalHostAndOrigin(t *testing.T) {
 				t.Fatalf("status = %d, want %d", response.status, test.want)
 			}
 		})
+	}
+	got := output.String()
+	if !strings.Contains(got, "msg=\"rejected non-local HTTP request\"") || !strings.Contains(got, "origin_host=attacker.example") {
+		t.Fatalf("security log output = %q", got)
 	}
 }
 
@@ -262,7 +274,7 @@ func newHTTPTestHandler(t *testing.T) *Handler {
 	if err != nil {
 		t.Fatalf("provider.NewCatalog() error = %v", err)
 	}
-	handler, err := NewHandler(registry, catalog, openTestStore(t))
+	handler, err := NewHandler(registry, catalog, openTestStore(t), nil)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}

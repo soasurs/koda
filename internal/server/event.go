@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/soasurs/adk/model"
@@ -10,6 +12,7 @@ import (
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/agent"
+	"github.com/soasurs/koda/internal/logging"
 	"github.com/soasurs/koda/internal/store"
 )
 
@@ -36,15 +39,25 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	if err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	requestID, err := newInteractionID()
+	if err != nil {
+		return h.internalFailure(ctx, "generate run request ID", errors.New("generate run request ID"), err)
+	}
+	ctx = logging.WithRequestID(ctx, requestID)
+	startedAt := time.Now()
+	h.log(ctx, slog.LevelInfo, "run started",
+		slog.String("session_id", id),
+		slog.String("mode", mode.String()),
+	)
 	lockedCtx, unlock, err := h.store.LockRunContext(ctx, id)
 	if err != nil {
-		return sessionError(err)
+		return h.sessionFailure(ctx, "lock run", err, slog.String("session_id", id))
 	}
 	defer unlock()
 
 	session, err := h.store.GetSession(lockedCtx, id)
 	if err != nil {
-		return sessionError(err)
+		return h.sessionFailure(lockedCtx, "load run session", err, slog.String("session_id", id))
 	}
 	var runner TurnRunner
 	if h.turnRunnerFactory != nil {
@@ -54,19 +67,24 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	}
 	if h.turnRunnerFactory == nil {
 		if err != nil {
-			return sessionError(err)
+			return h.sessionFailure(lockedCtx, "ensure ADK session", err, slog.String("session_id", id))
 		}
 		runtimeRunner, factoryErr := h.agentFactory.Runner(lockedCtx, session, agentModeToRuntime(mode))
 		if factoryErr != nil {
-			return runtimeError(factoryErr)
+			return h.runtimeFailure(lockedCtx, "construct runner", factoryErr,
+				slog.String("session_id", id),
+				slog.String("provider_id", session.ProviderID),
+				slog.String("model_id", session.ModelID),
+			)
 		}
 		runner = runtimeRunner
 	}
 	if err != nil {
-		return runtimeError(err)
+		return h.runtimeFailure(lockedCtx, "construct injected runner", err, slog.String("session_id", id))
 	}
 	if runner == nil {
-		return connect.NewError(connect.CodeInternal, errors.New("agent runtime returned nil runner"))
+		err := errors.New("agent runtime returned nil runner")
+		return h.internalFailure(lockedCtx, "construct runner", err, err, slog.String("session_id", id))
 	}
 	runCtx, cancel := context.WithCancel(lockedCtx)
 	defer cancel()
@@ -79,17 +97,23 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	})
 	titleResult := h.startTitleGeneration(runCtx, session, input)
 	var (
-		turnID   string
-		terminal bool
-		runErr   error
+		turnID           string
+		terminal         bool
+		runErr           error
+		eventCount       int
+		toolCallCount    int
+		promptTokens     int64
+		completionTokens int64
+		totalTokens      int64
 	)
 	for event, err := range runner.Run(runCtx, id, input) {
 		if err != nil {
-			runErr = runtimeError(err)
+			runErr = h.runtimeFailure(runCtx, "execute run", err, slog.String("session_id", id))
 			break
 		}
 		if event == nil {
-			runErr = connect.NewError(connect.CodeInternal, errors.New("agent runtime yielded nil event"))
+			err := errors.New("agent runtime yielded nil event")
+			runErr = h.internalFailure(runCtx, "receive agent event", err, err, slog.String("session_id", id))
 			break
 		}
 		if event.TurnID != "" {
@@ -97,13 +121,28 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		}
 		converted, err := eventToProto(*event)
 		if err != nil {
-			runErr = connect.NewError(connect.CodeInternal, errors.New("convert agent event"))
+			runErr = h.internalFailure(runCtx, "convert agent event", errors.New("convert agent event"), err,
+				slog.String("session_id", id),
+				slog.String("turn_id", turnID),
+			)
 			break
+		}
+		if !event.Partial {
+			eventCount++
+			toolCallCount += len(event.Content.ToolCalls)
+			if event.Usage != nil {
+				promptTokens += event.Usage.PromptTokens
+				completionTokens += event.Usage.CompletionTokens
+				totalTokens += event.Usage.TotalTokens
+			}
 		}
 		resp := new(v1.RunResponse)
 		resp.SetEvent(converted)
 		if err := publisher.Publish(resp); err != nil {
-			runErr = runtimeError(err)
+			runErr = h.runtimeFailure(runCtx, "publish run event", err,
+				slog.String("session_id", id),
+				slog.String("turn_id", turnID),
+			)
 			break
 		}
 		terminal = terminalEvent(*event)
@@ -114,6 +153,10 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	if !terminal {
 		titleResult.cancel()
 		runErr = connect.NewError(connect.CodeInternal, errors.New("agent runtime ended without a terminal assistant event"))
+		h.log(runCtx, slog.LevelError, "run ended without terminal event",
+			slog.String("session_id", id),
+			slog.String("turn_id", turnID),
+		)
 		if turnID != "" {
 			return h.rollbackCommittedTurn(runCtx, session, turnID, runErr)
 		}
@@ -121,12 +164,23 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	}
 	if turnID == "" {
 		titleResult.cancel()
-		return connect.NewError(connect.CodeInternal, errors.New("agent runtime ended without a turn ID"))
+		err := errors.New("agent runtime ended without a turn ID")
+		return h.internalFailure(runCtx, "complete run", err, err, slog.String("session_id", id))
 	}
-	title := titleResult.wait()
+	title, titleErr := titleResult.wait()
+	if titleErr != nil && !errors.Is(titleErr, context.Canceled) {
+		h.log(runCtx, slog.LevelWarn, "session title generation failed",
+			slog.String("session_id", id),
+			slog.Any("error", titleErr),
+		)
+	}
 	committedSession, err := h.commitRunMetadata(runCtx, session, title)
 	if err != nil {
-		return h.rollbackCommittedTurn(runCtx, session, turnID, sessionError(err))
+		mapped := h.sessionFailure(runCtx, "commit run metadata", err,
+			slog.String("session_id", id),
+			slog.String("turn_id", turnID),
+		)
+		return h.rollbackCommittedTurn(runCtx, session, turnID, mapped)
 	}
 	completed := v1.RunResponse{}
 	completed.SetCompleted(v1.RunCompleted_builder{
@@ -134,22 +188,57 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		Session: sessionToProto(committedSession),
 	}.Build())
 	if err := publisher.Publish(&completed); err != nil {
-		return h.rollbackCommittedTurn(runCtx, session, turnID, runtimeError(err))
+		mapped := h.runtimeFailure(runCtx, "publish run completion", err,
+			slog.String("session_id", id),
+			slog.String("turn_id", turnID),
+		)
+		return h.rollbackCommittedTurn(runCtx, session, turnID, mapped)
 	}
+	h.log(runCtx, slog.LevelInfo, "run completed",
+		slog.String("session_id", id),
+		slog.String("turn_id", turnID),
+		slog.String("provider_id", session.ProviderID),
+		slog.String("model_id", session.ModelID),
+		slog.String("mode", mode.String()),
+		slog.Int("event_count", eventCount),
+		slog.Int("tool_call_count", toolCallCount),
+		slog.Int64("prompt_tokens", promptTokens),
+		slog.Int64("completion_tokens", completionTokens),
+		slog.Int64("total_tokens", totalTokens),
+		slog.Duration("duration", time.Since(startedAt)),
+	)
 	return nil
 }
 
 func (h *Handler) rollbackCommittedTurn(ctx context.Context, session store.Session, turnID string, runErr error) error {
+	h.log(ctx, slog.LevelWarn, "rolling back unacknowledged turn",
+		slog.String("session_id", session.ID),
+		slog.String("turn_id", turnID),
+		slog.String("code", connect.CodeOf(runErr).String()),
+	)
 	cleanupCtx := context.WithoutCancel(ctx)
 	if err := h.store.RollbackTurn(cleanupCtx, session.ID, turnID, session); err != nil {
-		return connect.NewError(connect.CodeInternal, errors.Join(errors.New("rollback unacknowledged turn"), runErr, err))
+		joined := errors.Join(errors.New("rollback unacknowledged turn"), runErr, err)
+		return h.internalFailure(cleanupCtx, "rollback unacknowledged turn", errors.New("rollback unacknowledged turn"), joined,
+			slog.String("session_id", session.ID),
+			slog.String("turn_id", turnID),
+		)
 	}
+	h.log(cleanupCtx, slog.LevelWarn, "unacknowledged turn rolled back",
+		slog.String("session_id", session.ID),
+		slog.String("turn_id", turnID),
+	)
 	return runErr
 }
 
 type generatedTitle struct {
-	result <-chan string
+	result <-chan titleGenerationResult
 	cancel context.CancelFunc
+}
+
+type titleGenerationResult struct {
+	title string
+	err   error
 }
 
 func (h *Handler) startTitleGeneration(ctx context.Context, session store.Session, input model.Content) generatedTitle {
@@ -157,23 +246,21 @@ func (h *Handler) startTitleGeneration(ctx context.Context, session store.Sessio
 		return generatedTitle{cancel: func() {}}
 	}
 	titleCtx, cancel := context.WithCancel(ctx)
-	result := make(chan string, 1)
+	result := make(chan titleGenerationResult, 1)
 	go func() {
 		title, err := h.titleGenerator(titleCtx, session, input)
-		if err != nil {
-			title = ""
-		}
-		result <- title
+		result <- titleGenerationResult{title: title, err: err}
 	}()
 	return generatedTitle{result: result, cancel: cancel}
 }
 
-func (r generatedTitle) wait() string {
+func (r generatedTitle) wait() (string, error) {
 	defer r.cancel()
 	if r.result == nil {
-		return ""
+		return "", nil
 	}
-	return <-r.result
+	result := <-r.result
+	return result.title, result.err
 }
 
 func (h *Handler) commitRunMetadata(ctx context.Context, previous store.Session, title string) (store.Session, error) {
@@ -218,11 +305,13 @@ func (h *Handler) ListEvents(ctx context.Context, request *v1.ListEventsRequest)
 		Offset: request.GetOffset(),
 	})
 	if err != nil {
-		return nil, sessionError(err)
+		return nil, h.sessionFailure(ctx, "list events", err, slog.String("session_id", id))
 	}
 	converted, err := eventsToProto(events)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("convert stored events"))
+		return nil, h.internalFailure(ctx, "convert stored events", errors.New("convert stored events"), err,
+			slog.String("session_id", id),
+		)
 	}
 	return v1.ListEventsResponse_builder{
 		Events: converted,
@@ -242,18 +331,27 @@ func (h *Handler) UndoLastMessage(ctx context.Context, request *v1.UndoLastMessa
 	}
 	result, err := h.store.UndoLastMessage(ctx, id)
 	if err != nil {
-		return nil, sessionError(err)
+		return nil, h.sessionFailure(ctx, "undo last message", err, slog.String("session_id", id))
 	}
 	response := new(v1.UndoLastMessageResponse)
 	response.SetTurnId(result.TurnID)
 	response.SetDeletedEventCount(result.DeletedEventCount)
 	if result.TurnID == "" {
+		h.log(ctx, slog.LevelDebug, "session undo found no active turn", slog.String("session_id", id))
 		return response, nil
 	}
 	input, err := inputToProto(result.Input)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.New("convert removed user input"))
+		return nil, h.internalFailure(ctx, "convert removed user input", errors.New("convert removed user input"), err,
+			slog.String("session_id", id),
+			slog.String("turn_id", result.TurnID),
+		)
 	}
 	response.SetInput(input)
+	h.log(ctx, slog.LevelInfo, "session turn undone",
+		slog.String("session_id", id),
+		slog.String("turn_id", result.TurnID),
+		slog.Int64("deleted_event_count", result.DeletedEventCount),
+	)
 	return response, nil
 }

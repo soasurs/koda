@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"connectrpc.com/connect"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
+	"github.com/soasurs/koda/internal/logging"
 )
 
 const (
@@ -31,12 +34,15 @@ type HTTPServerConfig struct {
 	// WebHandler optionally serves a same-origin web application for requests
 	// outside the Connect API route.
 	WebHandler http.Handler
+	// Logger receives HTTP lifecycle and security diagnostics.
+	Logger *slog.Logger
 }
 
 // HTTPServer serves Koda's Connect API and coordinates graceful shutdown.
 type HTTPServer struct {
 	server          *http.Server
 	shutdownTimeout time.Duration
+	logger          *slog.Logger
 }
 
 // NewHTTPServer constructs an HTTPServer for handler. It does not open a
@@ -53,7 +59,10 @@ func NewHTTPServer(handler *Handler, config HTTPServerConfig) (*HTTPServer, erro
 	if shutdownTimeout <= 0 {
 		shutdownTimeout = defaultShutdownTimeout
 	}
-	path, connectHandler := kodav1connect.NewKodaServiceHandler(handler)
+	logger := logging.OrDiscard(config.Logger)
+	path, connectHandler := kodav1connect.NewKodaServiceHandler(handler,
+		connect.WithInterceptors(rpcLoggingInterceptor{logger: logger}),
+	)
 	mux := http.NewServeMux()
 	mux.Handle(path, connectHandler)
 	if config.WebHandler != nil {
@@ -62,22 +71,70 @@ func NewHTTPServer(handler *Handler, config HTTPServerConfig) (*HTTPServer, erro
 	return &HTTPServer{
 		server: &http.Server{
 			Addr:              address,
-			Handler:           localRequestOnly(mux),
+			Handler:           localRequestOnly(logger, mux),
 			ReadHeaderTimeout: 10 * time.Second,
 			IdleTimeout:       2 * time.Minute,
 		},
 		shutdownTimeout: shutdownTimeout,
+		logger:          logger,
 	}, nil
 }
 
-func localRequestOnly(next http.Handler) http.Handler {
+type rpcLoggingInterceptor struct {
+	logger *slog.Logger
+}
+
+func (i rpcLoggingInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
+		startedAt := time.Now()
+		response, err := next(ctx, request)
+		i.logger.DebugContext(ctx, "rpc completed",
+			"procedure", request.Spec().Procedure,
+			"code", connect.CodeOf(err).String(),
+			"duration", time.Since(startedAt),
+		)
+		return response, err
+	}
+}
+
+func (i rpcLoggingInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return next
+}
+
+func (i rpcLoggingInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return func(ctx context.Context, connection connect.StreamingHandlerConn) error {
+		startedAt := time.Now()
+		err := next(ctx, connection)
+		i.logger.DebugContext(ctx, "rpc completed",
+			"procedure", connection.Spec().Procedure,
+			"code", connect.CodeOf(err).String(),
+			"duration", time.Since(startedAt),
+		)
+		return err
+	}
+}
+
+func localRequestOnly(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if !isLoopbackHTTPHost(request.Host) || !isLocalOrigin(request.Header.Get("Origin")) {
+			logger.WarnContext(request.Context(), "rejected non-local HTTP request",
+				"host", request.Host,
+				"origin_host", originHost(request.Header.Get("Origin")),
+				"remote_address", request.RemoteAddr,
+			)
 			http.Error(response, "forbidden", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(response, request)
 	})
+}
+
+func originHost(origin string) string {
+	parsed, err := url.Parse(origin)
+	if err != nil {
+		return "invalid"
+	}
+	return parsed.Host
 }
 
 func isLocalOrigin(origin string) bool {
@@ -142,16 +199,22 @@ func (s *HTTPServer) Serve(ctx context.Context, listener net.Listener) error {
 		if errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
+		s.logger.ErrorContext(ctx, "HTTP server stopped unexpectedly", "error", err)
 		return err
 	case <-ctx.Done():
+		startedAt := time.Now()
+		s.logger.InfoContext(ctx, "HTTP server shutting down")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
 		defer cancel()
 		if err := s.server.Shutdown(shutdownCtx); err != nil {
+			s.logger.ErrorContext(ctx, "HTTP server graceful shutdown failed", "error", err)
 			return fmt.Errorf("server: graceful shutdown: %w", err)
 		}
 		if err := <-errs; err != nil && !errors.Is(err, http.ErrServerClosed) {
+			s.logger.ErrorContext(ctx, "HTTP server failed after shutdown", "error", err)
 			return fmt.Errorf("server: serve after shutdown: %w", err)
 		}
+		s.logger.InfoContext(ctx, "HTTP server shut down", "duration", time.Since(startedAt))
 		return ctx.Err()
 	}
 }

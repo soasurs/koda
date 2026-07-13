@@ -49,17 +49,24 @@ go run ./cmd/koda serve --addr 127.0.0.1:8787
 
 The server accepts loopback addresses only and never opens a browser. Koda also
 reads process-level settings from `~/.koda/koda.yaml`; command-line options take
-precedence over the file. The file is optional, and its first version contains
-only the server address:
+precedence over the file. The file is optional and can configure the server
+address and diagnostic log level:
 
 ```yaml
 version: 1
 server:
   address: 127.0.0.1:8080
+log:
+  level: info
 ```
 
 `--addr` overrides `server.address`. When neither is set, Koda tries the default
-address and falls back to an available loopback port if it is occupied.
+address and falls back to an available loopback port if it is occupied. Log
+levels are `debug`, `info`, `warn`, and `error`; the default is `info`. Logs at
+every level are diagnostic output written to stderr, while the listening URL
+remains on stdout. Debug logging includes safe ADK runtime metadata such as
+operation durations and tool names, but not prompts, tool arguments, command
+output, file contents, or credentials.
 
 ## Providers and local data
 

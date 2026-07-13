@@ -84,6 +84,7 @@ func (s service) runShell(ctx context.Context, input runShellInput) (runShellOut
 		return runShellOutput{}, ctx.Err()
 	}
 	if commandCtx.Err() != nil {
+		s.logger.WarnContext(ctx, "shell command timed out", "timeout", timeout)
 		return runShellOutput{}, handled(fmt.Errorf("shell command timed out after %s", timeout))
 	}
 	exitCode := 0

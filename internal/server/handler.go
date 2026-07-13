@@ -4,10 +4,12 @@ package server
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/soasurs/adk/model"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
 	"github.com/soasurs/koda/internal/agent"
+	"github.com/soasurs/koda/internal/logging"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
 )
@@ -22,6 +24,7 @@ type Handler struct {
 	approvals    *ApprovalBroker
 	questions    *QuestionBroker
 	agentFactory *agent.Factory
+	logger       *slog.Logger
 
 	newSessionID      func() (string, error)
 	turnRunnerFactory turnRunnerFactory
@@ -29,7 +32,7 @@ type Handler struct {
 }
 
 // NewHandler constructs a Handler backed by registry, catalog, and store.
-func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionStore *store.Store) (*Handler, error) {
+func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionStore *store.Store, logger *slog.Logger) (*Handler, error) {
 	if registry == nil {
 		return nil, fmt.Errorf("server: provider registry must not be nil")
 	}
@@ -42,10 +45,12 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 	if sessionStore == nil {
 		return nil, fmt.Errorf("server: session store must not be nil")
 	}
+	logger = logging.OrDiscard(logger)
 	agentFactory, err := agent.New(agent.Config{
 		Registry: registry,
 		Catalog:  catalog,
 		Sessions: sessionStore.ADKSessionService(),
+		Logger:   logger,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("server: construct agent factory: %w", err)
@@ -57,6 +62,7 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 		approvals:      NewApprovalBroker(),
 		questions:      NewQuestionBroker(),
 		agentFactory:   agentFactory,
+		logger:         logger,
 		newSessionID:   newSessionID,
 		titleGenerator: agentFactory.GenerateTitle,
 	}, nil

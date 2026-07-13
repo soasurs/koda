@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/soasurs/adk/tool"
 
+	"github.com/soasurs/koda/internal/logging"
 	"github.com/soasurs/koda/internal/permission"
 )
 
@@ -50,6 +52,9 @@ type Config struct {
 	// CommandTimeout limits rg, git, and shell executions. Zero uses a safe
 	// default.
 	CommandTimeout time.Duration
+	// Logger receives tool execution diagnostics. Tool inputs and outputs are
+	// never logged.
+	Logger *slog.Logger
 }
 
 // Authorizer confirms an operation that is not covered by the session's
@@ -130,6 +135,7 @@ type service struct {
 	authorizer     Authorizer
 	questioner     Questioner
 	commandTimeout time.Duration
+	logger         *slog.Logger
 }
 
 func newService(config Config) (service, error) {
@@ -167,6 +173,7 @@ func newService(config Config) (service, error) {
 		authorizer:     config.Authorizer,
 		questioner:     config.Questioner,
 		commandTimeout: config.CommandTimeout,
+		logger:         logging.OrDiscard(config.Logger),
 	}, nil
 }
 

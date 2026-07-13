@@ -8,14 +8,14 @@ import (
 
 func TestLoad(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "koda.yaml")
-	if err := os.WriteFile(path, []byte("version: 1\nserver:\n  address: ' 127.0.0.1:8787 '\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("version: 1\nserver:\n  address: ' 127.0.0.1:8787 '\nlog:\n  level: ' WARN '\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got, err := Load(path)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if got.Version != 1 || got.Server.Address != "127.0.0.1:8787" {
+	if got.Version != 1 || got.Server.Address != "127.0.0.1:8787" || got.Log.Level != "warn" {
 		t.Fatalf("Load() = %+v", got)
 	}
 }
@@ -35,6 +35,7 @@ func TestLoadRejectsInvalidConfiguration(t *testing.T) {
 		{name: "missing version", content: "server: {}\n"},
 		{name: "unsupported version", content: "version: 2\n"},
 		{name: "unknown field", content: "version: 1\nunknown: true\n"},
+		{name: "invalid log level", content: "version: 1\nlog:\n  level: verbose\n"},
 		{name: "multiple documents", content: "version: 1\n---\nversion: 1\n"},
 	}
 	for _, test := range tests {

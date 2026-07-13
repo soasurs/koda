@@ -1,8 +1,10 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"iter"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -11,6 +13,7 @@ import (
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/agent"
+	"github.com/soasurs/koda/internal/logging"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
 )
@@ -21,6 +24,7 @@ type fakeTurnRunner struct {
 	gotEnvironment   agent.RunEnvironment
 	gotEnvironmentOK bool
 	events           []model.Event
+	err              error
 }
 
 func (r *fakeTurnRunner) Run(ctx context.Context, sessionID string, input model.Content) iter.Seq2[*model.Event, error] {
@@ -33,6 +37,58 @@ func (r *fakeTurnRunner) Run(ctx context.Context, sessionID string, input model.
 			if !yield(&event, nil) {
 				return
 			}
+		}
+		if r.err != nil {
+			yield(nil, r.err)
+		}
+	}
+}
+
+func TestRunLogsLifecycleWithoutMessageContent(t *testing.T) {
+	client, _, handler := newTestService(t, staticDiscoverer{})
+	var output bytes.Buffer
+	logger, err := logging.New(&output, "info")
+	if err != nil {
+		t.Fatalf("logging.New() error = %v", err)
+	}
+	handler.logger = logger
+	handler.newSessionID = func() (string, error) { return "session-1", nil }
+	handler.titleGenerator = nil
+	handler.turnRunnerFactory = func(_ context.Context, session store.Session, _ v1.AgentMode) (TurnRunner, error) {
+		return &fakeTurnRunner{events: []model.Event{{
+			ID: 7, SessionID: session.ID, TurnID: "turn-1", Author: "assistant",
+			Content:      model.Content{Role: model.RoleAssistant, Content: "private assistant content"},
+			FinishReason: model.FinishReasonStop,
+		}}}, nil
+	}
+	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+	}.Build())
+	if err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+	stream, err := client.Run(t.Context(), v1.RunRequest_builder{
+		SessionId: proto.String(created.GetSession().GetId()),
+		Mode:      v1.AgentMode_AGENT_MODE_PLAN.Enum(),
+		Input:     v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: proto.String("private user content")}.Build()}}.Build(),
+	}.Build())
+	if err == nil {
+		for stream.Receive() {
+		}
+		err = stream.Err()
+	}
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	got := output.String()
+	for _, want := range []string{"msg=\"session created\"", "msg=\"run started\"", "msg=\"run completed\"", "session_id=session-1", "turn_id=turn-1"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("logger output %q does not contain %q", got, want)
+		}
+	}
+	for _, secret := range []string{"private user content", "private assistant content"} {
+		if strings.Contains(got, secret) {
+			t.Fatalf("logger output contains message content %q: %q", secret, got)
 		}
 	}
 }
