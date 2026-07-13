@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/soasurs/adk/model"
+	adkskill "github.com/soasurs/adk/skill"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
 	"github.com/soasurs/koda/internal/agent"
 	"github.com/soasurs/koda/internal/logging"
@@ -24,6 +25,7 @@ type Handler struct {
 	approvals    *ApprovalBroker
 	questions    *QuestionBroker
 	agentFactory *agent.Factory
+	skills       *adkskill.Catalog
 	logger       *slog.Logger
 
 	newSessionID      func() (string, error)
@@ -31,8 +33,9 @@ type Handler struct {
 	titleGenerator    func(context.Context, store.Session, model.Content) (string, error)
 }
 
-// NewHandler constructs a Handler backed by registry, catalog, and store.
-func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionStore *store.Store, logger *slog.Logger) (*Handler, error) {
+// NewHandler constructs a Handler backed by provider and skill catalogs and a
+// session store.
+func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionStore *store.Store, skillCatalog *adkskill.Catalog, logger *slog.Logger) (*Handler, error) {
 	if registry == nil {
 		return nil, fmt.Errorf("server: provider registry must not be nil")
 	}
@@ -51,6 +54,7 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 		Catalog:  catalog,
 		Sessions: sessionStore.ADKSessionService(),
 		Logger:   logger,
+		Skills:   skillCatalog,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("server: construct agent factory: %w", err)
@@ -62,6 +66,7 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 		approvals:      NewApprovalBroker(),
 		questions:      NewQuestionBroker(),
 		agentFactory:   agentFactory,
+		skills:         skillCatalog,
 		logger:         logger,
 		newSessionID:   newSessionID,
 		titleGenerator: agentFactory.GenerateTitle,

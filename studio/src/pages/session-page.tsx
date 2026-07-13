@@ -19,6 +19,10 @@ import { groupEventsByTurn } from '@/lib/session-turns'
 
 export function SessionPage() {
   const { sessionId } = useParams({ from: '/sessions/$sessionId' })
+  return <SessionContent key={sessionId} sessionId={sessionId} />
+}
+
+function SessionContent({ sessionId }: { sessionId: string }) {
   const sessionQuery = useQuery({
     queryKey: kodaKeys.session(sessionId),
     queryFn: async () => (await kodaClient.getSession({ sessionId })).session,
@@ -37,16 +41,16 @@ export function SessionPage() {
       sessionRun.events,
       sessionRun.partialReasoning,
       sessionRun.partialText,
-      sessionRun.approval,
-      sessionRun.questionPrompt,
+      sessionRun.approvals,
+      sessionRun.questionPrompts,
     ],
     [
       eventsQuery.data,
       sessionRun.events,
       sessionRun.partialReasoning,
       sessionRun.partialText,
-      sessionRun.approval,
-      sessionRun.questionPrompt,
+      sessionRun.approvals,
+      sessionRun.questionPrompts,
     ],
   )
   const { containerRef, onScroll } = useFollowLatest<HTMLElement>(
@@ -130,18 +134,20 @@ export function SessionPage() {
             </div>
           )}
 
-          {sessionRun.approval && (
+          {sessionRun.approvals.map((approval) => (
             <ApprovalCard
-              approval={sessionRun.approval}
-              onResolved={sessionRun.clearApproval}
+              approval={approval}
+              key={approval.id}
+              onResolved={() => sessionRun.clearApproval(approval.id)}
             />
-          )}
-          {sessionRun.questionPrompt && (
+          ))}
+          {sessionRun.questionPrompts.map((prompt) => (
             <QuestionCard
-              onResolved={sessionRun.clearQuestionPrompt}
-              prompt={sessionRun.questionPrompt}
+              key={prompt.id}
+              onResolved={() => sessionRun.clearQuestionPrompt(prompt.id)}
+              prompt={prompt}
             />
-          )}
+          ))}
         </div>
       </main>
 

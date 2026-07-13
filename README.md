@@ -90,6 +90,7 @@ Koda keeps its state under `~/.koda`:
 ~/.koda/koda.yaml       optional process-level configuration
 ~/.koda/providers.json   provider definitions and credentials
 ~/.koda/koda.db          sessions and ADK conversation history
+~/.koda/skills/          Agent Skills loaded when Koda starts
 ```
 
 Provider definitions remain separate because Koda updates them through its API,
@@ -99,6 +100,17 @@ database. The provider file is private to the current user. Model listing is
 local-only; network discovery occurs only when a client explicitly calls
 `RefreshModels`. Changing a provider connection invalidates its previously
 discovered snapshot.
+
+Each direct child of `~/.koda/skills` may contain one Agent Skill whose
+`SKILL.md` name matches the directory name. Koda loads the catalog once at
+process startup, exposes matching skills through `load_skill`, and lets agents
+read listed UTF-8 resources through `read_skill_resource`. Restart Koda after
+adding, removing, or changing a skill. A missing skills directory is treated as
+an empty catalog. Invalid skills are logged and skipped without blocking
+startup; if the skills directory itself cannot be loaded, Koda logs the error
+and continues with an empty catalog. Clients can inspect the fixed startup
+snapshot through `ListSkills` and `GetSkill`; Studio exposes the same list and
+complete definitions under Settings > Skills.
 
 ## Directory browsing
 

@@ -72,6 +72,10 @@ func TestHTTPServerServesConnectRunAndShutsDown(t *testing.T) {
 	if err != nil || len(providers.GetProviders()) != 5 {
 		t.Fatalf("ListProviders() = %+v, %v", providers, err)
 	}
+	skills, err := client.ListSkills(t.Context(), v1.ListSkillsRequest_builder{}.Build())
+	if err != nil || len(skills.GetSkills()) != 0 {
+		t.Fatalf("ListSkills() = %+v, %v", skills, err)
+	}
 	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
 		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
 	}.Build())
@@ -274,7 +278,7 @@ func newHTTPTestHandler(t *testing.T) *Handler {
 	if err != nil {
 		t.Fatalf("provider.NewCatalog() error = %v", err)
 	}
-	handler, err := NewHandler(registry, catalog, openTestStore(t), nil)
+	handler, err := NewHandler(registry, catalog, openTestStore(t), nil, nil)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}

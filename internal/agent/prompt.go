@@ -125,7 +125,7 @@ func normalizeWorkdir(workdir string) (string, error) {
 	return filepath.Clean(resolved), nil
 }
 
-func instructionConfiguration(mode Mode, workdir string) (string, llmagent.InstructionProvider, [sha256.Size]byte, error) {
+func instructionConfiguration(mode Mode, workdir, skillInstruction string) (string, llmagent.InstructionProvider, [sha256.Size]byte, error) {
 	static, err := staticInstruction(mode)
 	if err != nil {
 		return "", nil, [sha256.Size]byte{}, err
@@ -134,7 +134,7 @@ func instructionConfiguration(mode Mode, workdir string) (string, llmagent.Instr
 	if err != nil {
 		return "", nil, [sha256.Size]byte{}, err
 	}
-	hash := sha256.Sum256([]byte(static + "\x00" + workspace))
+	hash := sha256.Sum256([]byte(static + "\x00" + workspace + "\x00" + skillInstruction))
 	provider := func(ctx context.Context, _ llmagent.InstructionInput) (string, error) {
 		environment, ok := RunEnvironmentFromContext(ctx)
 		if !ok {
@@ -146,6 +146,9 @@ func instructionConfiguration(mode Mode, workdir string) (string, llmagent.Instr
 		}
 		if workspace != "" {
 			runtime += "\n\n# Workspace instructions\n\n" + workspace
+		}
+		if skillInstruction != "" {
+			runtime += "\n\n# Available skills\n\n" + skillInstruction
 		}
 		return runtime, nil
 	}

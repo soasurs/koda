@@ -31,10 +31,8 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
   const [liveEvents, setLiveEvents] = useState<Event[]>([])
   const [partialReasoning, setPartialReasoning] = useState('')
   const [partialText, setPartialText] = useState('')
-  const [approval, setApproval] = useState<ToolApproval | null>(null)
-  const [questionPrompt, setQuestionPrompt] = useState<QuestionPrompt | null>(
-    null,
-  )
+  const [approvals, setApprovals] = useState<ToolApproval[]>([])
+  const [questionPrompts, setQuestionPrompts] = useState<QuestionPrompt[]>([])
 
   useEffect(
     () => () => {
@@ -119,12 +117,16 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
             }
             break
           }
-          case 'approval':
-            setApproval(frame.payload.value)
+          case 'approval': {
+            const approval = frame.payload.value
+            setApprovals((current) => [...current, approval])
             break
-          case 'questionPrompt':
-            setQuestionPrompt(frame.payload.value)
+          }
+          case 'questionPrompt': {
+            const prompt = frame.payload.value
+            setQuestionPrompts((current) => [...current, prompt])
             break
+          }
           case 'completed': {
             const completedSession = frame.payload.value.session
             if (completedSession) {
@@ -159,8 +161,8 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
       }
     } finally {
       setIsRunning(false)
-      setApproval(null)
-      setQuestionPrompt(null)
+      setApprovals([])
+      setQuestionPrompts([])
       abortRef.current = null
     }
   }
@@ -221,9 +223,15 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
   )
 
   return {
-    approval,
-    clearApproval: () => setApproval(null),
-    clearQuestionPrompt: () => setQuestionPrompt(null),
+    approvals,
+    clearApproval: (approvalId: string) =>
+      setApprovals((current) =>
+        current.filter((approval) => approval.id !== approvalId),
+      ),
+    clearQuestionPrompt: (promptId: string) =>
+      setQuestionPrompts((current) =>
+        current.filter((prompt) => prompt.id !== promptId),
+      ),
     editLastTurn,
     events,
     inputRef,
@@ -232,7 +240,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     mode,
     partialReasoning,
     partialText,
-    questionPrompt,
+    questionPrompts,
     restoredInput: composerInput.value,
     rewindLastTurn,
     rewindingTurnId,

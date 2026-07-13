@@ -10,10 +10,13 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/fstest"
 
 	"github.com/soasurs/adk/model"
 	adksession "github.com/soasurs/adk/session"
 	"github.com/soasurs/adk/session/memory"
+	adkskill "github.com/soasurs/adk/skill"
+	"github.com/soasurs/adk/tool"
 
 	"github.com/soasurs/koda/internal/permission"
 	"github.com/soasurs/koda/internal/provider"
@@ -169,16 +172,36 @@ func TestLoadWorkspaceInstructionsOrdersParentBeforeChild(t *testing.T) {
 
 func TestToolsForMode(t *testing.T) {
 	config := toolsConfig(t.TempDir())
-	plan, err := toolsForMode(ModePlan, config)
+	catalog, err := adkskill.Discover(fstest.MapFS{
+		"review-go/SKILL.md": {Data: []byte("---\nname: review-go\ndescription: Review Go code.\n---\n\nReview carefully.\n")},
+	}, ".")
+	if err != nil {
+		t.Fatalf("skill.Discover() error = %v", err)
+	}
+	loadSkill, err := adkskill.NewLoadTool(catalog)
+	if err != nil {
+		t.Fatalf("skill.NewLoadTool() error = %v", err)
+	}
+	readResource, err := adkskill.NewReadResourceTool(catalog)
+	if err != nil {
+		t.Fatalf("skill.NewReadResourceTool() error = %v", err)
+	}
+	additional := []tool.Tool{loadSkill, readResource}
+	plan, err := toolsForMode(ModePlan, config, additional)
 	if err != nil {
 		t.Fatalf("toolsForMode(plan) error = %v", err)
 	}
-	build, err := toolsForMode(ModeBuild, config)
+	build, err := toolsForMode(ModeBuild, config, additional)
 	if err != nil {
 		t.Fatalf("toolsForMode(build) error = %v", err)
 	}
-	if len(plan) != 6 || len(build) != 9 {
-		t.Fatalf("tool counts = %d, %d; want 6, 9", len(plan), len(build))
+	if len(plan) != 8 || len(build) != 11 {
+		t.Fatalf("tool counts = %d, %d; want 8, 11", len(plan), len(build))
+	}
+	for _, values := range [][]tool.Tool{plan, build} {
+		if values[len(values)-2].Definition().Name != "load_skill" || values[len(values)-1].Definition().Name != "read_skill_resource" {
+			t.Fatalf("skill tools = %q, %q", values[len(values)-2].Definition().Name, values[len(values)-1].Definition().Name)
+		}
 	}
 }
 

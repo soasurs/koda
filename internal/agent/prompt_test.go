@@ -103,7 +103,7 @@ func TestInstructionProviderValidatesEnvironmentAndEscapesWorkdir(t *testing.T) 
 	if err := os.Mkdir(workdir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	_, provider, _, err := instructionConfiguration(ModeBuild, workdir)
+	_, provider, _, err := instructionConfiguration(ModeBuild, workdir, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestInstructionConfigurationCapturesWorkspaceSnapshot(t *testing.T) {
 	if err := os.WriteFile(childPath, []byte("child v1"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, provider, firstHash, err := instructionConfiguration(ModePlan, workdir)
+	_, provider, firstHash, err := instructionConfiguration(ModePlan, workdir, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,11 +162,36 @@ func TestInstructionConfigurationCapturesWorkspaceSnapshot(t *testing.T) {
 	if !strings.Contains(captured, "parent") || !strings.Contains(captured, "child v1") || strings.Contains(captured, "child v2") || strings.Index(captured, "parent") > strings.Index(captured, "child v1") {
 		t.Fatalf("captured instructions = %q", captured)
 	}
-	_, _, secondHash, err := instructionConfiguration(ModePlan, workdir)
+	_, _, secondHash, err := instructionConfiguration(ModePlan, workdir, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if firstHash == secondHash {
 		t.Fatal("workspace instruction change did not change cache fingerprint")
+	}
+}
+
+func TestInstructionConfigurationIncludesProcessSkillCatalog(t *testing.T) {
+	workdir := t.TempDir()
+	_, provider, withSkillsHash, err := instructionConfiguration(ModeBuild, workdir, "- review-go: Review Go code.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, withoutSkillsHash, err := instructionConfiguration(ModeBuild, workdir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := WithRunEnvironment(t.Context(), RunEnvironment{
+		Workdir: workdir, FileAccess: permission.FileAccessWorkspaceRead, ShellAccess: permission.ShellAccessApprovalRequired,
+	})
+	instruction, err := provider(ctx, llmagent.InstructionInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(instruction, "# Available skills\n\n- review-go: Review Go code.") {
+		t.Fatalf("instruction = %q", instruction)
+	}
+	if withSkillsHash == withoutSkillsHash {
+		t.Fatal("skill catalog did not change instruction fingerprint")
 	}
 }

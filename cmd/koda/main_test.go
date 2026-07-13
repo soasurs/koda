@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"log/slog"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	adkskill "github.com/soasurs/adk/skill"
 	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
@@ -87,12 +89,17 @@ func TestRunStartsAndStopsLocalAPIServer(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	directory := t.TempDir()
+	loadSkillsCalls := 0
 	dependencies := dependencies{
 		openRegistry: func() (*provider.Registry, error) {
 			return provider.Open(filepath.Join(directory, "providers.json"))
 		},
 		openStore: func(ctx context.Context) (*store.Store, error) {
 			return store.Open(ctx, filepath.Join(directory, "koda.db"))
+		},
+		loadSkills: func(*slog.Logger) (*adkskill.Catalog, error) {
+			loadSkillsCalls++
+			return adkskill.NewCatalog()
 		},
 		listen: net.Listen,
 	}
@@ -117,6 +124,49 @@ func TestRunStartsAndStopsLocalAPIServer(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("runWithDependencies() did not stop after cancellation")
+	}
+	if loadSkillsCalls != 1 {
+		t.Fatalf("loadSkills calls = %d, want 1", loadSkillsCalls)
+	}
+}
+
+func TestRunLogsSkillLoadFailureAndStarts(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	directory := t.TempDir()
+	dependencies := dependencies{
+		openRegistry: func() (*provider.Registry, error) {
+			return provider.Open(filepath.Join(directory, "providers.json"))
+		},
+		openStore: func(ctx context.Context) (*store.Store, error) {
+			return store.Open(ctx, filepath.Join(directory, "koda.db"))
+		},
+		loadSkills: func(*slog.Logger) (*adkskill.Catalog, error) {
+			return nil, errors.New("skills unavailable")
+		},
+		listen: net.Listen,
+	}
+	stdout := lineWriter{lines: make(chan string, 1)}
+	var stderr bytes.Buffer
+	done := make(chan error, 1)
+	go func() {
+		done <- runWithDependencies(ctx, []string{"serve", "--addr", "127.0.0.1:0"}, stdout, &stderr, dependencies)
+	}()
+	select {
+	case <-stdout.lines:
+	case <-time.After(time.Second):
+		t.Fatal("runWithDependencies() did not start after skill load failure")
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("runWithDependencies() error = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("runWithDependencies() did not stop after cancellation")
+	}
+	if output := stderr.String(); !strings.Contains(output, "level=ERROR msg=\"load skills failed\"") || !strings.Contains(output, "skills unavailable") {
+		t.Fatalf("stderr = %q", output)
 	}
 }
 

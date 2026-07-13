@@ -170,7 +170,7 @@ func TestProviderAndModelHandlersMapErrors(t *testing.T) {
 }
 
 func TestNewHandlerRequiresDependencies(t *testing.T) {
-	if _, err := NewHandler(nil, nil, nil, nil); err == nil {
+	if _, err := NewHandler(nil, nil, nil, nil, nil); err == nil {
 		t.Fatal("NewHandler(nil, nil, nil) error = nil, want error")
 	}
 
@@ -178,14 +178,14 @@ func TestNewHandlerRequiresDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("provider.Open() error = %v", err)
 	}
-	if _, err := NewHandler(registry, nil, nil, nil); err == nil {
+	if _, err := NewHandler(registry, nil, nil, nil, nil); err == nil {
 		t.Fatal("NewHandler(registry, nil, nil) error = nil, want error")
 	}
 	catalog, err := provider.NewCatalog(registry, staticDiscoverer{})
 	if err != nil {
 		t.Fatalf("provider.NewCatalog() error = %v", err)
 	}
-	if _, err := NewHandler(registry, catalog, nil, nil); err == nil {
+	if _, err := NewHandler(registry, catalog, nil, nil, nil); err == nil {
 		t.Fatal("NewHandler(registry, catalog, nil) error = nil, want error")
 	}
 	sessionStore := openTestStore(t)
@@ -197,7 +197,7 @@ func TestNewHandlerRequiresDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("provider.NewCatalog(other) error = %v", err)
 	}
-	if _, err := NewHandler(registry, otherCatalog, sessionStore, nil); err == nil {
+	if _, err := NewHandler(registry, otherCatalog, sessionStore, nil, nil); err == nil {
 		t.Fatal("NewHandler(mismatched dependencies) error = nil, want error")
 	}
 }
@@ -218,7 +218,7 @@ func newTestService(t *testing.T, discoverer provider.Discoverer) (kodav1connect
 		t.Fatalf("provider.NewCatalog() error = %v", err)
 	}
 	sessionStore := openTestStore(t)
-	handler, err := NewHandler(registry, catalog, sessionStore, nil)
+	handler, err := NewHandler(registry, catalog, sessionStore, nil, nil)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}

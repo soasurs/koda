@@ -44,6 +44,10 @@ const (
 	// KodaServiceListDirectoriesProcedure is the fully-qualified name of the KodaService's
 	// ListDirectories RPC.
 	KodaServiceListDirectoriesProcedure = "/koda.v1.KodaService/ListDirectories"
+	// KodaServiceListSkillsProcedure is the fully-qualified name of the KodaService's ListSkills RPC.
+	KodaServiceListSkillsProcedure = "/koda.v1.KodaService/ListSkills"
+	// KodaServiceGetSkillProcedure is the fully-qualified name of the KodaService's GetSkill RPC.
+	KodaServiceGetSkillProcedure = "/koda.v1.KodaService/GetSkill"
 	// KodaServiceCreateSessionProcedure is the fully-qualified name of the KodaService's CreateSession
 	// RPC.
 	KodaServiceCreateSessionProcedure = "/koda.v1.KodaService/CreateSession"
@@ -90,6 +94,10 @@ type KodaServiceClient interface {
 	SubmitQuestionAnswers(context.Context, *v1.SubmitQuestionAnswersRequest) (*v1.SubmitQuestionAnswersResponse, error)
 	// ListDirectories returns the immediate child directories of one local path.
 	ListDirectories(context.Context, *v1.ListDirectoriesRequest) (*v1.ListDirectoriesResponse, error)
+	// ListSkills returns summaries of the Agent Skills loaded at startup.
+	ListSkills(context.Context, *v1.ListSkillsRequest) (*v1.ListSkillsResponse, error)
+	// GetSkill returns the complete loaded definition of one Agent Skill.
+	GetSkill(context.Context, *v1.GetSkillRequest) (*v1.GetSkillResponse, error)
 	// CreateSession creates a new coding session.
 	CreateSession(context.Context, *v1.CreateSessionRequest) (*v1.CreateSessionResponse, error)
 	// GetSession returns one coding session.
@@ -149,6 +157,18 @@ func NewKodaServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+KodaServiceListDirectoriesProcedure,
 			connect.WithSchema(kodaServiceMethods.ByName("ListDirectories")),
+			connect.WithClientOptions(opts...),
+		),
+		listSkills: connect.NewClient[v1.ListSkillsRequest, v1.ListSkillsResponse](
+			httpClient,
+			baseURL+KodaServiceListSkillsProcedure,
+			connect.WithSchema(kodaServiceMethods.ByName("ListSkills")),
+			connect.WithClientOptions(opts...),
+		),
+		getSkill: connect.NewClient[v1.GetSkillRequest, v1.GetSkillResponse](
+			httpClient,
+			baseURL+KodaServiceGetSkillProcedure,
+			connect.WithSchema(kodaServiceMethods.ByName("GetSkill")),
 			connect.WithClientOptions(opts...),
 		),
 		createSession: connect.NewClient[v1.CreateSessionRequest, v1.CreateSessionResponse](
@@ -232,6 +252,8 @@ type kodaServiceClient struct {
 	resolveToolApproval   *connect.Client[v1.ResolveToolApprovalRequest, v1.ResolveToolApprovalResponse]
 	submitQuestionAnswers *connect.Client[v1.SubmitQuestionAnswersRequest, v1.SubmitQuestionAnswersResponse]
 	listDirectories       *connect.Client[v1.ListDirectoriesRequest, v1.ListDirectoriesResponse]
+	listSkills            *connect.Client[v1.ListSkillsRequest, v1.ListSkillsResponse]
+	getSkill              *connect.Client[v1.GetSkillRequest, v1.GetSkillResponse]
 	createSession         *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
 	getSession            *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
 	listSessions          *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
@@ -272,6 +294,24 @@ func (c *kodaServiceClient) SubmitQuestionAnswers(ctx context.Context, req *v1.S
 // ListDirectories calls koda.v1.KodaService.ListDirectories.
 func (c *kodaServiceClient) ListDirectories(ctx context.Context, req *v1.ListDirectoriesRequest) (*v1.ListDirectoriesResponse, error) {
 	response, err := c.listDirectories.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ListSkills calls koda.v1.KodaService.ListSkills.
+func (c *kodaServiceClient) ListSkills(ctx context.Context, req *v1.ListSkillsRequest) (*v1.ListSkillsResponse, error) {
+	response, err := c.listSkills.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// GetSkill calls koda.v1.KodaService.GetSkill.
+func (c *kodaServiceClient) GetSkill(ctx context.Context, req *v1.GetSkillRequest) (*v1.GetSkillResponse, error) {
+	response, err := c.getSkill.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -397,6 +437,10 @@ type KodaServiceHandler interface {
 	SubmitQuestionAnswers(context.Context, *v1.SubmitQuestionAnswersRequest) (*v1.SubmitQuestionAnswersResponse, error)
 	// ListDirectories returns the immediate child directories of one local path.
 	ListDirectories(context.Context, *v1.ListDirectoriesRequest) (*v1.ListDirectoriesResponse, error)
+	// ListSkills returns summaries of the Agent Skills loaded at startup.
+	ListSkills(context.Context, *v1.ListSkillsRequest) (*v1.ListSkillsResponse, error)
+	// GetSkill returns the complete loaded definition of one Agent Skill.
+	GetSkill(context.Context, *v1.GetSkillRequest) (*v1.GetSkillResponse, error)
 	// CreateSession creates a new coding session.
 	CreateSession(context.Context, *v1.CreateSessionRequest) (*v1.CreateSessionResponse, error)
 	// GetSession returns one coding session.
@@ -452,6 +496,18 @@ func NewKodaServiceHandler(svc KodaServiceHandler, opts ...connect.HandlerOption
 		KodaServiceListDirectoriesProcedure,
 		svc.ListDirectories,
 		connect.WithSchema(kodaServiceMethods.ByName("ListDirectories")),
+		connect.WithHandlerOptions(opts...),
+	)
+	kodaServiceListSkillsHandler := connect.NewUnaryHandlerSimple(
+		KodaServiceListSkillsProcedure,
+		svc.ListSkills,
+		connect.WithSchema(kodaServiceMethods.ByName("ListSkills")),
+		connect.WithHandlerOptions(opts...),
+	)
+	kodaServiceGetSkillHandler := connect.NewUnaryHandlerSimple(
+		KodaServiceGetSkillProcedure,
+		svc.GetSkill,
+		connect.WithSchema(kodaServiceMethods.ByName("GetSkill")),
 		connect.WithHandlerOptions(opts...),
 	)
 	kodaServiceCreateSessionHandler := connect.NewUnaryHandlerSimple(
@@ -536,6 +592,10 @@ func NewKodaServiceHandler(svc KodaServiceHandler, opts ...connect.HandlerOption
 			kodaServiceSubmitQuestionAnswersHandler.ServeHTTP(w, r)
 		case KodaServiceListDirectoriesProcedure:
 			kodaServiceListDirectoriesHandler.ServeHTTP(w, r)
+		case KodaServiceListSkillsProcedure:
+			kodaServiceListSkillsHandler.ServeHTTP(w, r)
+		case KodaServiceGetSkillProcedure:
+			kodaServiceGetSkillHandler.ServeHTTP(w, r)
 		case KodaServiceCreateSessionProcedure:
 			kodaServiceCreateSessionHandler.ServeHTTP(w, r)
 		case KodaServiceGetSessionProcedure:
@@ -583,6 +643,14 @@ func (UnimplementedKodaServiceHandler) SubmitQuestionAnswers(context.Context, *v
 
 func (UnimplementedKodaServiceHandler) ListDirectories(context.Context, *v1.ListDirectoriesRequest) (*v1.ListDirectoriesResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.ListDirectories is not implemented"))
+}
+
+func (UnimplementedKodaServiceHandler) ListSkills(context.Context, *v1.ListSkillsRequest) (*v1.ListSkillsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.ListSkills is not implemented"))
+}
+
+func (UnimplementedKodaServiceHandler) GetSkill(context.Context, *v1.GetSkillRequest) (*v1.GetSkillResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.GetSkill is not implemented"))
 }
 
 func (UnimplementedKodaServiceHandler) CreateSession(context.Context, *v1.CreateSessionRequest) (*v1.CreateSessionResponse, error) {
