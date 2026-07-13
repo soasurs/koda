@@ -7,14 +7,31 @@
 
 [English](README.md)
 
-Koda 当前只提供无界面的本地服务，不包含 UI。
+Koda 内置了由 [`soasurs/koda-studio`](https://github.com/soasurs/koda-studio)
+构建的本地 Web 界面。
 
-## 启动服务
+## 启动 Koda Studio
 
 环境要求：
 
 - Go 1.26，或 `go.mod` 声明的版本；
 - 至少配置一个 Provider 的 API key。
+
+启动内嵌 UI，并使用默认浏览器打开：
+
+```bash
+go run ./cmd/koda studio
+```
+
+Studio 与 Connect API 共用同一个仅限 loopback 的 HTTP origin。Koda 会先尝试
+`localhost:8080`，端口被占用时回退到可用的 loopback 端口，并输出实际 URL。也可以
+显式指定端口：
+
+```bash
+go run ./cmd/koda studio --addr 127.0.0.1:8787
+```
+
+## 启动无界面服务
 
 启动 Connect API server：
 
@@ -123,7 +140,15 @@ Build agent 额外提供整文件创建和写入、Hashline 编辑，以及支�
 API 的源文件是 [`proto/koda/v1/service.proto`](proto/koda/v1/service.proto)。`gen/`
 下的生成文件需要提交，但不能手工修改。
 
-修改 Go 代码后运行：
+`internal/studio/dist` 下的 Studio 资源由构建生成，并被 Git 忽略。
+`build/studio/version.txt` 固定需要 embed 的 release tag。修改该版本或首次 checkout
+后，需要使用 Node.js 24 和 pnpm 10 构建前端：
+
+```bash
+./build/studio.sh
+```
+
+然后执行 Go 检查：
 
 ```bash
 gofmt -w .
@@ -137,6 +162,12 @@ git diff --check
 
 修改 Protocol Buffer 契约后，先运行 `buf format -w`、`buf lint`、`buf build` 和
 `buf generate`，再执行上述 Go 检查。
+
+## 发布
+
+推送 `v*` tag 会触发 release workflow。它会构建 `build/studio/version.txt` 固定的
+Studio 版本，在原生 macOS runner 上测试并打包 amd64 与 arm64 binary，生成
+SHA-256 checksums，然后将完整的 draft 发布为 GitHub Release。
 
 贡献者需要遵循的仓库规则见 [AGENTS.md](AGENTS.md)。
 

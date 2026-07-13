@@ -6,6 +6,7 @@ import (
 	"iter"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"sync"
@@ -20,6 +21,23 @@ import (
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
 )
+
+func TestHTTPServerServesOptionalWebHandler(t *testing.T) {
+	handler := newHTTPTestHandler(t)
+	web := http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		response.WriteHeader(http.StatusNoContent)
+	})
+	server, err := NewHTTPServer(handler, HTTPServerConfig{WebHandler: web})
+	if err != nil {
+		t.Fatalf("NewHTTPServer() error = %v", err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "http://localhost/", nil)
+	response := httptest.NewRecorder()
+	server.server.Handler.ServeHTTP(response, request)
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("GET / status = %d, want %d", response.Code, http.StatusNoContent)
+	}
+}
 
 func TestHTTPServerServesConnectRunAndShutsDown(t *testing.T) {
 	handler := newHTTPTestHandler(t)

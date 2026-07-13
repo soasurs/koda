@@ -8,14 +8,31 @@ conversation history.
 
 [中文说明](README_zh-CN.md)
 
-Koda currently ships as a headless local service. A UI is not included.
+Koda includes an embedded local web interface built from
+[`soasurs/koda-studio`](https://github.com/soasurs/koda-studio).
 
-## Run the service
+## Run Koda Studio
 
 Requirements:
 
 - Go 1.26, or the version declared by `go.mod`;
 - a configured API key for at least one provider.
+
+Start the embedded UI and open it in the default browser:
+
+```bash
+go run ./cmd/koda studio
+```
+
+Studio and the Connect API share the same loopback-only HTTP origin. Koda first
+tries `localhost:8080`, falls back to an available loopback port when needed,
+and prints the actual URL. Use `--addr` to select a port explicitly:
+
+```bash
+go run ./cmd/koda studio --addr 127.0.0.1:8787
+```
+
+## Run the headless service
 
 Start the Connect API server:
 
@@ -138,7 +155,16 @@ frames.
 The API source of truth is [`proto/koda/v1/service.proto`](proto/koda/v1/service.proto).
 Generated files under `gen/` are committed and must not be edited manually.
 
-After changing Go code, run:
+Studio assets under `internal/studio/dist` are generated and ignored by Git.
+`build/studio/version.txt` pins the release tag embedded in Koda. After changing
+that version, or from a fresh checkout, build the frontend with Node.js 24 and
+pnpm 10:
+
+```bash
+./build/studio.sh
+```
+
+Then run the Go checks:
 
 ```bash
 gofmt -w .
@@ -152,6 +178,13 @@ git diff --check
 
 After changing the Protocol Buffer contract, run `buf format -w`, `buf lint`,
 `buf build`, and `buf generate` before the Go checks above.
+
+## Release
+
+Pushing a `v*` tag runs the release workflow. It builds the Studio version
+pinned in `build/studio/version.txt`, tests and packages native macOS amd64 and
+arm64 binaries, generates SHA-256 checksums, and publishes the completed draft
+as a GitHub Release.
 
 Contributor-specific repository rules are in [AGENTS.md](AGENTS.md).
 
