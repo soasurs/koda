@@ -6,16 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/soasurs/adk/model"
 	sessionevent "github.com/soasurs/adk/session/event"
 )
 
 // RollbackTurn removes a turn that the ADK Runner completed but the Run RPC
-// could not acknowledge. previousUpdatedAt restores the session ordering
-// timestamp when TouchSession had already succeeded.
-func (s *Store) RollbackTurn(ctx context.Context, id, turnID string, previousUpdatedAt time.Time) error {
+// could not acknowledge. previous restores the session title and ordering
+// timestamp when completion metadata had already been updated.
+func (s *Store) RollbackTurn(ctx context.Context, id, turnID string, previous Session) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -44,9 +43,9 @@ func (s *Store) RollbackTurn(ctx context.Context, id, turnID string, previousUpd
 	if _, err := tx.ExecContext(ctx, s.queries.deleteTurnEvents, s.now().UTC().UnixMilli(), id, turnID); err != nil {
 		return fmt.Errorf("store: rollback turn %q: %w", turnID, err)
 	}
-	if !previousUpdatedAt.IsZero() {
-		if _, err := tx.ExecContext(ctx, s.queries.restoreUpdatedAt, previousUpdatedAt.UTC().UnixMilli(), id); err != nil {
-			return fmt.Errorf("store: restore session %q update time: %w", id, err)
+	if !previous.UpdatedAt.IsZero() {
+		if _, err := tx.ExecContext(ctx, s.queries.restoreSession, previous.Title, previous.UpdatedAt.UTC().UnixMilli(), id); err != nil {
+			return fmt.Errorf("store: restore session %q metadata: %w", id, err)
 		}
 	}
 	if err := tx.Commit(); err != nil {

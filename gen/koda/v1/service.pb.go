@@ -990,6 +990,7 @@ func (*runResponse_QuestionPrompt) isRunResponse_Payload() {}
 type RunCompleted struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_TurnId      *string                `protobuf:"bytes,1,opt,name=turn_id,json=turnId"`
+	xxx_hidden_Session     *Session               `protobuf:"bytes,2,opt,name=session"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -1031,9 +1032,20 @@ func (x *RunCompleted) GetTurnId() string {
 	return ""
 }
 
+func (x *RunCompleted) GetSession() *Session {
+	if x != nil {
+		return x.xxx_hidden_Session
+	}
+	return nil
+}
+
 func (x *RunCompleted) SetTurnId(v string) {
 	x.xxx_hidden_TurnId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *RunCompleted) SetSession(v *Session) {
+	x.xxx_hidden_Session = v
 }
 
 func (x *RunCompleted) HasTurnId() bool {
@@ -1043,9 +1055,20 @@ func (x *RunCompleted) HasTurnId() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
 }
 
+func (x *RunCompleted) HasSession() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Session != nil
+}
+
 func (x *RunCompleted) ClearTurnId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_TurnId = nil
+}
+
+func (x *RunCompleted) ClearSession() {
+	x.xxx_hidden_Session = nil
 }
 
 type RunCompleted_builder struct {
@@ -1053,6 +1076,9 @@ type RunCompleted_builder struct {
 
 	// turn_id identifies the committed turn shared by all of its events.
 	TurnId *string
+	// session is the durable session snapshot after committing the turn. On the
+	// first successful turn it may contain an LLM-generated title.
+	Session *Session
 }
 
 func (b0 RunCompleted_builder) Build() *RunCompleted {
@@ -1060,9 +1086,10 @@ func (b0 RunCompleted_builder) Build() *RunCompleted {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.TurnId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
 		x.xxx_hidden_TurnId = b.TurnId
 	}
+	x.xxx_hidden_Session = b.Session
 	return m0
 }
 
@@ -8915,9 +8942,10 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\bapproval\x18\x02 \x01(\v2\x15.koda.v1.ToolApprovalH\x00R\bapproval\x125\n" +
 	"\tcompleted\x18\x03 \x01(\v2\x15.koda.v1.RunCompletedH\x00R\tcompleted\x12B\n" +
 	"\x0fquestion_prompt\x18\x04 \x01(\v2\x17.koda.v1.QuestionPromptH\x00R\x0equestionPromptB\t\n" +
-	"\apayload\"'\n" +
+	"\apayload\"S\n" +
 	"\fRunCompleted\x12\x17\n" +
-	"\aturn_id\x18\x01 \x01(\tR\x06turnId\",\n" +
+	"\aturn_id\x18\x01 \x01(\tR\x06turnId\x12*\n" +
+	"\asession\x18\x02 \x01(\v2\x10.koda.v1.SessionR\asession\",\n" +
 	"\x05Input\x12#\n" +
 	"\x05parts\x18\x01 \x03(\v2\r.koda.v1.PartR\x05parts\"O\n" +
 	"\x04Part\x12\x14\n" +
@@ -9345,88 +9373,89 @@ var file_koda_v1_service_proto_depIdxs = []int32{
 	17, // 3: koda.v1.RunResponse.approval:type_name -> koda.v1.ToolApproval
 	13, // 4: koda.v1.RunResponse.completed:type_name -> koda.v1.RunCompleted
 	20, // 5: koda.v1.RunResponse.question_prompt:type_name -> koda.v1.QuestionPrompt
-	15, // 6: koda.v1.Input.parts:type_name -> koda.v1.Part
-	16, // 7: koda.v1.Part.image:type_name -> koda.v1.Image
-	4,  // 8: koda.v1.Image.detail:type_name -> koda.v1.ImageDetail
-	46, // 9: koda.v1.ToolApproval.file_changes:type_name -> koda.v1.FileChange
-	7,  // 10: koda.v1.ToolApproval.kind:type_name -> koda.v1.ToolApprovalKind
-	8,  // 11: koda.v1.ToolApproval.scope:type_name -> koda.v1.ToolApprovalScope
-	21, // 12: koda.v1.QuestionPrompt.questions:type_name -> koda.v1.Question
-	22, // 13: koda.v1.Question.options:type_name -> koda.v1.QuestionOption
-	25, // 14: koda.v1.SubmitQuestionAnswersRequest.answers:type_name -> koda.v1.QuestionAnswers
-	26, // 15: koda.v1.QuestionAnswers.answers:type_name -> koda.v1.QuestionAnswer
-	29, // 16: koda.v1.ListDirectoriesResponse.directories:type_name -> koda.v1.DirectoryEntry
-	5,  // 17: koda.v1.Session.file_access:type_name -> koda.v1.FileAccess
-	6,  // 18: koda.v1.Session.shell_access:type_name -> koda.v1.ShellAccess
-	5,  // 19: koda.v1.CreateSessionRequest.file_access:type_name -> koda.v1.FileAccess
-	6,  // 20: koda.v1.CreateSessionRequest.shell_access:type_name -> koda.v1.ShellAccess
-	30, // 21: koda.v1.CreateSessionResponse.session:type_name -> koda.v1.Session
-	30, // 22: koda.v1.GetSessionResponse.session:type_name -> koda.v1.Session
-	30, // 23: koda.v1.ListSessionsResponse.sessions:type_name -> koda.v1.Session
-	5,  // 24: koda.v1.UpdateSessionRequest.file_access:type_name -> koda.v1.FileAccess
-	6,  // 25: koda.v1.UpdateSessionRequest.shell_access:type_name -> koda.v1.ShellAccess
-	30, // 26: koda.v1.UpdateSessionResponse.session:type_name -> koda.v1.Session
-	42, // 27: koda.v1.Event.message:type_name -> koda.v1.Message
-	2,  // 28: koda.v1.Event.finish_reason:type_name -> koda.v1.FinishReason
-	50, // 29: koda.v1.Event.usage:type_name -> koda.v1.TokenUsage
-	1,  // 30: koda.v1.Message.role:type_name -> koda.v1.Role
-	15, // 31: koda.v1.Message.parts:type_name -> koda.v1.Part
-	43, // 32: koda.v1.Message.tool_calls:type_name -> koda.v1.ToolCall
-	44, // 33: koda.v1.Message.tool_response:type_name -> koda.v1.ToolResponse
-	45, // 34: koda.v1.ToolResponse.result:type_name -> koda.v1.ToolResult
-	49, // 35: koda.v1.ToolResponse.error:type_name -> koda.v1.ToolError
-	46, // 36: koda.v1.ToolResult.file_changes:type_name -> koda.v1.FileChange
-	9,  // 37: koda.v1.FileChange.kind:type_name -> koda.v1.FileChangeKind
-	47, // 38: koda.v1.FileChange.hunks:type_name -> koda.v1.DiffHunk
-	48, // 39: koda.v1.DiffHunk.lines:type_name -> koda.v1.DiffLine
-	10, // 40: koda.v1.DiffLine.kind:type_name -> koda.v1.DiffLineKind
-	51, // 41: koda.v1.TokenUsage.details:type_name -> koda.v1.TokenUsageDetails
-	41, // 42: koda.v1.ListEventsResponse.events:type_name -> koda.v1.Event
-	14, // 43: koda.v1.UndoLastMessageResponse.input:type_name -> koda.v1.Input
-	3,  // 44: koda.v1.Provider.type:type_name -> koda.v1.ProviderType
-	56, // 45: koda.v1.ListProvidersResponse.providers:type_name -> koda.v1.Provider
-	3,  // 46: koda.v1.SaveProviderRequest.type:type_name -> koda.v1.ProviderType
-	57, // 47: koda.v1.SaveProviderRequest.model_overrides:type_name -> koda.v1.Model
-	56, // 48: koda.v1.SaveProviderResponse.provider:type_name -> koda.v1.Provider
-	57, // 49: koda.v1.ListModelsResponse.models:type_name -> koda.v1.Model
-	57, // 50: koda.v1.RefreshModelsResponse.models:type_name -> koda.v1.Model
-	11, // 51: koda.v1.KodaService.Run:input_type -> koda.v1.RunRequest
-	18, // 52: koda.v1.KodaService.ResolveToolApproval:input_type -> koda.v1.ResolveToolApprovalRequest
-	23, // 53: koda.v1.KodaService.SubmitQuestionAnswers:input_type -> koda.v1.SubmitQuestionAnswersRequest
-	27, // 54: koda.v1.KodaService.ListDirectories:input_type -> koda.v1.ListDirectoriesRequest
-	31, // 55: koda.v1.KodaService.CreateSession:input_type -> koda.v1.CreateSessionRequest
-	33, // 56: koda.v1.KodaService.GetSession:input_type -> koda.v1.GetSessionRequest
-	35, // 57: koda.v1.KodaService.ListSessions:input_type -> koda.v1.ListSessionsRequest
-	37, // 58: koda.v1.KodaService.UpdateSession:input_type -> koda.v1.UpdateSessionRequest
-	39, // 59: koda.v1.KodaService.DeleteSession:input_type -> koda.v1.DeleteSessionRequest
-	52, // 60: koda.v1.KodaService.ListEvents:input_type -> koda.v1.ListEventsRequest
-	54, // 61: koda.v1.KodaService.UndoLastMessage:input_type -> koda.v1.UndoLastMessageRequest
-	58, // 62: koda.v1.KodaService.ListProviders:input_type -> koda.v1.ListProvidersRequest
-	60, // 63: koda.v1.KodaService.SaveProvider:input_type -> koda.v1.SaveProviderRequest
-	62, // 64: koda.v1.KodaService.DeleteProvider:input_type -> koda.v1.DeleteProviderRequest
-	64, // 65: koda.v1.KodaService.ListModels:input_type -> koda.v1.ListModelsRequest
-	66, // 66: koda.v1.KodaService.RefreshModels:input_type -> koda.v1.RefreshModelsRequest
-	12, // 67: koda.v1.KodaService.Run:output_type -> koda.v1.RunResponse
-	19, // 68: koda.v1.KodaService.ResolveToolApproval:output_type -> koda.v1.ResolveToolApprovalResponse
-	24, // 69: koda.v1.KodaService.SubmitQuestionAnswers:output_type -> koda.v1.SubmitQuestionAnswersResponse
-	28, // 70: koda.v1.KodaService.ListDirectories:output_type -> koda.v1.ListDirectoriesResponse
-	32, // 71: koda.v1.KodaService.CreateSession:output_type -> koda.v1.CreateSessionResponse
-	34, // 72: koda.v1.KodaService.GetSession:output_type -> koda.v1.GetSessionResponse
-	36, // 73: koda.v1.KodaService.ListSessions:output_type -> koda.v1.ListSessionsResponse
-	38, // 74: koda.v1.KodaService.UpdateSession:output_type -> koda.v1.UpdateSessionResponse
-	40, // 75: koda.v1.KodaService.DeleteSession:output_type -> koda.v1.DeleteSessionResponse
-	53, // 76: koda.v1.KodaService.ListEvents:output_type -> koda.v1.ListEventsResponse
-	55, // 77: koda.v1.KodaService.UndoLastMessage:output_type -> koda.v1.UndoLastMessageResponse
-	59, // 78: koda.v1.KodaService.ListProviders:output_type -> koda.v1.ListProvidersResponse
-	61, // 79: koda.v1.KodaService.SaveProvider:output_type -> koda.v1.SaveProviderResponse
-	63, // 80: koda.v1.KodaService.DeleteProvider:output_type -> koda.v1.DeleteProviderResponse
-	65, // 81: koda.v1.KodaService.ListModels:output_type -> koda.v1.ListModelsResponse
-	67, // 82: koda.v1.KodaService.RefreshModels:output_type -> koda.v1.RefreshModelsResponse
-	67, // [67:83] is the sub-list for method output_type
-	51, // [51:67] is the sub-list for method input_type
-	51, // [51:51] is the sub-list for extension type_name
-	51, // [51:51] is the sub-list for extension extendee
-	0,  // [0:51] is the sub-list for field type_name
+	30, // 6: koda.v1.RunCompleted.session:type_name -> koda.v1.Session
+	15, // 7: koda.v1.Input.parts:type_name -> koda.v1.Part
+	16, // 8: koda.v1.Part.image:type_name -> koda.v1.Image
+	4,  // 9: koda.v1.Image.detail:type_name -> koda.v1.ImageDetail
+	46, // 10: koda.v1.ToolApproval.file_changes:type_name -> koda.v1.FileChange
+	7,  // 11: koda.v1.ToolApproval.kind:type_name -> koda.v1.ToolApprovalKind
+	8,  // 12: koda.v1.ToolApproval.scope:type_name -> koda.v1.ToolApprovalScope
+	21, // 13: koda.v1.QuestionPrompt.questions:type_name -> koda.v1.Question
+	22, // 14: koda.v1.Question.options:type_name -> koda.v1.QuestionOption
+	25, // 15: koda.v1.SubmitQuestionAnswersRequest.answers:type_name -> koda.v1.QuestionAnswers
+	26, // 16: koda.v1.QuestionAnswers.answers:type_name -> koda.v1.QuestionAnswer
+	29, // 17: koda.v1.ListDirectoriesResponse.directories:type_name -> koda.v1.DirectoryEntry
+	5,  // 18: koda.v1.Session.file_access:type_name -> koda.v1.FileAccess
+	6,  // 19: koda.v1.Session.shell_access:type_name -> koda.v1.ShellAccess
+	5,  // 20: koda.v1.CreateSessionRequest.file_access:type_name -> koda.v1.FileAccess
+	6,  // 21: koda.v1.CreateSessionRequest.shell_access:type_name -> koda.v1.ShellAccess
+	30, // 22: koda.v1.CreateSessionResponse.session:type_name -> koda.v1.Session
+	30, // 23: koda.v1.GetSessionResponse.session:type_name -> koda.v1.Session
+	30, // 24: koda.v1.ListSessionsResponse.sessions:type_name -> koda.v1.Session
+	5,  // 25: koda.v1.UpdateSessionRequest.file_access:type_name -> koda.v1.FileAccess
+	6,  // 26: koda.v1.UpdateSessionRequest.shell_access:type_name -> koda.v1.ShellAccess
+	30, // 27: koda.v1.UpdateSessionResponse.session:type_name -> koda.v1.Session
+	42, // 28: koda.v1.Event.message:type_name -> koda.v1.Message
+	2,  // 29: koda.v1.Event.finish_reason:type_name -> koda.v1.FinishReason
+	50, // 30: koda.v1.Event.usage:type_name -> koda.v1.TokenUsage
+	1,  // 31: koda.v1.Message.role:type_name -> koda.v1.Role
+	15, // 32: koda.v1.Message.parts:type_name -> koda.v1.Part
+	43, // 33: koda.v1.Message.tool_calls:type_name -> koda.v1.ToolCall
+	44, // 34: koda.v1.Message.tool_response:type_name -> koda.v1.ToolResponse
+	45, // 35: koda.v1.ToolResponse.result:type_name -> koda.v1.ToolResult
+	49, // 36: koda.v1.ToolResponse.error:type_name -> koda.v1.ToolError
+	46, // 37: koda.v1.ToolResult.file_changes:type_name -> koda.v1.FileChange
+	9,  // 38: koda.v1.FileChange.kind:type_name -> koda.v1.FileChangeKind
+	47, // 39: koda.v1.FileChange.hunks:type_name -> koda.v1.DiffHunk
+	48, // 40: koda.v1.DiffHunk.lines:type_name -> koda.v1.DiffLine
+	10, // 41: koda.v1.DiffLine.kind:type_name -> koda.v1.DiffLineKind
+	51, // 42: koda.v1.TokenUsage.details:type_name -> koda.v1.TokenUsageDetails
+	41, // 43: koda.v1.ListEventsResponse.events:type_name -> koda.v1.Event
+	14, // 44: koda.v1.UndoLastMessageResponse.input:type_name -> koda.v1.Input
+	3,  // 45: koda.v1.Provider.type:type_name -> koda.v1.ProviderType
+	56, // 46: koda.v1.ListProvidersResponse.providers:type_name -> koda.v1.Provider
+	3,  // 47: koda.v1.SaveProviderRequest.type:type_name -> koda.v1.ProviderType
+	57, // 48: koda.v1.SaveProviderRequest.model_overrides:type_name -> koda.v1.Model
+	56, // 49: koda.v1.SaveProviderResponse.provider:type_name -> koda.v1.Provider
+	57, // 50: koda.v1.ListModelsResponse.models:type_name -> koda.v1.Model
+	57, // 51: koda.v1.RefreshModelsResponse.models:type_name -> koda.v1.Model
+	11, // 52: koda.v1.KodaService.Run:input_type -> koda.v1.RunRequest
+	18, // 53: koda.v1.KodaService.ResolveToolApproval:input_type -> koda.v1.ResolveToolApprovalRequest
+	23, // 54: koda.v1.KodaService.SubmitQuestionAnswers:input_type -> koda.v1.SubmitQuestionAnswersRequest
+	27, // 55: koda.v1.KodaService.ListDirectories:input_type -> koda.v1.ListDirectoriesRequest
+	31, // 56: koda.v1.KodaService.CreateSession:input_type -> koda.v1.CreateSessionRequest
+	33, // 57: koda.v1.KodaService.GetSession:input_type -> koda.v1.GetSessionRequest
+	35, // 58: koda.v1.KodaService.ListSessions:input_type -> koda.v1.ListSessionsRequest
+	37, // 59: koda.v1.KodaService.UpdateSession:input_type -> koda.v1.UpdateSessionRequest
+	39, // 60: koda.v1.KodaService.DeleteSession:input_type -> koda.v1.DeleteSessionRequest
+	52, // 61: koda.v1.KodaService.ListEvents:input_type -> koda.v1.ListEventsRequest
+	54, // 62: koda.v1.KodaService.UndoLastMessage:input_type -> koda.v1.UndoLastMessageRequest
+	58, // 63: koda.v1.KodaService.ListProviders:input_type -> koda.v1.ListProvidersRequest
+	60, // 64: koda.v1.KodaService.SaveProvider:input_type -> koda.v1.SaveProviderRequest
+	62, // 65: koda.v1.KodaService.DeleteProvider:input_type -> koda.v1.DeleteProviderRequest
+	64, // 66: koda.v1.KodaService.ListModels:input_type -> koda.v1.ListModelsRequest
+	66, // 67: koda.v1.KodaService.RefreshModels:input_type -> koda.v1.RefreshModelsRequest
+	12, // 68: koda.v1.KodaService.Run:output_type -> koda.v1.RunResponse
+	19, // 69: koda.v1.KodaService.ResolveToolApproval:output_type -> koda.v1.ResolveToolApprovalResponse
+	24, // 70: koda.v1.KodaService.SubmitQuestionAnswers:output_type -> koda.v1.SubmitQuestionAnswersResponse
+	28, // 71: koda.v1.KodaService.ListDirectories:output_type -> koda.v1.ListDirectoriesResponse
+	32, // 72: koda.v1.KodaService.CreateSession:output_type -> koda.v1.CreateSessionResponse
+	34, // 73: koda.v1.KodaService.GetSession:output_type -> koda.v1.GetSessionResponse
+	36, // 74: koda.v1.KodaService.ListSessions:output_type -> koda.v1.ListSessionsResponse
+	38, // 75: koda.v1.KodaService.UpdateSession:output_type -> koda.v1.UpdateSessionResponse
+	40, // 76: koda.v1.KodaService.DeleteSession:output_type -> koda.v1.DeleteSessionResponse
+	53, // 77: koda.v1.KodaService.ListEvents:output_type -> koda.v1.ListEventsResponse
+	55, // 78: koda.v1.KodaService.UndoLastMessage:output_type -> koda.v1.UndoLastMessageResponse
+	59, // 79: koda.v1.KodaService.ListProviders:output_type -> koda.v1.ListProvidersResponse
+	61, // 80: koda.v1.KodaService.SaveProvider:output_type -> koda.v1.SaveProviderResponse
+	63, // 81: koda.v1.KodaService.DeleteProvider:output_type -> koda.v1.DeleteProviderResponse
+	65, // 82: koda.v1.KodaService.ListModels:output_type -> koda.v1.ListModelsResponse
+	67, // 83: koda.v1.KodaService.RefreshModels:output_type -> koda.v1.RefreshModelsResponse
+	68, // [68:84] is the sub-list for method output_type
+	52, // [52:68] is the sub-list for method input_type
+	52, // [52:52] is the sub-list for extension type_name
+	52, // [52:52] is the sub-list for extension extendee
+	0,  // [0:52] is the sub-list for field type_name
 }
 
 func init() { file_koda_v1_service_proto_init() }

@@ -77,6 +77,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		FileAccess:  session.FileAccess,
 		ShellAccess: session.ShellAccess,
 	})
+	titleResult := h.startTitleGeneration(runCtx, session, input)
 	var (
 		turnID   string
 		terminal bool
@@ -111,6 +112,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		return runErr
 	}
 	if !terminal {
+		titleResult.cancel()
 		runErr = connect.NewError(connect.CodeInternal, errors.New("agent runtime ended without a terminal assistant event"))
 		if turnID != "" {
 			return h.rollbackCommittedTurn(runCtx, session, turnID, runErr)
@@ -118,13 +120,19 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		return runErr
 	}
 	if turnID == "" {
+		titleResult.cancel()
 		return connect.NewError(connect.CodeInternal, errors.New("agent runtime ended without a turn ID"))
 	}
-	if err := h.store.TouchSession(runCtx, id); err != nil {
+	title := titleResult.wait()
+	committedSession, err := h.commitRunMetadata(runCtx, session, title)
+	if err != nil {
 		return h.rollbackCommittedTurn(runCtx, session, turnID, sessionError(err))
 	}
 	completed := v1.RunResponse{}
-	completed.SetCompleted(v1.RunCompleted_builder{TurnId: proto.String(turnID)}.Build())
+	completed.SetCompleted(v1.RunCompleted_builder{
+		TurnId:  proto.String(turnID),
+		Session: sessionToProto(committedSession),
+	}.Build())
 	if err := publisher.Publish(&completed); err != nil {
 		return h.rollbackCommittedTurn(runCtx, session, turnID, runtimeError(err))
 	}
@@ -133,10 +141,49 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 
 func (h *Handler) rollbackCommittedTurn(ctx context.Context, session store.Session, turnID string, runErr error) error {
 	cleanupCtx := context.WithoutCancel(ctx)
-	if err := h.store.RollbackTurn(cleanupCtx, session.ID, turnID, session.UpdatedAt); err != nil {
+	if err := h.store.RollbackTurn(cleanupCtx, session.ID, turnID, session); err != nil {
 		return connect.NewError(connect.CodeInternal, errors.Join(errors.New("rollback unacknowledged turn"), runErr, err))
 	}
 	return runErr
+}
+
+type generatedTitle struct {
+	result <-chan string
+	cancel context.CancelFunc
+}
+
+func (h *Handler) startTitleGeneration(ctx context.Context, session store.Session, input model.Content) generatedTitle {
+	if h.titleGenerator == nil || session.Title != "" || session.EventCount != 0 {
+		return generatedTitle{cancel: func() {}}
+	}
+	titleCtx, cancel := context.WithCancel(ctx)
+	result := make(chan string, 1)
+	go func() {
+		title, err := h.titleGenerator(titleCtx, session, input)
+		if err != nil {
+			title = ""
+		}
+		result <- title
+	}()
+	return generatedTitle{result: result, cancel: cancel}
+}
+
+func (r generatedTitle) wait() string {
+	defer r.cancel()
+	if r.result == nil {
+		return ""
+	}
+	return <-r.result
+}
+
+func (h *Handler) commitRunMetadata(ctx context.Context, previous store.Session, title string) (store.Session, error) {
+	if title != "" {
+		return h.store.UpdateSession(ctx, previous.ID, store.UpdateSessionParams{Title: &title})
+	}
+	if err := h.store.TouchSession(ctx, previous.ID); err != nil {
+		return store.Session{}, err
+	}
+	return h.store.GetSession(ctx, previous.ID)
 }
 
 func terminalEvent(event model.Event) bool {

@@ -2,8 +2,10 @@
 package server
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/soasurs/adk/model"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
 	"github.com/soasurs/koda/internal/agent"
 	"github.com/soasurs/koda/internal/provider"
@@ -23,6 +25,7 @@ type Handler struct {
 
 	newSessionID      func() (string, error)
 	turnRunnerFactory turnRunnerFactory
+	titleGenerator    func(context.Context, store.Session, model.Content) (string, error)
 }
 
 // NewHandler constructs a Handler backed by registry, catalog, and store.
@@ -48,12 +51,13 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 		return nil, fmt.Errorf("server: construct agent factory: %w", err)
 	}
 	return &Handler{
-		registry:     registry,
-		catalog:      catalog,
-		store:        sessionStore,
-		approvals:    NewApprovalBroker(),
-		questions:    NewQuestionBroker(),
-		agentFactory: agentFactory,
-		newSessionID: newSessionID,
+		registry:       registry,
+		catalog:        catalog,
+		store:          sessionStore,
+		approvals:      NewApprovalBroker(),
+		questions:      NewQuestionBroker(),
+		agentFactory:   agentFactory,
+		newSessionID:   newSessionID,
+		titleGenerator: agentFactory.GenerateTitle,
 	}, nil
 }

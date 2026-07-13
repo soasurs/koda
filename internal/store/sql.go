@@ -10,7 +10,7 @@ type queries struct {
 	listSessions     string
 	updateSession    string
 	touchSession     string
-	restoreUpdatedAt string
+	restoreSession   string
 	deleteSession    string
 	deleteADKSession string
 	deleteEvents     string
@@ -117,10 +117,11 @@ func newQueries(adkTablePrefix string) queries {
 			SET updated_at = $1
 			WHERE id = $2 AND deleted_at = 0
 		`,
-		restoreUpdatedAt: `
+		restoreSession: `
 			UPDATE koda_sessions
-			SET updated_at = $1
-			WHERE id = $2 AND deleted_at = 0
+			SET title = $1,
+				updated_at = $2
+			WHERE id = $3 AND deleted_at = 0
 		`,
 		deleteSession: `
 			UPDATE koda_sessions

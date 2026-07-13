@@ -378,6 +378,9 @@ func startIntegrationService(t *testing.T, registryPath, databasePath, upstreamU
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
+	handler.titleGenerator = func(context.Context, store.Session, model.Content) (string, error) {
+		return "Integration title", nil
+	}
 	_, client, stop := startHTTPTestServer(t, handler, HTTPServerConfig{Address: "127.0.0.1:0"})
 	return client, sessionStore, stop
 }

@@ -75,6 +75,12 @@ func TestRunStreamsInjectedTurnRunner(t *testing.T) {
 		gotMode = mode
 		return fake, nil
 	}
+	handler.titleGenerator = func(_ context.Context, session store.Session, input model.Content) (string, error) {
+		if session.ID != sessionID || input.Parts[0].Text != "hello" {
+			return "", context.Canceled
+		}
+		return "Generated title", nil
+	}
 
 	input := v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: proto.String("hello")}.Build()}}.Build()
 	stream, err := client.Run(t.Context(), v1.RunRequest_builder{
@@ -104,8 +110,12 @@ func TestRunStreamsInjectedTurnRunner(t *testing.T) {
 		fake.gotEnvironment.ShellAccess != gotSession.ShellAccess {
 		t.Fatalf("runtime factory inputs = session %+v, mode %v, runner input %+v", gotSession, gotMode, fake.gotInput)
 	}
-	if len(events) != 2 || !events[0].GetPartial() || events[0].GetId() != "" || events[1].GetId() != "7" || events[1].GetFinishReason() != v1.FinishReason_FINISH_REASON_STOP || len(completed) != 1 || completed[0].GetTurnId() != "turn-1" {
+	if len(events) != 2 || !events[0].GetPartial() || events[0].GetId() != "" || events[1].GetId() != "7" || events[1].GetFinishReason() != v1.FinishReason_FINISH_REASON_STOP || len(completed) != 1 || completed[0].GetTurnId() != "turn-1" || completed[0].GetSession().GetTitle() != "Generated title" {
 		t.Fatalf("Run() events = %+v, completed = %+v", events, completed)
+	}
+	persisted, err := handler.store.GetSession(t.Context(), sessionID)
+	if err != nil || persisted.Title != "Generated title" {
+		t.Fatalf("persisted session = %+v, %v", persisted, err)
 	}
 }
 

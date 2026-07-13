@@ -94,11 +94,17 @@ The stream emits four frame kinds:
 - `Event` for model deltas and complete conversation events;
 - `ToolApproval` when an operation needs user consent;
 - `QuestionPrompt` when the agent asks for structured user input;
-- `RunCompleted` after the turn has been committed successfully.
+- `RunCompleted` after the turn has been committed successfully, including the
+  latest durable `Session` snapshot.
 
 Sessions select their own provider, model, reasoning effort, workspace, and
 permission policy. Runs for the same session are serialized. If a turn cannot
 be acknowledged with `RunCompleted`, its committed history is rolled back.
+When a session still has an empty title, its first Run concurrently asks the
+selected model for a concise title from the initial user input. The title is
+stored and returned in `RunCompleted.session`; title-generation failure does
+not fail the agent turn. Clients may display a local excerpt of the first input
+as a temporary title while the Run is active.
 
 ## Tools and permissions
 
