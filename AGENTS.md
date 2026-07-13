@@ -44,6 +44,9 @@ their own domain types or ADK types.
 - Provider/model selection and permissions are session-scoped. Do not add a
   global active-provider setting.
 - Reasoning effort is a provider/model-specific string.
+- Directory browsing is a service-scoped, read-only capability used before
+  session creation. It may expose directory names and paths, but must never
+  return file contents or mutate the filesystem.
 
 When a public contract, command, or user-visible behavior changes, update both
 READMEs in the same change.

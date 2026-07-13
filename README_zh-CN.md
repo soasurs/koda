@@ -71,6 +71,13 @@ Session 配置保存在数据库中。Provider 文件仅允许当前用户访问
 状态；只有客户端显式调用 `RefreshModels` 时才会访问网络。Provider 连接发生变化后，
 之前发现的模型 snapshot 会失效。
 
+## 目录浏览
+
+本地客户端可以在创建 Session 前调用 `ListDirectories` 选择工作目录。空路径从当前
+用户的 home 目录开始；每次响应只包含当前目录的 canonical path、parent path，以及
+直接子目录的名称和路径。该 RPC 不列出文件、不读取文件内容，也不修改文件系统，
+并继续受服务现有的 loopback Host 和 Origin 检查保护。
+
 ## Agent Run
 
 `Run` 通过 server stream 执行一个多模态用户 turn。输入可以按顺序包含文本、HTTPS

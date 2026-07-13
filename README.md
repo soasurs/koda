@@ -76,6 +76,15 @@ local-only; network discovery occurs only when a client explicitly calls
 `RefreshModels`. Changing a provider connection invalidates its previously
 discovered snapshot.
 
+## Directory browsing
+
+Local clients can call `ListDirectories` before creating a session to choose a
+working directory. An empty path starts at the current user's home directory;
+each response contains only the selected directory's canonical path, parent
+path, and immediate child directory names and paths. The RPC does not list
+files, read file contents, or modify the filesystem. It remains protected by
+the server's loopback Host and Origin checks.
+
 ## Agent runs
 
 `Run` executes one multimodal user turn as a server stream. Inputs may contain

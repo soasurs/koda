@@ -12,6 +12,9 @@ service KodaService {
   // ask_questions tool call.
   rpc SubmitQuestionAnswers(SubmitQuestionAnswersRequest) returns (SubmitQuestionAnswersResponse);
 
+  // ListDirectories returns the immediate child directories of one local path.
+  rpc ListDirectories(ListDirectoriesRequest) returns (ListDirectoriesResponse);
+
   // CreateSession creates a new coding session.
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
   // GetSession returns one coding session.
@@ -304,6 +307,30 @@ message QuestionAnswer {
   string question_id = 1;
   repeated string selected_option_ids = 2;
   string freeform = 3;
+}
+
+// ListDirectoriesRequest selects one local directory to browse.
+message ListDirectoriesRequest {
+  // path must be an absolute directory path. An empty path starts at the
+  // current user's home directory.
+  string path = 1;
+}
+
+// ListDirectoriesResponse contains one resolved directory level.
+message ListDirectoriesResponse {
+  // path is the canonical absolute path of the listed directory.
+  string path = 1;
+  // parent_path is the canonical parent directory, or empty at a filesystem root.
+  string parent_path = 2;
+  // directories contains immediate child directories ordered by name.
+  repeated DirectoryEntry directories = 3;
+}
+
+// DirectoryEntry describes one browsable child directory.
+message DirectoryEntry {
+  string name = 1;
+  // path is an absolute path accepted by a subsequent ListDirectories request.
+  string path = 2;
 }
 
 // Session contains metadata and execution settings for one coding session.
