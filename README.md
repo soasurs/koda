@@ -123,6 +123,19 @@ After changing the Protocol Buffer contract, run `buf format -w`, `buf lint`,
 
 Contributor-specific repository rules are in [AGENTS.md](AGENTS.md).
 
+## Agent instructions
+
+Koda assembles each coding agent's system instruction in layers. A stable,
+embedded common prompt and Build or Plan mode prompt come first. Each Run then
+adds the normalized working directory, effective session permissions, and
+hierarchical `AGENTS.md` files from the filesystem root to the workspace. The
+workspace instruction snapshot is reused across tool-call iterations in that
+Run and refreshed on the next Run.
+
+Runtime and workspace instructions are request-scoped context. They are sent to
+the model for each iteration but are not added to conversation events or stored
+in session history.
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).

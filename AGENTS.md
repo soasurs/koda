@@ -62,6 +62,10 @@ READMEs in the same change.
   resolved reasoning effort, mode, tool permissions, workdir, and workspace
   instruction fingerprint. Do not rebuild agents merely to inject per-Run
   metadata.
+- Keep the embedded common and mode prompts as the stable system prefix. Add
+  normalized runtime environment, effective permissions, and the Run-captured
+  hierarchical `AGENTS.md` snapshot through `InstructionProvider`; dynamic
+  instructions are ephemeral and must not enter conversation history.
 - Approval and question handlers are resolved from Run context. Preserve the
   provider tool-call ID and publish transient interaction frames through the
   Run's concurrency-safe publisher.

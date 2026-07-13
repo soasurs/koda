@@ -10,19 +10,23 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
+	"github.com/soasurs/koda/internal/agent"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
 )
 
 type fakeTurnRunner struct {
-	gotSessionID string
-	gotInput     model.Content
-	events       []model.Event
+	gotSessionID     string
+	gotInput         model.Content
+	gotEnvironment   agent.RunEnvironment
+	gotEnvironmentOK bool
+	events           []model.Event
 }
 
-func (r *fakeTurnRunner) Run(_ context.Context, sessionID string, input model.Content) iter.Seq2[*model.Event, error] {
+func (r *fakeTurnRunner) Run(ctx context.Context, sessionID string, input model.Content) iter.Seq2[*model.Event, error] {
 	r.gotSessionID = sessionID
 	r.gotInput = input
+	r.gotEnvironment, r.gotEnvironmentOK = agent.RunEnvironmentFromContext(ctx)
 	return func(yield func(*model.Event, error) bool) {
 		for index := range r.events {
 			event := r.events[index]
@@ -95,7 +99,9 @@ func TestRunStreamsInjectedTurnRunner(t *testing.T) {
 		t.Fatalf("Run() stream error = %v", err)
 	}
 	if gotSession.ID != sessionID || gotMode != v1.AgentMode_AGENT_MODE_PLAN || fake.gotSessionID != sessionID ||
-		len(fake.gotInput.Parts) != 1 || fake.gotInput.Parts[0].Text != "hello" {
+		len(fake.gotInput.Parts) != 1 || fake.gotInput.Parts[0].Text != "hello" || !fake.gotEnvironmentOK ||
+		fake.gotEnvironment.Workdir != gotSession.Workdir || fake.gotEnvironment.FileAccess != gotSession.FileAccess ||
+		fake.gotEnvironment.ShellAccess != gotSession.ShellAccess {
 		t.Fatalf("runtime factory inputs = session %+v, mode %v, runner input %+v", gotSession, gotMode, fake.gotInput)
 	}
 	if len(events) != 2 || !events[0].GetPartial() || events[0].GetId() != "" || events[1].GetId() != "7" || events[1].GetFinishReason() != v1.FinishReason_FINISH_REASON_STOP || len(completed) != 1 || completed[0].GetTurnId() != "turn-1" {

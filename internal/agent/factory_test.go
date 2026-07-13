@@ -161,21 +161,22 @@ func TestFactoryRunnerPassesRunInteractionsIntoCachedTools(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
+	scripted := &scriptedModel{responses: []*model.LLMResponse{
+		{
+			Content: model.Content{Role: model.RoleAssistant, ToolCalls: []model.ToolCall{{
+				ID:        "call-1",
+				Name:      "create_file",
+				Arguments: []byte(`{"path":"created.txt","content":"created\n"}`),
+			}}},
+			FinishReason: model.FinishReasonToolCalls,
+		},
+		{
+			Content:      model.Content{Role: model.RoleAssistant, Content: "done"},
+			FinishReason: model.FinishReasonStop,
+		},
+	}}
 	factory.newModel = func(context.Context, provider.Provider, string, string) (model.LLM, error) {
-		return &scriptedModel{responses: []*model.LLMResponse{
-			{
-				Content: model.Content{Role: model.RoleAssistant, ToolCalls: []model.ToolCall{{
-					ID:        "call-1",
-					Name:      "create_file",
-					Arguments: []byte(`{"path":"created.txt","content":"created\n"}`),
-				}}},
-				FinishReason: model.FinishReasonToolCalls,
-			},
-			{
-				Content:      model.Content{Role: model.RoleAssistant, Content: "done"},
-				FinishReason: model.FinishReasonStop,
-			},
-		}}, nil
+		return scripted, nil
 	}
 	runner, err := factory.Runner(t.Context(), session, ModeBuild)
 	if err != nil {
@@ -188,6 +189,9 @@ func TestFactoryRunnerPassesRunInteractionsIntoCachedTools(t *testing.T) {
 			return nil
 		}),
 	})
+	ctx = WithRunEnvironment(ctx, RunEnvironment{
+		Workdir: workspace, FileAccess: session.FileAccess, ShellAccess: session.ShellAccess,
+	})
 	for _, err := range runner.Run(ctx, session.ID, model.Content{Content: "create a file"}) {
 		if err != nil {
 			t.Fatalf("Runner.Run() error = %v", err)
@@ -199,6 +203,29 @@ func TestFactoryRunnerPassesRunInteractionsIntoCachedTools(t *testing.T) {
 	}
 	if string(contents) != "created\n" || len(approvals) != 1 || approvals[0].ToolCallID != "call-1" || approvals[0].ToolName != "create_file" {
 		t.Fatalf("contents = %q, approvals = %+v", contents, approvals)
+	}
+	if len(scripted.requests) != 2 {
+		t.Fatalf("LLM request count = %d, want 2", len(scripted.requests))
+	}
+	for index, request := range scripted.requests {
+		if len(request.Contents) == 0 || request.Contents[0].Role != model.RoleSystem ||
+			!strings.Contains(request.Contents[0].Content, "# Role and operating principles") ||
+			!strings.Contains(request.Contents[0].Content, "# Runtime environment") {
+			t.Fatalf("request %d system instruction = %+v", index, request.Contents)
+		}
+	}
+	adkSession, err := factory.sessions.GetSession(t.Context(), session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	events, err := adkSession.ListEvents(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, event := range events {
+		if event.Role == string(model.RoleSystem) || strings.Contains(event.Content, "# Runtime environment") {
+			t.Fatalf("dynamic instruction persisted in event %+v", event)
+		}
 	}
 }
 
@@ -220,7 +247,10 @@ func TestFactoryRunnerRollsBackIncompleteTurn(t *testing.T) {
 		t.Fatalf("Runner() error = %v", err)
 	}
 	var runErr error
-	for _, err := range runner.Run(t.Context(), session.ID, model.Content{Content: "hello"}) {
+	ctx := WithRunEnvironment(t.Context(), RunEnvironment{
+		Workdir: session.Workdir, FileAccess: session.FileAccess, ShellAccess: session.ShellAccess,
+	})
+	for _, err := range runner.Run(ctx, session.ID, model.Content{Content: "hello"}) {
 		runErr = err
 	}
 	if !errors.Is(runErr, errTurnIncomplete) {
@@ -298,6 +328,7 @@ func (m fakeModel) GenerateContent(context.Context, *model.LLMRequest, *model.Ge
 
 type scriptedModel struct {
 	responses []*model.LLMResponse
+	requests  []*model.LLMRequest
 	index     atomic.Int32
 }
 
@@ -305,7 +336,8 @@ func (m *scriptedModel) Name() string {
 	return "scripted"
 }
 
-func (m *scriptedModel) GenerateContent(context.Context, *model.LLMRequest, *model.GenerateConfig, bool) iter.Seq2[*model.LLMResponse, error] {
+func (m *scriptedModel) GenerateContent(_ context.Context, request *model.LLMRequest, _ *model.GenerateConfig, _ bool) iter.Seq2[*model.LLMResponse, error] {
+	m.requests = append(m.requests, request)
 	return func(yield func(*model.LLMResponse, error) bool) {
 		index := int(m.index.Add(1) - 1)
 		if index < len(m.responses) {

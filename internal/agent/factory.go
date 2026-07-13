@@ -105,7 +105,7 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 	if err != nil {
 		return nil, err
 	}
-	instruction, instructionHash, err := instructionFor(mode, session.Workdir)
+	instruction, instructionProvider, instructionHash, err := instructionConfiguration(mode, session.Workdir)
 	if err != nil {
 		return nil, err
 	}
@@ -145,13 +145,14 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 		return nil, fmt.Errorf("agent: construct tools: %w", err)
 	}
 	llmAgent, err := llmagent.NewWithError(llmagent.Config{
-		Name:           string(mode),
-		Description:    modeDescription(mode),
-		Model:          llm,
-		Tools:          values,
-		Instruction:    instruction,
-		GenerateConfig: generateConfigFor(value.Type, reasoningEffort),
-		Stream:         true,
+		Name:                string(mode),
+		Description:         modeDescription(mode),
+		Model:               llm,
+		Tools:               values,
+		Instruction:         instruction,
+		InstructionProvider: instructionProvider,
+		GenerateConfig:      generateConfigFor(value.Type, reasoningEffort),
+		Stream:              true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("agent: construct %s agent: %w", mode, err)

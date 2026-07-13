@@ -72,6 +72,11 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	defer cancel()
 	publisher := &runPublisher{stream: stream, cancel: cancel}
 	runCtx = agent.WithRunInteractions(runCtx, h.runInteractions(publisher.Publish))
+	runCtx = agent.WithRunEnvironment(runCtx, agent.RunEnvironment{
+		Workdir:     session.Workdir,
+		FileAccess:  session.FileAccess,
+		ShellAccess: session.ShellAccess,
+	})
 	var (
 		turnID   string
 		terminal bool

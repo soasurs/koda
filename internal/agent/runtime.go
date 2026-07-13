@@ -4,10 +4,32 @@ package agent
 import (
 	"context"
 
+	"github.com/soasurs/koda/internal/permission"
 	"github.com/soasurs/koda/internal/tools"
 )
 
 type runInteractionsContextKey struct{}
+type runEnvironmentContextKey struct{}
+
+// RunEnvironment describes the session-scoped workspace and effective access
+// settings for one Run.
+type RunEnvironment struct {
+	Workdir     string
+	FileAccess  permission.FileAccess
+	ShellAccess permission.ShellAccess
+}
+
+// WithRunEnvironment returns a child context carrying environment settings for
+// one active Run. The instruction provider validates the values before use.
+func WithRunEnvironment(ctx context.Context, environment RunEnvironment) context.Context {
+	return context.WithValue(ctx, runEnvironmentContextKey{}, environment)
+}
+
+// RunEnvironmentFromContext returns the environment attached to an active Run.
+func RunEnvironmentFromContext(ctx context.Context) (RunEnvironment, bool) {
+	environment, ok := ctx.Value(runEnvironmentContextKey{}).(RunEnvironment)
+	return environment, ok
+}
 
 // RunInteractions supplies the frontend interactions for one active Run.
 // Cached agents and tools resolve this value from context so session and turn

@@ -115,6 +115,17 @@ git diff --check
 
 贡献者需要遵循的仓库规则见 [AGENTS.md](AGENTS.md)。
 
+## Agent 指令
+
+Koda 会分层组装 coding agent 的 system instruction。稳定的内嵌公共 Prompt
+和 Build 或 Plan 模式 Prompt 位于最前；每次 Run 再追加规范化工作目录、当前
+Session 的有效权限，以及从文件系统根目录到 workspace 的分层 `AGENTS.md`。
+同一次 Run 的所有工具调用轮次复用同一份 workspace 指令快照，下一次 Run
+会重新读取。
+
+运行时上下文和 workspace 指令只作用于当前请求。它们会在每次模型调用时
+发送，但不会加入 conversation event，也不会持久化到 Session history。
+
 ## License
 
 Apache License 2.0，详见 [LICENSE](LICENSE)。
