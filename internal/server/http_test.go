@@ -6,6 +6,7 @@ import (
 	"iter"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -33,6 +34,17 @@ func TestHTTPServerServesConnectRunAndShutsDown(t *testing.T) {
 	defer stop()
 	if server.Address() != DefaultAddress {
 		t.Fatalf("default address = %q, want %q", server.Address(), DefaultAddress)
+	}
+
+	browseRoot := t.TempDir()
+	if err := os.Mkdir(filepath.Join(browseRoot, "workspace"), 0o700); err != nil {
+		t.Fatalf("os.Mkdir() error = %v", err)
+	}
+	directories, err := client.ListDirectories(t.Context(), v1.ListDirectoriesRequest_builder{
+		Path: proto.String(browseRoot),
+	}.Build())
+	if err != nil || len(directories.GetDirectories()) != 1 || directories.GetDirectories()[0].GetName() != "workspace" {
+		t.Fatalf("ListDirectories() = %+v, %v", directories, err)
 	}
 
 	providers, err := client.ListProviders(t.Context(), v1.ListProvidersRequest_builder{}.Build())

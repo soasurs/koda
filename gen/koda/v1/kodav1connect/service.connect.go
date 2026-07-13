@@ -41,6 +41,9 @@ const (
 	// KodaServiceSubmitQuestionAnswersProcedure is the fully-qualified name of the KodaService's
 	// SubmitQuestionAnswers RPC.
 	KodaServiceSubmitQuestionAnswersProcedure = "/koda.v1.KodaService/SubmitQuestionAnswers"
+	// KodaServiceListDirectoriesProcedure is the fully-qualified name of the KodaService's
+	// ListDirectories RPC.
+	KodaServiceListDirectoriesProcedure = "/koda.v1.KodaService/ListDirectories"
 	// KodaServiceCreateSessionProcedure is the fully-qualified name of the KodaService's CreateSession
 	// RPC.
 	KodaServiceCreateSessionProcedure = "/koda.v1.KodaService/CreateSession"
@@ -85,6 +88,8 @@ type KodaServiceClient interface {
 	// SubmitQuestionAnswers returns frontend-authored answers to a pending
 	// ask_questions tool call.
 	SubmitQuestionAnswers(context.Context, *v1.SubmitQuestionAnswersRequest) (*v1.SubmitQuestionAnswersResponse, error)
+	// ListDirectories returns the immediate child directories of one local path.
+	ListDirectories(context.Context, *v1.ListDirectoriesRequest) (*v1.ListDirectoriesResponse, error)
 	// CreateSession creates a new coding session.
 	CreateSession(context.Context, *v1.CreateSessionRequest) (*v1.CreateSessionResponse, error)
 	// GetSession returns one coding session.
@@ -138,6 +143,12 @@ func NewKodaServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+KodaServiceSubmitQuestionAnswersProcedure,
 			connect.WithSchema(kodaServiceMethods.ByName("SubmitQuestionAnswers")),
+			connect.WithClientOptions(opts...),
+		),
+		listDirectories: connect.NewClient[v1.ListDirectoriesRequest, v1.ListDirectoriesResponse](
+			httpClient,
+			baseURL+KodaServiceListDirectoriesProcedure,
+			connect.WithSchema(kodaServiceMethods.ByName("ListDirectories")),
 			connect.WithClientOptions(opts...),
 		),
 		createSession: connect.NewClient[v1.CreateSessionRequest, v1.CreateSessionResponse](
@@ -220,6 +231,7 @@ type kodaServiceClient struct {
 	run                   *connect.Client[v1.RunRequest, v1.RunResponse]
 	resolveToolApproval   *connect.Client[v1.ResolveToolApprovalRequest, v1.ResolveToolApprovalResponse]
 	submitQuestionAnswers *connect.Client[v1.SubmitQuestionAnswersRequest, v1.SubmitQuestionAnswersResponse]
+	listDirectories       *connect.Client[v1.ListDirectoriesRequest, v1.ListDirectoriesResponse]
 	createSession         *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
 	getSession            *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
 	listSessions          *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
@@ -251,6 +263,15 @@ func (c *kodaServiceClient) ResolveToolApproval(ctx context.Context, req *v1.Res
 // SubmitQuestionAnswers calls koda.v1.KodaService.SubmitQuestionAnswers.
 func (c *kodaServiceClient) SubmitQuestionAnswers(ctx context.Context, req *v1.SubmitQuestionAnswersRequest) (*v1.SubmitQuestionAnswersResponse, error) {
 	response, err := c.submitQuestionAnswers.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ListDirectories calls koda.v1.KodaService.ListDirectories.
+func (c *kodaServiceClient) ListDirectories(ctx context.Context, req *v1.ListDirectoriesRequest) (*v1.ListDirectoriesResponse, error) {
+	response, err := c.listDirectories.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -374,6 +395,8 @@ type KodaServiceHandler interface {
 	// SubmitQuestionAnswers returns frontend-authored answers to a pending
 	// ask_questions tool call.
 	SubmitQuestionAnswers(context.Context, *v1.SubmitQuestionAnswersRequest) (*v1.SubmitQuestionAnswersResponse, error)
+	// ListDirectories returns the immediate child directories of one local path.
+	ListDirectories(context.Context, *v1.ListDirectoriesRequest) (*v1.ListDirectoriesResponse, error)
 	// CreateSession creates a new coding session.
 	CreateSession(context.Context, *v1.CreateSessionRequest) (*v1.CreateSessionResponse, error)
 	// GetSession returns one coding session.
@@ -423,6 +446,12 @@ func NewKodaServiceHandler(svc KodaServiceHandler, opts ...connect.HandlerOption
 		KodaServiceSubmitQuestionAnswersProcedure,
 		svc.SubmitQuestionAnswers,
 		connect.WithSchema(kodaServiceMethods.ByName("SubmitQuestionAnswers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	kodaServiceListDirectoriesHandler := connect.NewUnaryHandlerSimple(
+		KodaServiceListDirectoriesProcedure,
+		svc.ListDirectories,
+		connect.WithSchema(kodaServiceMethods.ByName("ListDirectories")),
 		connect.WithHandlerOptions(opts...),
 	)
 	kodaServiceCreateSessionHandler := connect.NewUnaryHandlerSimple(
@@ -505,6 +534,8 @@ func NewKodaServiceHandler(svc KodaServiceHandler, opts ...connect.HandlerOption
 			kodaServiceResolveToolApprovalHandler.ServeHTTP(w, r)
 		case KodaServiceSubmitQuestionAnswersProcedure:
 			kodaServiceSubmitQuestionAnswersHandler.ServeHTTP(w, r)
+		case KodaServiceListDirectoriesProcedure:
+			kodaServiceListDirectoriesHandler.ServeHTTP(w, r)
 		case KodaServiceCreateSessionProcedure:
 			kodaServiceCreateSessionHandler.ServeHTTP(w, r)
 		case KodaServiceGetSessionProcedure:
@@ -548,6 +579,10 @@ func (UnimplementedKodaServiceHandler) ResolveToolApproval(context.Context, *v1.
 
 func (UnimplementedKodaServiceHandler) SubmitQuestionAnswers(context.Context, *v1.SubmitQuestionAnswersRequest) (*v1.SubmitQuestionAnswersResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.SubmitQuestionAnswers is not implemented"))
+}
+
+func (UnimplementedKodaServiceHandler) ListDirectories(context.Context, *v1.ListDirectoriesRequest) (*v1.ListDirectoriesResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.ListDirectories is not implemented"))
 }
 
 func (UnimplementedKodaServiceHandler) CreateSession(context.Context, *v1.CreateSessionRequest) (*v1.CreateSessionResponse, error) {
