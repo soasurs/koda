@@ -6,12 +6,17 @@ import (
 	"errors"
 	"flag"
 	"net"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
+	v1 "github.com/soasurs/koda/gen/koda/v1"
+	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
 	"github.com/soasurs/koda/internal/provider"
 	kodaserver "github.com/soasurs/koda/internal/server"
 	"github.com/soasurs/koda/internal/store"
@@ -92,6 +97,57 @@ func TestRunStartsAndStopsLocalAPIServer(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("runWithDependencies() did not stop after cancellation")
+	}
+}
+
+func TestIntegrationServeRestartPreservesSessions(t *testing.T) {
+	directory := t.TempDir()
+	dependencies := dependencies{
+		openRegistry: func() (*provider.Registry, error) { return provider.Open(filepath.Join(directory, "providers.json")) },
+		openStore: func(ctx context.Context) (*store.Store, error) {
+			return store.Open(ctx, filepath.Join(directory, "koda.db"))
+		},
+		listen: net.Listen,
+	}
+	start := func() (kodav1connect.KodaServiceClient, context.CancelFunc, <-chan error) {
+		ctx, cancel := context.WithCancel(t.Context())
+		output := lineWriter{lines: make(chan string, 1)}
+		done := make(chan error, 1)
+		go func() {
+			done <- runWithDependencies(ctx, []string{"serve", "--addr", "127.0.0.1:0"}, output, &bytes.Buffer{}, dependencies)
+		}()
+		select {
+		case line := <-output.lines:
+			baseURL := strings.TrimSpace(strings.TrimPrefix(line, "koda API listening on "))
+			return kodav1connect.NewKodaServiceClient(http.DefaultClient, baseURL), cancel, done
+		case <-time.After(time.Second):
+			t.Fatal("serve did not start")
+		}
+		return nil, cancel, done
+	}
+
+	client, cancel, done := start()
+	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+	}.Build())
+	if err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatalf("first serve error = %v", err)
+	}
+
+	client, cancel, done = start()
+	defer func() {
+		cancel()
+		if err := <-done; err != nil {
+			t.Errorf("second serve error = %v", err)
+		}
+	}()
+	got, err := client.GetSession(t.Context(), v1.GetSessionRequest_builder{SessionId: proto.String(created.GetSession().GetId())}.Build())
+	if err != nil || got.GetSession().GetId() != created.GetSession().GetId() {
+		t.Fatalf("GetSession(after restart) = %+v, %v", got, err)
 	}
 }
 
