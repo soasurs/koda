@@ -14,6 +14,7 @@ import (
 	"github.com/soasurs/adk/model"
 	"github.com/soasurs/adk/runner"
 	adksession "github.com/soasurs/adk/session"
+	adkskill "github.com/soasurs/adk/skill"
 	"github.com/soasurs/adk/tool"
 
 	"github.com/soasurs/koda/internal/logging"
@@ -43,6 +44,8 @@ type Config struct {
 	Sessions adksession.SessionService
 	// Logger receives diagnostic records for ADK runtime operations.
 	Logger *slog.Logger
+	// Skills contains process-level Agent Skills available to every agent.
+	Skills *adkskill.Catalog
 }
 
 // Factory creates ADK runners and caches immutable model, prompt, and tool
@@ -52,6 +55,9 @@ type Factory struct {
 	catalog  *provider.Catalog
 	sessions adksession.SessionService
 	logger   *slog.Logger
+
+	skillInstruction string
+	skillTools       []tool.Tool
 
 	mu    sync.Mutex
 	cache map[cacheKey]*runner.Runner
@@ -86,13 +92,33 @@ func New(config Config) (*Factory, error) {
 	if config.Sessions == nil {
 		return nil, errors.New("agent: session service must not be nil")
 	}
+	var skillInstruction string
+	var skillTools []tool.Tool
+	if config.Skills != nil && len(config.Skills.Skills()) > 0 {
+		var err error
+		skillInstruction, err = config.Skills.Instruction()
+		if err != nil {
+			return nil, fmt.Errorf("agent: render skill catalog: %w", err)
+		}
+		loadTool, err := adkskill.NewLoadTool(config.Skills)
+		if err != nil {
+			return nil, fmt.Errorf("agent: construct load skill tool: %w", err)
+		}
+		readResourceTool, err := adkskill.NewReadResourceTool(config.Skills)
+		if err != nil {
+			return nil, fmt.Errorf("agent: construct read skill resource tool: %w", err)
+		}
+		skillTools = []tool.Tool{loadTool, readResourceTool}
+	}
 	return &Factory{
-		registry: config.Registry,
-		catalog:  config.Catalog,
-		sessions: config.Sessions,
-		logger:   logging.OrDiscard(config.Logger),
-		cache:    make(map[cacheKey]*runner.Runner),
-		newModel: newProviderModel,
+		registry:         config.Registry,
+		catalog:          config.Catalog,
+		sessions:         config.Sessions,
+		logger:           logging.OrDiscard(config.Logger),
+		skillInstruction: skillInstruction,
+		skillTools:       skillTools,
+		cache:            make(map[cacheKey]*runner.Runner),
+		newModel:         newProviderModel,
 	}, nil
 }
 
@@ -111,7 +137,7 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 	if err != nil {
 		return nil, err
 	}
-	instruction, instructionProvider, instructionHash, err := instructionConfiguration(mode, session.Workdir)
+	instruction, instructionProvider, instructionHash, err := instructionConfiguration(mode, session.Workdir, f.skillInstruction)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +173,7 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 		Questioner:  runtimeQuestioner{},
 		Logger:      f.logger,
 	}
-	values, err := toolsForMode(mode, toolConfig)
+	values, err := toolsForMode(mode, toolConfig, f.skillTools)
 	if err != nil {
 		return nil, fmt.Errorf("agent: construct tools: %w", err)
 	}
@@ -271,15 +297,21 @@ func (m Mode) valid() bool {
 	return m == ModeBuild || m == ModePlan
 }
 
-func toolsForMode(mode Mode, config tools.Config) ([]tool.Tool, error) {
+func toolsForMode(mode Mode, config tools.Config, additional []tool.Tool) ([]tool.Tool, error) {
+	var values []tool.Tool
+	var err error
 	switch mode {
 	case ModeBuild:
-		return tools.NewBuild(config)
+		values, err = tools.NewBuild(config)
 	case ModePlan:
-		return tools.NewReadOnly(config)
+		values, err = tools.NewReadOnly(config)
 	default:
 		return nil, fmt.Errorf("agent: invalid mode %q", mode)
 	}
+	if err != nil {
+		return nil, err
+	}
+	return append(values, additional...), nil
 }
 
 func modeDescription(mode Mode) string {

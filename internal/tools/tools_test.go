@@ -226,6 +226,29 @@ func TestSearchAndFindFilesExposeEditableMetadata(t *testing.T) {
 	}
 }
 
+func TestSearchGlobSchemasDescribeJSONArrayInputs(t *testing.T) {
+	values, err := NewReadOnly(Config{Workdir: t.TempDir()})
+	if err != nil {
+		t.Fatalf("NewReadOnly() error = %v", err)
+	}
+	for _, test := range []struct {
+		name    string
+		example string
+	}{
+		{name: "search_text", example: `["**/*.go"]`},
+		{name: "find_files", example: `["**/*_test.go"]`},
+	} {
+		definition := toolByName(t, values, test.name).Definition()
+		if definition.InputSchema == nil || definition.InputSchema.Properties["globs"] == nil {
+			t.Fatalf("%s globs schema is missing", test.name)
+		}
+		description := definition.InputSchema.Properties["globs"].Description
+		if !strings.Contains(description, test.example) {
+			t.Fatalf("%s globs description = %q; want JSON array example %q", test.name, description, test.example)
+		}
+	}
+}
+
 func TestPlanRunShellAllowsOnlyReadOnlyGit(t *testing.T) {
 	repository := t.TempDir()
 	command := exec.Command("git", "init", "-q", repository)

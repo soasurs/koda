@@ -15,6 +15,11 @@ service KodaService {
   // ListDirectories returns the immediate child directories of one local path.
   rpc ListDirectories(ListDirectoriesRequest) returns (ListDirectoriesResponse);
 
+  // ListSkills returns summaries of the Agent Skills loaded at startup.
+  rpc ListSkills(ListSkillsRequest) returns (ListSkillsResponse);
+  // GetSkill returns the complete loaded definition of one Agent Skill.
+  rpc GetSkill(GetSkillRequest) returns (GetSkillResponse);
+
   // CreateSession creates a new coding session.
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
   // GetSession returns one coding session.
@@ -616,7 +621,7 @@ message Model {
   // reasoning_efforts contains provider-specific values such as high, max, or ultra.
   repeated string reasoning_efforts = 3;
   // default_reasoning_effort is empty when the provider should choose the default.
- string default_reasoning_effort = 4;
+  string default_reasoning_effort = 4;
 }
 
 // ListProvidersRequest requests all registered providers.
@@ -625,6 +630,42 @@ message ListProvidersRequest {}
 // ListProvidersResponse returns all registered providers.
 message ListProvidersResponse {
   repeated Provider providers = 1;
+}
+
+// SkillSummary identifies one Agent Skill loaded when Koda started.
+message SkillSummary {
+  string name = 1;
+  string description = 2;
+}
+
+// Skill contains one loaded Agent Skill definition and its resource index.
+message Skill {
+  string name = 1;
+  string description = 2;
+  string license = 3;
+  string compatibility = 4;
+  map<string, string> metadata = 5;
+  repeated string allowed_tools = 6;
+  string instructions = 7;
+  repeated string resources = 8;
+}
+
+// ListSkillsRequest requests all loaded Agent Skill summaries.
+message ListSkillsRequest {}
+
+// ListSkillsResponse returns loaded Agent Skills sorted by name.
+message ListSkillsResponse {
+  repeated SkillSummary skills = 1;
+}
+
+// GetSkillRequest identifies one loaded Agent Skill.
+message GetSkillRequest {
+  string name = 1;
+}
+
+// GetSkillResponse returns one complete loaded Agent Skill definition.
+message GetSkillResponse {
+  Skill skill = 1;
 }
 
 // SaveProviderRequest creates or replaces a provider. An omitted API key is preserved.

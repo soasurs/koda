@@ -8,6 +8,7 @@ import { AppShell } from '@/components/layout/app-shell'
 import { HomePage } from '@/pages/home-page'
 import { ProviderSettingsPage } from '@/pages/provider-settings-page'
 import { SessionPage } from '@/pages/session-page'
+import { SkillSettingsPage } from '@/pages/skill-settings-page'
 
 const rootRoute = createRootRoute({
   component: AppShell,
@@ -25,6 +26,12 @@ const providerSettingsRoute = createRoute({
   component: ProviderSettingsPage,
 })
 
+const skillSettingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings/skills',
+  component: SkillSettingsPage,
+})
+
 const sessionRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sessions/$sessionId',
@@ -35,6 +42,7 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   sessionRoute,
   providerSettingsRoute,
+  skillSettingsRoute,
 ])
 
 export const router = createRouter({

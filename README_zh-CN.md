@@ -84,6 +84,7 @@ Koda 将状态保存在 `~/.koda`：
 ~/.koda/koda.yaml       可选的进程级配置
 ~/.koda/providers.json   Provider 定义与凭据
 ~/.koda/koda.db          Session 与 ADK 对话历史
+~/.koda/skills/          Koda 启动时加载的 Agent Skills
 ```
 
 Provider 配置保持独立，因为 Koda 会通过 API 更新它们，而 `koda.yaml` 是仅在启动时
@@ -91,6 +92,15 @@ Provider 配置保持独立，因为 Koda 会通过 API 更新它们，而 `koda
 Session 配置保存在数据库中。Provider 文件仅允许当前用户访问。模型列表只读取本地
 状态；只有客户端显式调用 `RefreshModels` 时才会访问网络。Provider 连接发生变化后，
 之前发现的模型 snapshot 会失效。
+
+`~/.koda/skills` 的每个直接子目录可以存放一个 Agent Skill，其中 `SKILL.md` 的
+name 必须与目录名一致。Koda 在进程启动时只加载一次 catalog；agent 通过
+`load_skill` 加载匹配的完整指令，并通过 `read_skill_resource` 读取其中列出的 UTF-8
+资源。新增、删除或修改 skill 后需要重启 Koda。skills 目录不存在时按空 catalog
+处理。无效 skill 会记录错误日志并被跳过，不会阻止启动；如果 skills 目录本身无法
+加载，Koda 也会记录错误并使用空 catalog 继续启动。客户端可以通过 `ListSkills` 和
+`GetSkill` 查看这个固定的启动快照；Studio 的 Settings > Skills 中也会展示列表和完整
+定义。
 
 ## 目录浏览
 

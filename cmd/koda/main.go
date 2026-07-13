@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -17,10 +18,13 @@ import (
 	"syscall"
 	"time"
 
+	adkskill "github.com/soasurs/adk/skill"
+
 	kodaconfig "github.com/soasurs/koda/internal/config"
 	"github.com/soasurs/koda/internal/logging"
 	"github.com/soasurs/koda/internal/provider"
 	kodaserver "github.com/soasurs/koda/internal/server"
+	kodaskills "github.com/soasurs/koda/internal/skills"
 	"github.com/soasurs/koda/internal/store"
 	kodastudio "github.com/soasurs/koda/internal/studio"
 )
@@ -36,6 +40,7 @@ type dependencies struct {
 	loadConfig   func() (kodaconfig.Config, error)
 	openRegistry func() (*provider.Registry, error)
 	openStore    func(context.Context) (*store.Store, error)
+	loadSkills   func(*slog.Logger) (*adkskill.Catalog, error)
 	listen       func(network, address string) (net.Listener, error)
 	openBrowser  func(string) error
 }
@@ -44,6 +49,7 @@ var productionDependencies = dependencies{
 	loadConfig:   kodaconfig.LoadDefault,
 	openRegistry: provider.OpenDefault,
 	openStore:    store.OpenDefault,
+	loadSkills:   kodaskills.LoadDefault,
 	listen:       net.Listen,
 	openBrowser:  openBrowser,
 }
@@ -150,6 +156,14 @@ func runServer(ctx context.Context, config serveConfig, stdout, stderr io.Writer
 	if err != nil {
 		return fmt.Errorf("create model catalog: %w", err)
 	}
+	var skillCatalog *adkskill.Catalog
+	if dependencies.loadSkills != nil {
+		skillCatalog, err = dependencies.loadSkills(logger)
+		if err != nil {
+			logger.ErrorContext(ctx, "load skills failed", "error", err)
+			skillCatalog = nil
+		}
+	}
 	sessionStore, err := dependencies.openStore(ctx)
 	if err != nil {
 		return fmt.Errorf("open session store: %w", err)
@@ -159,7 +173,7 @@ func runServer(ctx context.Context, config serveConfig, stdout, stderr io.Writer
 			logger.WarnContext(ctx, "session store close failed", "error", err)
 		}
 	}()
-	handler, err := kodaserver.NewHandler(registry, catalog, sessionStore, logger)
+	handler, err := kodaserver.NewHandler(registry, catalog, sessionStore, skillCatalog, logger)
 	if err != nil {
 		return fmt.Errorf("create service handler: %w", err)
 	}

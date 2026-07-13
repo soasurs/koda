@@ -1,4 +1,9 @@
-import type { Provider, Session } from '@/gen/koda/v1/service_pb'
+import type {
+  Provider,
+  Session,
+  Skill,
+  SkillSummary,
+} from '@/gen/koda/v1/service_pb'
 import { kodaClient } from '@/lib/connect'
 
 export const kodaKeys = {
@@ -7,6 +12,8 @@ export const kodaKeys = {
   events: (sessionId: string) => ['events', sessionId] as const,
   providers: ['providers'] as const,
   models: (providerId: string) => ['models', providerId] as const,
+  skills: ['skills'] as const,
+  skill: (name: string) => ['skill', name] as const,
 }
 
 export async function listSessions(): Promise<Session[]> {
@@ -17,6 +24,19 @@ export async function listSessions(): Promise<Session[]> {
 export async function listProviders(): Promise<Provider[]> {
   const response = await kodaClient.listProviders({})
   return response.providers
+}
+
+export async function listSkills(): Promise<SkillSummary[]> {
+  const response = await kodaClient.listSkills({})
+  return response.skills
+}
+
+export async function getSkill(name: string): Promise<Skill> {
+  const response = await kodaClient.getSkill({ name })
+  if (!response.skill) {
+    throw new Error(`Koda returned no definition for skill ${name}`)
+  }
+  return response.skill
 }
 
 export function replaceSession(

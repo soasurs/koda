@@ -8124,6 +8124,623 @@ func (b0 ListProvidersResponse_builder) Build() *ListProvidersResponse {
 	return m0
 }
 
+// SkillSummary identifies one Agent Skill loaded when Koda started.
+type SkillSummary struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Name        *string                `protobuf:"bytes,1,opt,name=name"`
+	xxx_hidden_Description *string                `protobuf:"bytes,2,opt,name=description"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *SkillSummary) Reset() {
+	*x = SkillSummary{}
+	mi := &file_koda_v1_service_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SkillSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SkillSummary) ProtoMessage() {}
+
+func (x *SkillSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_koda_v1_service_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *SkillSummary) GetName() string {
+	if x != nil {
+		if x.xxx_hidden_Name != nil {
+			return *x.xxx_hidden_Name
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *SkillSummary) GetDescription() string {
+	if x != nil {
+		if x.xxx_hidden_Description != nil {
+			return *x.xxx_hidden_Description
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *SkillSummary) SetName(v string) {
+	x.xxx_hidden_Name = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+}
+
+func (x *SkillSummary) SetDescription(v string) {
+	x.xxx_hidden_Description = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+}
+
+func (x *SkillSummary) HasName() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *SkillSummary) HasDescription() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *SkillSummary) ClearName() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Name = nil
+}
+
+func (x *SkillSummary) ClearDescription() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Description = nil
+}
+
+type SkillSummary_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Name        *string
+	Description *string
+}
+
+func (b0 SkillSummary_builder) Build() *SkillSummary {
+	m0 := &SkillSummary{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Name != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		x.xxx_hidden_Name = b.Name
+	}
+	if b.Description != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		x.xxx_hidden_Description = b.Description
+	}
+	return m0
+}
+
+// Skill contains one loaded Agent Skill definition and its resource index.
+type Skill struct {
+	state                    protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Name          *string                `protobuf:"bytes,1,opt,name=name"`
+	xxx_hidden_Description   *string                `protobuf:"bytes,2,opt,name=description"`
+	xxx_hidden_License       *string                `protobuf:"bytes,3,opt,name=license"`
+	xxx_hidden_Compatibility *string                `protobuf:"bytes,4,opt,name=compatibility"`
+	xxx_hidden_Metadata      map[string]string      `protobuf:"bytes,5,rep,name=metadata" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	xxx_hidden_AllowedTools  []string               `protobuf:"bytes,6,rep,name=allowed_tools,json=allowedTools"`
+	xxx_hidden_Instructions  *string                `protobuf:"bytes,7,opt,name=instructions"`
+	xxx_hidden_Resources     []string               `protobuf:"bytes,8,rep,name=resources"`
+	XXX_raceDetectHookData   protoimpl.RaceDetectHookData
+	XXX_presence             [1]uint32
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *Skill) Reset() {
+	*x = Skill{}
+	mi := &file_koda_v1_service_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Skill) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Skill) ProtoMessage() {}
+
+func (x *Skill) ProtoReflect() protoreflect.Message {
+	mi := &file_koda_v1_service_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *Skill) GetName() string {
+	if x != nil {
+		if x.xxx_hidden_Name != nil {
+			return *x.xxx_hidden_Name
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Skill) GetDescription() string {
+	if x != nil {
+		if x.xxx_hidden_Description != nil {
+			return *x.xxx_hidden_Description
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Skill) GetLicense() string {
+	if x != nil {
+		if x.xxx_hidden_License != nil {
+			return *x.xxx_hidden_License
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Skill) GetCompatibility() string {
+	if x != nil {
+		if x.xxx_hidden_Compatibility != nil {
+			return *x.xxx_hidden_Compatibility
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Skill) GetMetadata() map[string]string {
+	if x != nil {
+		return x.xxx_hidden_Metadata
+	}
+	return nil
+}
+
+func (x *Skill) GetAllowedTools() []string {
+	if x != nil {
+		return x.xxx_hidden_AllowedTools
+	}
+	return nil
+}
+
+func (x *Skill) GetInstructions() string {
+	if x != nil {
+		if x.xxx_hidden_Instructions != nil {
+			return *x.xxx_hidden_Instructions
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *Skill) GetResources() []string {
+	if x != nil {
+		return x.xxx_hidden_Resources
+	}
+	return nil
+}
+
+func (x *Skill) SetName(v string) {
+	x.xxx_hidden_Name = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
+}
+
+func (x *Skill) SetDescription(v string) {
+	x.xxx_hidden_Description = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
+}
+
+func (x *Skill) SetLicense(v string) {
+	x.xxx_hidden_License = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 8)
+}
+
+func (x *Skill) SetCompatibility(v string) {
+	x.xxx_hidden_Compatibility = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
+}
+
+func (x *Skill) SetMetadata(v map[string]string) {
+	x.xxx_hidden_Metadata = v
+}
+
+func (x *Skill) SetAllowedTools(v []string) {
+	x.xxx_hidden_AllowedTools = v
+}
+
+func (x *Skill) SetInstructions(v string) {
+	x.xxx_hidden_Instructions = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 8)
+}
+
+func (x *Skill) SetResources(v []string) {
+	x.xxx_hidden_Resources = v
+}
+
+func (x *Skill) HasName() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *Skill) HasDescription() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *Skill) HasLicense() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *Skill) HasCompatibility() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *Skill) HasInstructions() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *Skill) ClearName() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Name = nil
+}
+
+func (x *Skill) ClearDescription() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Description = nil
+}
+
+func (x *Skill) ClearLicense() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_License = nil
+}
+
+func (x *Skill) ClearCompatibility() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_Compatibility = nil
+}
+
+func (x *Skill) ClearInstructions() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_Instructions = nil
+}
+
+type Skill_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Name          *string
+	Description   *string
+	License       *string
+	Compatibility *string
+	Metadata      map[string]string
+	AllowedTools  []string
+	Instructions  *string
+	Resources     []string
+}
+
+func (b0 Skill_builder) Build() *Skill {
+	m0 := &Skill{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Name != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
+		x.xxx_hidden_Name = b.Name
+	}
+	if b.Description != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
+		x.xxx_hidden_Description = b.Description
+	}
+	if b.License != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 8)
+		x.xxx_hidden_License = b.License
+	}
+	if b.Compatibility != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
+		x.xxx_hidden_Compatibility = b.Compatibility
+	}
+	x.xxx_hidden_Metadata = b.Metadata
+	x.xxx_hidden_AllowedTools = b.AllowedTools
+	if b.Instructions != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 8)
+		x.xxx_hidden_Instructions = b.Instructions
+	}
+	x.xxx_hidden_Resources = b.Resources
+	return m0
+}
+
+// ListSkillsRequest requests all loaded Agent Skill summaries.
+type ListSkillsRequest struct {
+	state         protoimpl.MessageState `protogen:"opaque.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSkillsRequest) Reset() {
+	*x = ListSkillsRequest{}
+	mi := &file_koda_v1_service_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSkillsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSkillsRequest) ProtoMessage() {}
+
+func (x *ListSkillsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_koda_v1_service_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+type ListSkillsRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+}
+
+func (b0 ListSkillsRequest_builder) Build() *ListSkillsRequest {
+	m0 := &ListSkillsRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	return m0
+}
+
+// ListSkillsResponse returns loaded Agent Skills sorted by name.
+type ListSkillsResponse struct {
+	state             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Skills *[]*SkillSummary       `protobuf:"bytes,1,rep,name=skills"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ListSkillsResponse) Reset() {
+	*x = ListSkillsResponse{}
+	mi := &file_koda_v1_service_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSkillsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSkillsResponse) ProtoMessage() {}
+
+func (x *ListSkillsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_koda_v1_service_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *ListSkillsResponse) GetSkills() []*SkillSummary {
+	if x != nil {
+		if x.xxx_hidden_Skills != nil {
+			return *x.xxx_hidden_Skills
+		}
+	}
+	return nil
+}
+
+func (x *ListSkillsResponse) SetSkills(v []*SkillSummary) {
+	x.xxx_hidden_Skills = &v
+}
+
+type ListSkillsResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Skills []*SkillSummary
+}
+
+func (b0 ListSkillsResponse_builder) Build() *ListSkillsResponse {
+	m0 := &ListSkillsResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Skills = &b.Skills
+	return m0
+}
+
+// GetSkillRequest identifies one loaded Agent Skill.
+type GetSkillRequest struct {
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Name        *string                `protobuf:"bytes,1,opt,name=name"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *GetSkillRequest) Reset() {
+	*x = GetSkillRequest{}
+	mi := &file_koda_v1_service_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSkillRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSkillRequest) ProtoMessage() {}
+
+func (x *GetSkillRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_koda_v1_service_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *GetSkillRequest) GetName() string {
+	if x != nil {
+		if x.xxx_hidden_Name != nil {
+			return *x.xxx_hidden_Name
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *GetSkillRequest) SetName(v string) {
+	x.xxx_hidden_Name = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
+}
+
+func (x *GetSkillRequest) HasName() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *GetSkillRequest) ClearName() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Name = nil
+}
+
+type GetSkillRequest_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Name *string
+}
+
+func (b0 GetSkillRequest_builder) Build() *GetSkillRequest {
+	m0 := &GetSkillRequest{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Name != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
+		x.xxx_hidden_Name = b.Name
+	}
+	return m0
+}
+
+// GetSkillResponse returns one complete loaded Agent Skill definition.
+type GetSkillResponse struct {
+	state            protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Skill *Skill                 `protobuf:"bytes,1,opt,name=skill"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GetSkillResponse) Reset() {
+	*x = GetSkillResponse{}
+	mi := &file_koda_v1_service_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSkillResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSkillResponse) ProtoMessage() {}
+
+func (x *GetSkillResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_koda_v1_service_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *GetSkillResponse) GetSkill() *Skill {
+	if x != nil {
+		return x.xxx_hidden_Skill
+	}
+	return nil
+}
+
+func (x *GetSkillResponse) SetSkill(v *Skill) {
+	x.xxx_hidden_Skill = v
+}
+
+func (x *GetSkillResponse) HasSkill() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Skill != nil
+}
+
+func (x *GetSkillResponse) ClearSkill() {
+	x.xxx_hidden_Skill = nil
+}
+
+type GetSkillResponse_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Skill *Skill
+}
+
+func (b0 GetSkillResponse_builder) Build() *GetSkillResponse {
+	m0 := &GetSkillResponse{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Skill = b.Skill
+	return m0
+}
+
 // SaveProviderRequest creates or replaces a provider. An omitted API key is preserved.
 type SaveProviderRequest struct {
 	state                     protoimpl.MessageState `protogen:"opaque.v1"`
@@ -8142,7 +8759,7 @@ type SaveProviderRequest struct {
 
 func (x *SaveProviderRequest) Reset() {
 	*x = SaveProviderRequest{}
-	mi := &file_koda_v1_service_proto_msgTypes[49]
+	mi := &file_koda_v1_service_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8154,7 +8771,7 @@ func (x *SaveProviderRequest) String() string {
 func (*SaveProviderRequest) ProtoMessage() {}
 
 func (x *SaveProviderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_koda_v1_service_proto_msgTypes[49]
+	mi := &file_koda_v1_service_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8396,7 +9013,7 @@ type SaveProviderResponse struct {
 
 func (x *SaveProviderResponse) Reset() {
 	*x = SaveProviderResponse{}
-	mi := &file_koda_v1_service_proto_msgTypes[50]
+	mi := &file_koda_v1_service_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8408,7 +9025,7 @@ func (x *SaveProviderResponse) String() string {
 func (*SaveProviderResponse) ProtoMessage() {}
 
 func (x *SaveProviderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_koda_v1_service_proto_msgTypes[50]
+	mi := &file_koda_v1_service_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8467,7 +9084,7 @@ type DeleteProviderRequest struct {
 
 func (x *DeleteProviderRequest) Reset() {
 	*x = DeleteProviderRequest{}
-	mi := &file_koda_v1_service_proto_msgTypes[51]
+	mi := &file_koda_v1_service_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8479,7 +9096,7 @@ func (x *DeleteProviderRequest) String() string {
 func (*DeleteProviderRequest) ProtoMessage() {}
 
 func (x *DeleteProviderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_koda_v1_service_proto_msgTypes[51]
+	mi := &file_koda_v1_service_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8543,7 +9160,7 @@ type DeleteProviderResponse struct {
 
 func (x *DeleteProviderResponse) Reset() {
 	*x = DeleteProviderResponse{}
-	mi := &file_koda_v1_service_proto_msgTypes[52]
+	mi := &file_koda_v1_service_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8555,7 +9172,7 @@ func (x *DeleteProviderResponse) String() string {
 func (*DeleteProviderResponse) ProtoMessage() {}
 
 func (x *DeleteProviderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_koda_v1_service_proto_msgTypes[52]
+	mi := &file_koda_v1_service_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8590,7 +9207,7 @@ type ListModelsRequest struct {
 
 func (x *ListModelsRequest) Reset() {
 	*x = ListModelsRequest{}
-	mi := &file_koda_v1_service_proto_msgTypes[53]
+	mi := &file_koda_v1_service_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8602,7 +9219,7 @@ func (x *ListModelsRequest) String() string {
 func (*ListModelsRequest) ProtoMessage() {}
 
 func (x *ListModelsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_koda_v1_service_proto_msgTypes[53]
+	mi := &file_koda_v1_service_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8671,7 +9288,7 @@ type ListModelsResponse struct {
 
 func (x *ListModelsResponse) Reset() {
 	*x = ListModelsResponse{}
-	mi := &file_koda_v1_service_proto_msgTypes[54]
+	mi := &file_koda_v1_service_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8683,7 +9300,7 @@ func (x *ListModelsResponse) String() string {
 func (*ListModelsResponse) ProtoMessage() {}
 
 func (x *ListModelsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_koda_v1_service_proto_msgTypes[54]
+	mi := &file_koda_v1_service_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8796,7 +9413,7 @@ type RefreshModelsRequest struct {
 
 func (x *RefreshModelsRequest) Reset() {
 	*x = RefreshModelsRequest{}
-	mi := &file_koda_v1_service_proto_msgTypes[55]
+	mi := &file_koda_v1_service_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8808,7 +9425,7 @@ func (x *RefreshModelsRequest) String() string {
 func (*RefreshModelsRequest) ProtoMessage() {}
 
 func (x *RefreshModelsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_koda_v1_service_proto_msgTypes[55]
+	mi := &file_koda_v1_service_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8877,7 +9494,7 @@ type RefreshModelsResponse struct {
 
 func (x *RefreshModelsResponse) Reset() {
 	*x = RefreshModelsResponse{}
-	mi := &file_koda_v1_service_proto_msgTypes[56]
+	mi := &file_koda_v1_service_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8889,7 +9506,7 @@ func (x *RefreshModelsResponse) String() string {
 func (*RefreshModelsResponse) ProtoMessage() {}
 
 func (x *RefreshModelsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_koda_v1_service_proto_msgTypes[56]
+	mi := &file_koda_v1_service_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9247,7 +9864,29 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\x18default_reasoning_effort\x18\x04 \x01(\tR\x16defaultReasoningEffort\"\x16\n" +
 	"\x14ListProvidersRequest\"H\n" +
 	"\x15ListProvidersResponse\x12/\n" +
-	"\tproviders\x18\x01 \x03(\v2\x11.koda.v1.ProviderR\tproviders\"\xf9\x01\n" +
+	"\tproviders\x18\x01 \x03(\v2\x11.koda.v1.ProviderR\tproviders\"D\n" +
+	"\fSkillSummary\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\"\xdb\x02\n" +
+	"\x05Skill\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x18\n" +
+	"\alicense\x18\x03 \x01(\tR\alicense\x12$\n" +
+	"\rcompatibility\x18\x04 \x01(\tR\rcompatibility\x128\n" +
+	"\bmetadata\x18\x05 \x03(\v2\x1c.koda.v1.Skill.MetadataEntryR\bmetadata\x12#\n" +
+	"\rallowed_tools\x18\x06 \x03(\tR\fallowedTools\x12\"\n" +
+	"\finstructions\x18\a \x01(\tR\finstructions\x12\x1c\n" +
+	"\tresources\x18\b \x03(\tR\tresources\x1a;\n" +
+	"\rMetadataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x13\n" +
+	"\x11ListSkillsRequest\"C\n" +
+	"\x12ListSkillsResponse\x12-\n" +
+	"\x06skills\x18\x01 \x03(\v2\x15.koda.v1.SkillSummaryR\x06skills\"%\n" +
+	"\x0fGetSkillRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"8\n" +
+	"\x10GetSkillResponse\x12$\n" +
+	"\x05skill\x18\x01 \x01(\v2\x0e.koda.v1.SkillR\x05skill\"\xf9\x01\n" +
 	"\x13SaveProviderRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12)\n" +
@@ -9335,13 +9974,15 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\x1aDIFF_LINE_KIND_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16DIFF_LINE_KIND_CONTEXT\x10\x01\x12\x18\n" +
 	"\x14DIFF_LINE_KIND_ADDED\x10\x02\x12\x1a\n" +
-	"\x16DIFF_LINE_KIND_REMOVED\x10\x032\x89\n" +
-	"\n" +
+	"\x16DIFF_LINE_KIND_REMOVED\x10\x032\x91\v\n" +
 	"\vKodaService\x122\n" +
 	"\x03Run\x12\x13.koda.v1.RunRequest\x1a\x14.koda.v1.RunResponse0\x01\x12`\n" +
 	"\x13ResolveToolApproval\x12#.koda.v1.ResolveToolApprovalRequest\x1a$.koda.v1.ResolveToolApprovalResponse\x12f\n" +
 	"\x15SubmitQuestionAnswers\x12%.koda.v1.SubmitQuestionAnswersRequest\x1a&.koda.v1.SubmitQuestionAnswersResponse\x12T\n" +
-	"\x0fListDirectories\x12\x1f.koda.v1.ListDirectoriesRequest\x1a .koda.v1.ListDirectoriesResponse\x12N\n" +
+	"\x0fListDirectories\x12\x1f.koda.v1.ListDirectoriesRequest\x1a .koda.v1.ListDirectoriesResponse\x12E\n" +
+	"\n" +
+	"ListSkills\x12\x1a.koda.v1.ListSkillsRequest\x1a\x1b.koda.v1.ListSkillsResponse\x12?\n" +
+	"\bGetSkill\x12\x18.koda.v1.GetSkillRequest\x1a\x19.koda.v1.GetSkillResponse\x12N\n" +
 	"\rCreateSession\x12\x1d.koda.v1.CreateSessionRequest\x1a\x1e.koda.v1.CreateSessionResponse\x12E\n" +
 	"\n" +
 	"GetSession\x12\x1a.koda.v1.GetSessionRequest\x1a\x1b.koda.v1.GetSessionResponse\x12K\n" +
@@ -9360,7 +10001,7 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\vcom.koda.v1B\fServiceProtoP\x01Z*github.com/soasurs/koda/gen/koda/v1;kodav1\xa2\x02\x03KXX\xaa\x02\aKoda.V1\xca\x02\aKoda\\V1\xe2\x02\x13Koda\\V1\\GPBMetadata\xea\x02\bKoda::V1b\beditionsp\xe8\a"
 
 var file_koda_v1_service_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_koda_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 57)
+var file_koda_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 64)
 var file_koda_v1_service_proto_goTypes = []any{
 	(AgentMode)(0),                        // 0: koda.v1.AgentMode
 	(Role)(0),                             // 1: koda.v1.Role
@@ -9422,14 +10063,21 @@ var file_koda_v1_service_proto_goTypes = []any{
 	(*Model)(nil),                         // 57: koda.v1.Model
 	(*ListProvidersRequest)(nil),          // 58: koda.v1.ListProvidersRequest
 	(*ListProvidersResponse)(nil),         // 59: koda.v1.ListProvidersResponse
-	(*SaveProviderRequest)(nil),           // 60: koda.v1.SaveProviderRequest
-	(*SaveProviderResponse)(nil),          // 61: koda.v1.SaveProviderResponse
-	(*DeleteProviderRequest)(nil),         // 62: koda.v1.DeleteProviderRequest
-	(*DeleteProviderResponse)(nil),        // 63: koda.v1.DeleteProviderResponse
-	(*ListModelsRequest)(nil),             // 64: koda.v1.ListModelsRequest
-	(*ListModelsResponse)(nil),            // 65: koda.v1.ListModelsResponse
-	(*RefreshModelsRequest)(nil),          // 66: koda.v1.RefreshModelsRequest
-	(*RefreshModelsResponse)(nil),         // 67: koda.v1.RefreshModelsResponse
+	(*SkillSummary)(nil),                  // 60: koda.v1.SkillSummary
+	(*Skill)(nil),                         // 61: koda.v1.Skill
+	(*ListSkillsRequest)(nil),             // 62: koda.v1.ListSkillsRequest
+	(*ListSkillsResponse)(nil),            // 63: koda.v1.ListSkillsResponse
+	(*GetSkillRequest)(nil),               // 64: koda.v1.GetSkillRequest
+	(*GetSkillResponse)(nil),              // 65: koda.v1.GetSkillResponse
+	(*SaveProviderRequest)(nil),           // 66: koda.v1.SaveProviderRequest
+	(*SaveProviderResponse)(nil),          // 67: koda.v1.SaveProviderResponse
+	(*DeleteProviderRequest)(nil),         // 68: koda.v1.DeleteProviderRequest
+	(*DeleteProviderResponse)(nil),        // 69: koda.v1.DeleteProviderResponse
+	(*ListModelsRequest)(nil),             // 70: koda.v1.ListModelsRequest
+	(*ListModelsResponse)(nil),            // 71: koda.v1.ListModelsResponse
+	(*RefreshModelsRequest)(nil),          // 72: koda.v1.RefreshModelsRequest
+	(*RefreshModelsResponse)(nil),         // 73: koda.v1.RefreshModelsResponse
+	nil,                                   // 74: koda.v1.Skill.MetadataEntry
 }
 var file_koda_v1_service_proto_depIdxs = []int32{
 	14, // 0: koda.v1.RunRequest.input:type_name -> koda.v1.Input
@@ -9479,48 +10127,55 @@ var file_koda_v1_service_proto_depIdxs = []int32{
 	14, // 44: koda.v1.UndoLastMessageResponse.input:type_name -> koda.v1.Input
 	3,  // 45: koda.v1.Provider.type:type_name -> koda.v1.ProviderType
 	56, // 46: koda.v1.ListProvidersResponse.providers:type_name -> koda.v1.Provider
-	3,  // 47: koda.v1.SaveProviderRequest.type:type_name -> koda.v1.ProviderType
-	57, // 48: koda.v1.SaveProviderRequest.model_overrides:type_name -> koda.v1.Model
-	56, // 49: koda.v1.SaveProviderResponse.provider:type_name -> koda.v1.Provider
-	57, // 50: koda.v1.ListModelsResponse.models:type_name -> koda.v1.Model
-	57, // 51: koda.v1.RefreshModelsResponse.models:type_name -> koda.v1.Model
-	11, // 52: koda.v1.KodaService.Run:input_type -> koda.v1.RunRequest
-	18, // 53: koda.v1.KodaService.ResolveToolApproval:input_type -> koda.v1.ResolveToolApprovalRequest
-	23, // 54: koda.v1.KodaService.SubmitQuestionAnswers:input_type -> koda.v1.SubmitQuestionAnswersRequest
-	27, // 55: koda.v1.KodaService.ListDirectories:input_type -> koda.v1.ListDirectoriesRequest
-	31, // 56: koda.v1.KodaService.CreateSession:input_type -> koda.v1.CreateSessionRequest
-	33, // 57: koda.v1.KodaService.GetSession:input_type -> koda.v1.GetSessionRequest
-	35, // 58: koda.v1.KodaService.ListSessions:input_type -> koda.v1.ListSessionsRequest
-	37, // 59: koda.v1.KodaService.UpdateSession:input_type -> koda.v1.UpdateSessionRequest
-	39, // 60: koda.v1.KodaService.DeleteSession:input_type -> koda.v1.DeleteSessionRequest
-	52, // 61: koda.v1.KodaService.ListEvents:input_type -> koda.v1.ListEventsRequest
-	54, // 62: koda.v1.KodaService.UndoLastMessage:input_type -> koda.v1.UndoLastMessageRequest
-	58, // 63: koda.v1.KodaService.ListProviders:input_type -> koda.v1.ListProvidersRequest
-	60, // 64: koda.v1.KodaService.SaveProvider:input_type -> koda.v1.SaveProviderRequest
-	62, // 65: koda.v1.KodaService.DeleteProvider:input_type -> koda.v1.DeleteProviderRequest
-	64, // 66: koda.v1.KodaService.ListModels:input_type -> koda.v1.ListModelsRequest
-	66, // 67: koda.v1.KodaService.RefreshModels:input_type -> koda.v1.RefreshModelsRequest
-	12, // 68: koda.v1.KodaService.Run:output_type -> koda.v1.RunResponse
-	19, // 69: koda.v1.KodaService.ResolveToolApproval:output_type -> koda.v1.ResolveToolApprovalResponse
-	24, // 70: koda.v1.KodaService.SubmitQuestionAnswers:output_type -> koda.v1.SubmitQuestionAnswersResponse
-	28, // 71: koda.v1.KodaService.ListDirectories:output_type -> koda.v1.ListDirectoriesResponse
-	32, // 72: koda.v1.KodaService.CreateSession:output_type -> koda.v1.CreateSessionResponse
-	34, // 73: koda.v1.KodaService.GetSession:output_type -> koda.v1.GetSessionResponse
-	36, // 74: koda.v1.KodaService.ListSessions:output_type -> koda.v1.ListSessionsResponse
-	38, // 75: koda.v1.KodaService.UpdateSession:output_type -> koda.v1.UpdateSessionResponse
-	40, // 76: koda.v1.KodaService.DeleteSession:output_type -> koda.v1.DeleteSessionResponse
-	53, // 77: koda.v1.KodaService.ListEvents:output_type -> koda.v1.ListEventsResponse
-	55, // 78: koda.v1.KodaService.UndoLastMessage:output_type -> koda.v1.UndoLastMessageResponse
-	59, // 79: koda.v1.KodaService.ListProviders:output_type -> koda.v1.ListProvidersResponse
-	61, // 80: koda.v1.KodaService.SaveProvider:output_type -> koda.v1.SaveProviderResponse
-	63, // 81: koda.v1.KodaService.DeleteProvider:output_type -> koda.v1.DeleteProviderResponse
-	65, // 82: koda.v1.KodaService.ListModels:output_type -> koda.v1.ListModelsResponse
-	67, // 83: koda.v1.KodaService.RefreshModels:output_type -> koda.v1.RefreshModelsResponse
-	68, // [68:84] is the sub-list for method output_type
-	52, // [52:68] is the sub-list for method input_type
-	52, // [52:52] is the sub-list for extension type_name
-	52, // [52:52] is the sub-list for extension extendee
-	0,  // [0:52] is the sub-list for field type_name
+	74, // 47: koda.v1.Skill.metadata:type_name -> koda.v1.Skill.MetadataEntry
+	60, // 48: koda.v1.ListSkillsResponse.skills:type_name -> koda.v1.SkillSummary
+	61, // 49: koda.v1.GetSkillResponse.skill:type_name -> koda.v1.Skill
+	3,  // 50: koda.v1.SaveProviderRequest.type:type_name -> koda.v1.ProviderType
+	57, // 51: koda.v1.SaveProviderRequest.model_overrides:type_name -> koda.v1.Model
+	56, // 52: koda.v1.SaveProviderResponse.provider:type_name -> koda.v1.Provider
+	57, // 53: koda.v1.ListModelsResponse.models:type_name -> koda.v1.Model
+	57, // 54: koda.v1.RefreshModelsResponse.models:type_name -> koda.v1.Model
+	11, // 55: koda.v1.KodaService.Run:input_type -> koda.v1.RunRequest
+	18, // 56: koda.v1.KodaService.ResolveToolApproval:input_type -> koda.v1.ResolveToolApprovalRequest
+	23, // 57: koda.v1.KodaService.SubmitQuestionAnswers:input_type -> koda.v1.SubmitQuestionAnswersRequest
+	27, // 58: koda.v1.KodaService.ListDirectories:input_type -> koda.v1.ListDirectoriesRequest
+	62, // 59: koda.v1.KodaService.ListSkills:input_type -> koda.v1.ListSkillsRequest
+	64, // 60: koda.v1.KodaService.GetSkill:input_type -> koda.v1.GetSkillRequest
+	31, // 61: koda.v1.KodaService.CreateSession:input_type -> koda.v1.CreateSessionRequest
+	33, // 62: koda.v1.KodaService.GetSession:input_type -> koda.v1.GetSessionRequest
+	35, // 63: koda.v1.KodaService.ListSessions:input_type -> koda.v1.ListSessionsRequest
+	37, // 64: koda.v1.KodaService.UpdateSession:input_type -> koda.v1.UpdateSessionRequest
+	39, // 65: koda.v1.KodaService.DeleteSession:input_type -> koda.v1.DeleteSessionRequest
+	52, // 66: koda.v1.KodaService.ListEvents:input_type -> koda.v1.ListEventsRequest
+	54, // 67: koda.v1.KodaService.UndoLastMessage:input_type -> koda.v1.UndoLastMessageRequest
+	58, // 68: koda.v1.KodaService.ListProviders:input_type -> koda.v1.ListProvidersRequest
+	66, // 69: koda.v1.KodaService.SaveProvider:input_type -> koda.v1.SaveProviderRequest
+	68, // 70: koda.v1.KodaService.DeleteProvider:input_type -> koda.v1.DeleteProviderRequest
+	70, // 71: koda.v1.KodaService.ListModels:input_type -> koda.v1.ListModelsRequest
+	72, // 72: koda.v1.KodaService.RefreshModels:input_type -> koda.v1.RefreshModelsRequest
+	12, // 73: koda.v1.KodaService.Run:output_type -> koda.v1.RunResponse
+	19, // 74: koda.v1.KodaService.ResolveToolApproval:output_type -> koda.v1.ResolveToolApprovalResponse
+	24, // 75: koda.v1.KodaService.SubmitQuestionAnswers:output_type -> koda.v1.SubmitQuestionAnswersResponse
+	28, // 76: koda.v1.KodaService.ListDirectories:output_type -> koda.v1.ListDirectoriesResponse
+	63, // 77: koda.v1.KodaService.ListSkills:output_type -> koda.v1.ListSkillsResponse
+	65, // 78: koda.v1.KodaService.GetSkill:output_type -> koda.v1.GetSkillResponse
+	32, // 79: koda.v1.KodaService.CreateSession:output_type -> koda.v1.CreateSessionResponse
+	34, // 80: koda.v1.KodaService.GetSession:output_type -> koda.v1.GetSessionResponse
+	36, // 81: koda.v1.KodaService.ListSessions:output_type -> koda.v1.ListSessionsResponse
+	38, // 82: koda.v1.KodaService.UpdateSession:output_type -> koda.v1.UpdateSessionResponse
+	40, // 83: koda.v1.KodaService.DeleteSession:output_type -> koda.v1.DeleteSessionResponse
+	53, // 84: koda.v1.KodaService.ListEvents:output_type -> koda.v1.ListEventsResponse
+	55, // 85: koda.v1.KodaService.UndoLastMessage:output_type -> koda.v1.UndoLastMessageResponse
+	59, // 86: koda.v1.KodaService.ListProviders:output_type -> koda.v1.ListProvidersResponse
+	67, // 87: koda.v1.KodaService.SaveProvider:output_type -> koda.v1.SaveProviderResponse
+	69, // 88: koda.v1.KodaService.DeleteProvider:output_type -> koda.v1.DeleteProviderResponse
+	71, // 89: koda.v1.KodaService.ListModels:output_type -> koda.v1.ListModelsResponse
+	73, // 90: koda.v1.KodaService.RefreshModels:output_type -> koda.v1.RefreshModelsResponse
+	73, // [73:91] is the sub-list for method output_type
+	55, // [55:73] is the sub-list for method input_type
+	55, // [55:55] is the sub-list for extension type_name
+	55, // [55:55] is the sub-list for extension extendee
+	0,  // [0:55] is the sub-list for field type_name
 }
 
 func init() { file_koda_v1_service_proto_init() }
@@ -9556,7 +10211,7 @@ func file_koda_v1_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_koda_v1_service_proto_rawDesc), len(file_koda_v1_service_proto_rawDesc)),
 			NumEnums:      11,
-			NumMessages:   57,
+			NumMessages:   64,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

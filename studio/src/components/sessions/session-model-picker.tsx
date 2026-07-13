@@ -70,7 +70,15 @@ export function SessionModelPicker({
     if (!open) return
 
     function closeOnOutsideClick(event: PointerEvent) {
-      if (!pickerRef.current?.contains(event.target as Node)) setOpen(false)
+      const target = event.target
+      const isPickerSelect =
+        target instanceof Element &&
+        target.closest('[data-session-model-picker-select]')
+      const isInsidePicker =
+        target instanceof Node && pickerRef.current?.contains(target)
+      if (!isPickerSelect && !isInsidePicker) {
+        setOpen(false)
+      }
     }
 
     function closeOnEscape(event: KeyboardEvent) {
@@ -144,7 +152,7 @@ export function SessionModelPicker({
                 <SelectTrigger aria-label="Session provider">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent side="top">
+                <SelectContent data-session-model-picker-select side="top">
                   {availableProviders.map((provider) => (
                     <SelectItem key={provider.id} value={provider.id}>
                       {provider.name}
@@ -166,7 +174,7 @@ export function SessionModelPicker({
                 <SelectTrigger aria-label="Session model">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent side="top">
+                <SelectContent data-session-model-picker-select side="top">
                   {modelsQuery.data?.models.map((model) => (
                     <SelectItem key={model.id} value={model.id}>
                       {model.name || model.id}
@@ -187,7 +195,7 @@ export function SessionModelPicker({
                 <SelectTrigger aria-label="Session reasoning effort">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent side="top">
+                <SelectContent data-session-model-picker-select side="top">
                   <SelectItem value="__default">Provider default</SelectItem>
                   {selectedModel?.reasoningEfforts.map((effort) => (
                     <SelectItem key={effort} value={effort}>
