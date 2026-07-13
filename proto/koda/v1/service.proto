@@ -1,0 +1,650 @@
+edition = "2023";
+
+package koda.v1;
+
+// KodaService exposes the local coding-agent runtime.
+service KodaService {
+  // Run executes one agent turn and streams its observable state.
+  rpc Run(RunRequest) returns (stream RunResponse);
+  // ResolveToolApproval approves or rejects a pending tool call.
+  rpc ResolveToolApproval(ResolveToolApprovalRequest) returns (ResolveToolApprovalResponse);
+  // SubmitQuestionAnswers returns frontend-authored answers to a pending
+  // ask_questions tool call.
+  rpc SubmitQuestionAnswers(SubmitQuestionAnswersRequest) returns (SubmitQuestionAnswersResponse);
+
+  // CreateSession creates a new coding session.
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+  // GetSession returns one coding session.
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
+  // ListSessions returns a page of coding sessions.
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  // UpdateSession updates mutable session metadata and execution settings.
+  rpc UpdateSession(UpdateSessionRequest) returns (UpdateSessionResponse);
+  // DeleteSession deletes a coding session and its event history.
+  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
+
+  // ListEvents returns a page of active events in a session.
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+  // UndoLastMessage removes the most recent user turn.
+  rpc UndoLastMessage(UndoLastMessageRequest) returns (UndoLastMessageResponse);
+
+  // ListProviders returns built-in and user-defined providers.
+  rpc ListProviders(ListProvidersRequest) returns (ListProvidersResponse);
+  // SaveProvider creates or replaces a provider configuration.
+  rpc SaveProvider(SaveProviderRequest) returns (SaveProviderResponse);
+  // DeleteProvider deletes a user-defined provider configuration.
+  rpc DeleteProvider(DeleteProviderRequest) returns (DeleteProviderResponse);
+  // ListModels returns known models for a provider.
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+  // RefreshModels refreshes a provider's model list from its API.
+  rpc RefreshModels(RefreshModelsRequest) returns (RefreshModelsResponse);
+}
+
+// AgentMode selects the tool and instruction policy used for a turn.
+enum AgentMode {
+  // AGENT_MODE_UNSPECIFIED is invalid for Run.
+  AGENT_MODE_UNSPECIFIED = 0;
+  // AGENT_MODE_BUILD allows both read-only and mutating coding tools.
+  AGENT_MODE_BUILD = 1;
+  // AGENT_MODE_PLAN restricts the agent to read-only tools.
+  AGENT_MODE_PLAN = 2;
+}
+
+// Role identifies the participant represented by a message.
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_SYSTEM = 1;
+  ROLE_USER = 2;
+  ROLE_ASSISTANT = 3;
+  ROLE_TOOL = 4;
+}
+
+// FinishReason identifies why a model generation ended.
+enum FinishReason {
+  FINISH_REASON_UNSPECIFIED = 0;
+  // FINISH_REASON_STOP indicates a natural model stop or stop sequence.
+  FINISH_REASON_STOP = 1;
+  // FINISH_REASON_LENGTH indicates that the model reached its output limit.
+  FINISH_REASON_LENGTH = 2;
+  // FINISH_REASON_TOOL_CALLS indicates that the turn continues with tool execution.
+  FINISH_REASON_TOOL_CALLS = 3;
+  // FINISH_REASON_CONTENT_FILTER indicates that provider policy stopped generation.
+  FINISH_REASON_CONTENT_FILTER = 4;
+}
+
+// ProviderType selects the adapter used to communicate with a provider.
+enum ProviderType {
+  PROVIDER_TYPE_UNSPECIFIED = 0;
+  PROVIDER_TYPE_ANTHROPIC = 1;
+  PROVIDER_TYPE_OPENAI_CHAT_COMPLETIONS = 2;
+  PROVIDER_TYPE_GEMINI = 3;
+  PROVIDER_TYPE_DEEPSEEK = 4;
+  PROVIDER_TYPE_OPENAI_RESPONSES = 5;
+}
+
+// ImageDetail controls the fidelity at which a model processes an image.
+enum ImageDetail {
+  // IMAGE_DETAIL_UNSPECIFIED is treated as IMAGE_DETAIL_AUTO.
+  IMAGE_DETAIL_UNSPECIFIED = 0;
+  IMAGE_DETAIL_AUTO = 1;
+  IMAGE_DETAIL_LOW = 2;
+  IMAGE_DETAIL_HIGH = 3;
+}
+
+// FileAccess controls which filesystem operations are automatically allowed
+// for a session. Operations not covered by the selected level require a
+// per-call approval.
+enum FileAccess {
+  // FILE_ACCESS_UNSPECIFIED is treated as FILE_ACCESS_WORKSPACE_READ.
+  FILE_ACCESS_UNSPECIFIED = 0;
+  // FILE_ACCESS_WORKSPACE_READ automatically permits reads inside workdir.
+  // Writes inside workdir and all access outside workdir require approval.
+  FILE_ACCESS_WORKSPACE_READ = 1;
+  // FILE_ACCESS_WORKSPACE_WRITE automatically permits reads and writes inside
+  // workdir. All access outside workdir requires approval.
+  FILE_ACCESS_WORKSPACE_WRITE = 2;
+  // FILE_ACCESS_UNRESTRICTED automatically permits filesystem reads and
+  // writes both inside and outside workdir.
+  FILE_ACCESS_UNRESTRICTED = 3;
+}
+
+// ShellAccess controls whether arbitrary shell commands require approval.
+enum ShellAccess {
+  // SHELL_ACCESS_UNSPECIFIED is treated as SHELL_ACCESS_APPROVAL_REQUIRED.
+  SHELL_ACCESS_UNSPECIFIED = 0;
+  // SHELL_ACCESS_APPROVAL_REQUIRED requires approval for every shell command.
+  SHELL_ACCESS_APPROVAL_REQUIRED = 1;
+  // SHELL_ACCESS_UNRESTRICTED permits arbitrary shell commands. This grants
+  // effective unrestricted filesystem and process access.
+  SHELL_ACCESS_UNRESTRICTED = 2;
+}
+
+// ToolApprovalKind identifies the capability requested by a pending approval.
+enum ToolApprovalKind {
+  TOOL_APPROVAL_KIND_UNSPECIFIED = 0;
+  TOOL_APPROVAL_KIND_FILE_READ = 1;
+  TOOL_APPROVAL_KIND_FILE_WRITE = 2;
+  TOOL_APPROVAL_KIND_SHELL = 3;
+}
+
+// ToolApprovalScope identifies the widest affected location of a request.
+enum ToolApprovalScope {
+  TOOL_APPROVAL_SCOPE_UNSPECIFIED = 0;
+  TOOL_APPROVAL_SCOPE_WORKSPACE = 1;
+  TOOL_APPROVAL_SCOPE_OUTSIDE_WORKSPACE = 2;
+  // TOOL_APPROVAL_SCOPE_GLOBAL covers commands whose filesystem effects cannot
+  // be determined before execution.
+  TOOL_APPROVAL_SCOPE_GLOBAL = 3;
+}
+
+// FileChangeKind identifies the filesystem effect represented by a diff.
+enum FileChangeKind {
+  FILE_CHANGE_KIND_UNSPECIFIED = 0;
+  FILE_CHANGE_KIND_CREATE = 1;
+  FILE_CHANGE_KIND_UPDATE = 2;
+  FILE_CHANGE_KIND_DELETE = 3;
+}
+
+// DiffLineKind identifies how one displayed line participates in a diff hunk.
+enum DiffLineKind {
+  DIFF_LINE_KIND_UNSPECIFIED = 0;
+  DIFF_LINE_KIND_CONTEXT = 1;
+  DIFF_LINE_KIND_ADDED = 2;
+  DIFF_LINE_KIND_REMOVED = 3;
+}
+
+// RunRequest starts one user turn in an existing session.
+message RunRequest {
+  // session_id references Session.id.
+  string session_id = 1;
+  // input must contain at least one part.
+  Input input = 2;
+  // mode must be BUILD or PLAN.
+  AgentMode mode = 3;
+}
+
+// RunResponse is one frame in a running turn.
+message RunResponse {
+  oneof payload {
+    // event contains a transient partial event or a complete durable event.
+    Event event = 1;
+    // approval blocks one tool call until ResolveToolApproval is called.
+    ToolApproval approval = 2;
+    // completed is emitted only after the full turn finishes successfully.
+    RunCompleted completed = 3;
+    // question_prompt blocks one ask_questions tool call until the frontend
+    // submits answers or cancels the prompt.
+    QuestionPrompt question_prompt = 4;
+  }
+}
+
+// RunCompleted marks the successful end of a turn stream.
+message RunCompleted {
+  // turn_id identifies the committed turn shared by all of its events.
+  string turn_id = 1;
+}
+
+// Input is the user-authored content that starts a turn.
+message Input {
+  // parts preserve their original order and must not be empty.
+  repeated Part parts = 1;
+}
+
+// Part is one item in a multimodal user input.
+message Part {
+  // Exactly one content variant must be set.
+  oneof content {
+    string text = 1;
+    Image image = 2;
+  }
+}
+
+// Image is an HTTPS URL or inline image payload.
+message Image {
+  oneof source {
+    // url must be an HTTPS image URL accepted by the selected provider.
+    string url = 1;
+    // data contains raw image bytes; Connect JSON represents it as base64.
+    bytes data = 2;
+  }
+  // mime_type is required when data is set and ignored for URL images.
+  string mime_type = 3;
+  // detail defaults to AUTO when unspecified.
+  ImageDetail detail = 4;
+}
+
+// ToolApproval describes a tool call awaiting a decision.
+message ToolApproval {
+  // id is a koda-generated approval ID, distinct from the provider tool-call ID.
+  string id = 1;
+  string session_id = 2;
+  string turn_id = 3;
+  // tool_call_id correlates this approval with ToolCall.id.
+  string tool_call_id = 4;
+  string tool_name = 5;
+  // summary is a short, display-safe description of the requested operation.
+  string summary = 6;
+  // arguments_json is the exact JSON object supplied by the model.
+  string arguments_json = 7;
+  // file_changes is a proposed diff for predictable file mutations. It is
+  // empty for requests such as shell commands whose effects are unknown.
+  repeated FileChange file_changes = 8;
+  ToolApprovalKind kind = 9;
+  ToolApprovalScope scope = 10;
+  // target_paths contains normalized absolute paths when they can be known.
+  repeated string target_paths = 11;
+}
+
+// ResolveToolApprovalRequest resolves one pending approval exactly once.
+message ResolveToolApprovalRequest {
+  // approval_id references ToolApproval.id and can be resolved only once.
+  string approval_id = 1;
+  // approved=false returns a model-visible rejection instead of executing the tool.
+  bool approved = 2;
+}
+
+// ResolveToolApprovalResponse acknowledges a recorded decision.
+message ResolveToolApprovalResponse {}
+
+// QuestionPrompt is a transient request for frontend-authored input. The
+// prompt itself is not persisted; submitted answers become the tool result.
+message QuestionPrompt {
+  // id is generated by koda and resolves exactly once.
+  string id = 1;
+  string session_id = 2;
+  string turn_id = 3;
+  // tool_call_id correlates this prompt with the ask_questions ToolCall.
+  string tool_call_id = 4;
+  // questions contains between one and three items.
+  repeated Question questions = 5;
+}
+
+// Question is one input requested by the model.
+message Question {
+  // id is model-authored and unique within its QuestionPrompt.
+  string id = 1;
+  string header = 2;
+  string prompt = 3;
+  repeated QuestionOption options = 4;
+  // multiple permits selecting more than one option.
+  bool multiple = 5;
+  // allow_freeform permits an answer not represented by an option.
+  bool allow_freeform = 6;
+}
+
+// QuestionOption is one frontend-selectable answer.
+message QuestionOption {
+  // id is model-authored and unique within its Question.
+  string id = 1;
+  string label = 2;
+  string description = 3;
+}
+
+// SubmitQuestionAnswersRequest resolves one pending QuestionPrompt.
+message SubmitQuestionAnswersRequest {
+  string prompt_id = 1;
+  oneof resolution {
+    QuestionAnswers answers = 2;
+    // canceled must be true when selected. Cancellation becomes a
+    // model-visible handled tool failure rather than aborting the Run.
+    bool canceled = 3;
+  }
+}
+
+// SubmitQuestionAnswersResponse acknowledges a recorded resolution.
+message SubmitQuestionAnswersResponse {}
+
+// QuestionAnswers contains one validated answer for every requested question.
+message QuestionAnswers {
+  repeated QuestionAnswer answers = 1;
+}
+
+// QuestionAnswer is one frontend-authored tool result item.
+message QuestionAnswer {
+  string question_id = 1;
+  repeated string selected_option_ids = 2;
+  string freeform = 3;
+}
+
+// Session contains metadata and execution settings for one coding session.
+message Session {
+  // id is the stable application-assigned session identifier.
+  string id = 1;
+  string title = 2;
+  // workdir is the base directory used to resolve relative tool paths.
+  string workdir = 3;
+  // provider_id references Provider.id.
+  string provider_id = 4;
+  // model_id references a Model.id registered for provider_id.
+  string model_id = 5;
+  // reasoning_effort is provider-specific; empty uses the model default.
+  string reasoning_effort = 6;
+  // file_access determines which filesystem operations execute without a
+  // per-call approval.
+  FileAccess file_access = 7;
+  // created_at and updated_at are Unix timestamps in milliseconds.
+  int64 created_at = 8;
+  int64 updated_at = 9;
+  // event_count counts active, non-archived events in the session.
+  int64 event_count = 10;
+  // shell_access determines whether arbitrary shell commands need approval.
+  ShellAccess shell_access = 11;
+}
+
+// CreateSessionRequest creates a session with an initial execution configuration.
+message CreateSessionRequest {
+  // workdir becomes the base directory for all relative tool paths.
+  string workdir = 1;
+  // provider_id and model_id select the initial execution backend.
+  string provider_id = 2;
+  string model_id = 3;
+  // reasoning_effort is provider-specific; empty uses the model default.
+  string reasoning_effort = 4;
+  // file_access defaults to FILE_ACCESS_WORKSPACE_READ when unspecified.
+  FileAccess file_access = 5;
+  // shell_access defaults to SHELL_ACCESS_APPROVAL_REQUIRED when unspecified.
+  ShellAccess shell_access = 6;
+}
+
+// CreateSessionResponse returns the created session.
+message CreateSessionResponse {
+  Session session = 1;
+}
+
+// GetSessionRequest identifies a session.
+message GetSessionRequest {
+  string session_id = 1;
+}
+
+// GetSessionResponse returns the requested session.
+message GetSessionResponse {
+  Session session = 1;
+}
+
+// ListSessionsRequest selects a page ordered by most recently updated first.
+message ListSessionsRequest {
+  // limit defaults to 50 when zero and is capped at 200.
+  int32 limit = 1;
+  // offset is a zero-based offset into the updated-at-descending result set.
+  int64 offset = 2;
+}
+
+// ListSessionsResponse contains one page and the unpaginated total.
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+  int64 total = 2;
+}
+
+// UpdateSessionRequest updates fields that are present; omitted fields keep
+// their current values.
+message UpdateSessionRequest {
+  string session_id = 1;
+  string title = 2 [features.field_presence = EXPLICIT];
+  string workdir = 3 [features.field_presence = EXPLICIT];
+  // provider_id and model_id are validated together after applying the update.
+  string provider_id = 4 [features.field_presence = EXPLICIT];
+  string model_id = 5 [features.field_presence = EXPLICIT];
+  // An explicitly empty reasoning_effort restores the model default.
+  string reasoning_effort = 6 [features.field_presence = EXPLICIT];
+  // file_access changes the automatically allowed filesystem capability.
+  FileAccess file_access = 7 [features.field_presence = EXPLICIT];
+  // shell_access changes whether arbitrary shell commands need approval.
+  ShellAccess shell_access = 8 [features.field_presence = EXPLICIT];
+}
+
+// UpdateSessionResponse returns the updated session.
+message UpdateSessionResponse {
+  Session session = 1;
+}
+
+// DeleteSessionRequest identifies a session to delete.
+message DeleteSessionRequest {
+  string session_id = 1;
+}
+
+// DeleteSessionResponse acknowledges session deletion.
+message DeleteSessionResponse {}
+
+// Event is an agent-runtime event exposed to clients.
+message Event {
+  // id is the decimal string form of the durable ADK event ID; partial events have no ID.
+  string id = 1;
+  string session_id = 2;
+  // turn_id groups the user input, model messages, and tool results from one Run.
+  string turn_id = 3;
+  // author is display metadata and is not forwarded to the model.
+  string author = 4;
+  Message message = 5;
+  // finish_reason is meaningful only for complete assistant events.
+  FinishReason finish_reason = 6;
+  // usage is present only when the provider reports token accounting.
+  TokenUsage usage = 7;
+  // partial events contain text/reasoning deltas, are transient, and are not persisted.
+  bool partial = 8;
+  // Timestamps are Unix milliseconds and are zero for transient partial events.
+  int64 created_at = 9;
+  int64 updated_at = 10;
+}
+
+// Message is the provider-neutral content carried by an event.
+message Message {
+  Role role = 1;
+  // text is the plain-text payload; parts take precedence when non-empty.
+  string text = 2;
+  // parts contains ordered multimodal user content.
+  repeated Part parts = 3;
+  // reasoning contains provider-reported reasoning content when available.
+  string reasoning = 4;
+  repeated ToolCall tool_calls = 5;
+  // tool_response is set only for ROLE_TOOL messages.
+  ToolResponse tool_response = 6;
+}
+
+// ToolCall is one model-requested tool invocation.
+message ToolCall {
+  // id is assigned by the provider and correlates with ToolResponse.tool_call_id.
+  string id = 1;
+  string name = 2;
+  // arguments_json is a JSON object containing the model-supplied arguments.
+  string arguments_json = 3;
+}
+
+// ToolResponse is the completed outcome of one tool invocation.
+message ToolResponse {
+  // tool_call_id references ToolCall.id.
+  string tool_call_id = 1;
+  string name = 2;
+  // Exactly one completed outcome must be set.
+  oneof outcome {
+    ToolResult result = 3;
+    ToolError error = 4;
+  }
+}
+
+// ToolResult contains a successful tool outcome.
+message ToolResult {
+  // content is the plain-text fallback sent to providers without structured results.
+  string content = 1;
+  // structured_content_json is an optional raw JSON value.
+  string structured_content_json = 2;
+  // file_changes contains the actual diff applied by a file mutation.
+  repeated FileChange file_changes = 3;
+}
+
+// FileChange is a display-oriented change to one file. It is used for both a
+// proposed ToolApproval diff and a completed ToolResult diff.
+message FileChange {
+  string path = 1;
+  FileChangeKind kind = 2;
+  repeated DiffHunk hunks = 3;
+  // truncated indicates that display limits omitted one or more hunks or lines.
+  bool truncated = 4;
+}
+
+// DiffHunk groups nearby changed lines with a small amount of context.
+message DiffHunk {
+  // old_start and new_start are 1-based line numbers for their respective
+  // file versions. A zero value means that side has no corresponding line.
+  int32 old_start = 1;
+  int32 new_start = 2;
+  repeated DiffLine lines = 3;
+}
+
+// DiffLine is one display line in a diff hunk.
+message DiffLine {
+  DiffLineKind kind = 1;
+  // old_line and new_line are 1-based. Zero means the line is absent on that
+  // side of the change.
+  int32 old_line = 2;
+  int32 new_line = 3;
+  string content = 4;
+}
+
+// ToolError contains a model-visible handled tool failure.
+message ToolError {
+  // content is safe to expose to both the model and the client.
+  string content = 1;
+  // structured_content_json is an optional raw JSON error payload.
+  string structured_content_json = 2;
+}
+
+// TokenUsage contains aggregate and provider-neutral token accounting.
+message TokenUsage {
+  int64 prompt_tokens = 1;
+  int64 completion_tokens = 2;
+  int64 total_tokens = 3;
+  TokenUsageDetails details = 4;
+}
+
+// TokenUsageDetails contains optional provider-reported token breakdowns.
+message TokenUsageDetails {
+  int64 cached_prompt_tokens = 1;
+  int64 cache_creation_prompt_tokens = 2;
+  int64 cache_read_prompt_tokens = 3;
+  int64 reasoning_tokens = 4;
+  int64 tool_use_prompt_tokens = 5;
+  int64 audio_prompt_tokens = 6;
+  int64 audio_completion_tokens = 7;
+  int64 accepted_prediction_tokens = 8;
+  int64 rejected_prediction_tokens = 9;
+}
+
+// ListEventsRequest selects a page of active events in conversation order.
+message ListEventsRequest {
+  string session_id = 1;
+  // limit defaults to 50 when zero and is capped at 200.
+  int32 limit = 2;
+  // offset is a zero-based offset into active events ordered oldest first.
+  int64 offset = 3;
+}
+
+// ListEventsResponse contains one page and the unpaginated active-event total.
+message ListEventsResponse {
+  repeated Event events = 1;
+  int64 total = 2;
+}
+
+// UndoLastMessageRequest identifies the session to modify.
+message UndoLastMessageRequest {
+  string session_id = 1;
+}
+
+// UndoLastMessageResponse describes the removed user turn.
+message UndoLastMessageResponse {
+  // turn_id identifies the removed turn, or is empty when there was no user turn.
+  string turn_id = 1;
+  // deleted_event_count includes the user event and all later events in that turn.
+  int64 deleted_event_count = 2;
+  // input contains the removed user content so a client can restore its editor.
+  Input input = 3;
+}
+
+// Provider describes one built-in or user-defined model provider.
+message Provider {
+  // id is the stable registry key referenced by Session.provider_id.
+  string id = 1;
+  // name is the user-facing display name.
+  string name = 2;
+  // type selects the ADK model adapter.
+  ProviderType type = 3;
+  // base_url is empty for the adapter default and may point to a compatible endpoint.
+  string base_url = 4;
+  // configured reports whether the registry resolved a non-empty API key.
+  bool configured = 5;
+  // builtin providers cannot be deleted or changed to another type.
+  bool builtin = 6;
+}
+
+// Model describes one model exposed by a provider.
+message Model {
+  // id is the exact model identifier sent to the provider API.
+  string id = 1;
+  // name is the user-facing display name and defaults to id when omitted.
+  string name = 2;
+  // reasoning_efforts contains provider-specific values such as high, max, or ultra.
+  repeated string reasoning_efforts = 3;
+  // default_reasoning_effort is empty when the provider should choose the default.
+  string default_reasoning_effort = 4;
+}
+
+// ListProvidersRequest requests all registered providers.
+message ListProvidersRequest {}
+
+// ListProvidersResponse returns all registered providers.
+message ListProvidersResponse {
+  repeated Provider providers = 1;
+}
+
+// SaveProviderRequest creates or replaces a provider. An omitted API key is preserved.
+message SaveProviderRequest {
+  string id = 1;
+  string name = 2;
+  // Built-in providers must retain their predefined type.
+  ProviderType type = 3;
+  // An empty base_url restores the adapter default.
+  string base_url = 4;
+  // An omitted api_key preserves the stored key; an explicitly empty value clears it.
+  string api_key = 5 [features.field_presence = EXPLICIT];
+  // model_overrides add custom models or override bundled/discovered metadata by ID.
+  repeated Model model_overrides = 6;
+}
+
+// SaveProviderResponse returns the saved provider without its API key.
+message SaveProviderResponse {
+  Provider provider = 1;
+}
+
+// DeleteProviderRequest identifies a user-defined provider to delete.
+message DeleteProviderRequest {
+  string provider_id = 1;
+}
+
+// DeleteProviderResponse acknowledges provider deletion.
+message DeleteProviderResponse {}
+
+// ListModelsRequest requests known models for a provider.
+message ListModelsRequest {
+  string provider_id = 1;
+}
+
+// ListModelsResponse returns known models for a provider.
+message ListModelsResponse {
+  string provider_id = 1;
+  repeated Model models = 2;
+  // refreshed_at is the Unix timestamp in milliseconds of the last successful
+  // provider API discovery, or zero when no discovery snapshot exists.
+  int64 refreshed_at = 3;
+}
+
+// RefreshModelsRequest refreshes models for a provider.
+message RefreshModelsRequest {
+  string provider_id = 1;
+}
+
+// RefreshModelsResponse returns the refreshed model list.
+message RefreshModelsResponse {
+  string provider_id = 1;
+  repeated Model models = 2;
+  // refreshed_at is the Unix timestamp in milliseconds of this successful refresh.
+  int64 refreshed_at = 3;
+}

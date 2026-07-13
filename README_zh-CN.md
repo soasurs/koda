@@ -1,153 +1,145 @@
 # koda
 
-> **Warning: 早期开发阶段 — 可能存在破坏性变更、功能不完整和各种粗糙之处。**
+`koda` 是一个本地 coding agent 服务，使用 Go、Protocol Buffers、Connect RPC 和
+[`github.com/soasurs/adk`](https://github.com/soasurs/adk) 构建。它为客户端提供
+流式 agent turn、workspace 工具、操作审批、结构化提问、Provider 配置和持久化对话
+历史等运行时能力。
 
-koda 是一个用 Go 编写的终端 AI 编程助手，灵感来自 Claude Code 和 Aider。它提供丰富的 TUI 界面，支持与大语言模型进行交互式对话，内置文件编辑、Shell 执行、代码搜索和 Git 工具，帮助你在终端中更高效地编程。
+[English](README.md)
 
-## 特性
+Koda 当前只提供无界面的本地服务，不包含 UI。
 
-- **交互式 TUI** — 基于 Bubbletea 的界面，支持可滚动消息历史、多行输入和流式响应
-- **单次模式** — 通过命令行参数传入 prompt，实现快速非交互式调用
-- **多供应商 LLM 支持** — 支持 Anthropic (Claude)、OpenAI (GPT) 和 Google Gemini，可在运行时通过 `/connect` 和 `/model` 命令切换
-- **9 个内置工具** 供 Agent 调用：
-  | 工具 | 说明 |
-  |------|------|
-  | `read_file` | 读取文件内容（支持行范围） |
-  | `write_file` | 覆写文件 |
-  | `create_file` | 创建新文件（已存在则拒绝） |
-  | `list_directory` | 列出目录内容 |
-  | `grep_search` | 正则表达式搜索文件内容 |
-  | `find_files` | 基于 glob 模式查找文件 |
-  | `run_shell` | 执行 Shell 命令（60 秒超时） |
-  | `git_status` | 显示工作区状态 |
-  | `git_diff` | 显示差异（暂存或未暂存） |
-- **Build 与 Plan 模式** — 按 `Tab` 在完整工具访问（Build）和只读子集（Plan，用于架构分析）之间切换
-- **思考级别** — 按 `Ctrl+T` 在关闭 / 低 / 中 / 高四档扩展思考间切换
-- **会话持久化** — 基于 SQLite 的对话历史，存储于 `~/.koda/sessions.db`；通过 `/sessions` 浏览和恢复
-- **上下文压缩** — 自动滑动窗口压缩保持上下文可控；也可通过 `/compact` 手动触发
-- **可折叠工具输出** — 长工具结果默认折叠，按 `x` 展开
-- **项目感知** — 读取工作区的 `AGENTS.md` 以获取项目特定指令
-- **安全模式** — 可通过 `--safe` 为 `run_shell`、`write_file`、`create_file` 等有副作用的工具调用启用执行前确认
+## 启动服务
 
-## 环境要求
+环境要求：
 
-- **Go 1.26+**
-- **C 编译器**（`go-sqlite3` 需要 CGo）— macOS 上执行 `xcode-select --install` 即可
+- Go 1.26，或 `go.mod` 声明的版本；
+- 至少配置一个 Provider 的 API key。
 
-## 安装
+启动 Connect API server：
 
 ```bash
-# 克隆仓库
-git clone https://github.com/soasurs/koda.git
-cd koda
-
-# 构建
-go build ./cmd/koda
-
-# 或安装到 $GOPATH/bin
-go install ./cmd/koda
+go run ./cmd/koda serve
 ```
 
-## 使用方法
-
-### 配置 LLM 供应商
-
-导出对应的 API Key 环境变量：
+Koda 会先尝试 `localhost:8080`。若端口已被占用，它会选择另一个 loopback 端口并
+输出实际地址。也可以显式指定端口：
 
 ```bash
-export ANTHROPIC_API_KEY=sk-...    # Anthropic（默认）
-export OPENAI_API_KEY=sk-...       # OpenAI
-export GEMINI_API_KEY=...          # Google Gemini
+go run ./cmd/koda serve --addr 127.0.0.1:8787
 ```
 
-也可以在 TUI 中通过 `/connect` 斜杠命令持久化保存 API Key。
+服务只接受 loopback 地址，并且不会打开浏览器。Koda 还会从
+`~/.koda/koda.yaml` 读取进程级配置；命令行参数优先于配置文件。配置文件可选，
+第一版仅包含服务地址：
 
-### 交互模式
+```yaml
+version: 1
+server:
+  address: 127.0.0.1:8080
+```
+
+`--addr` 会覆盖 `server.address`。两者都未设置时，Koda 会尝试默认地址；如果
+默认端口已被占用，则回退到可用的 loopback 端口。
+
+## Provider 与本地数据
+
+Koda 内置以下 Provider：
+
+| ID | API | 环境变量 |
+|---|---|---|
+| `anthropic` | Anthropic Messages | `ANTHROPIC_API_KEY` |
+| `openai` | OpenAI Chat Completions | `OPENAI_API_KEY` |
+| `openai-responses` | OpenAI Responses | `OPENAI_API_KEY` |
+| `gemini` | Gemini GenerateContent | `GEMINI_API_KEY` |
+| `deepseek` | DeepSeek | `DEEPSEEK_API_KEY` |
+
+环境变量中的凭据优先于已保存的凭据，并且不会被复制到 Koda 配置文件中。客户端可以
+通过 `koda.v1.KodaService` 管理自定义 endpoint 和模型 override。
+
+Koda 将状态保存在 `~/.koda`：
+
+```text
+~/.koda/koda.yaml       可选的进程级配置
+~/.koda/providers.json   Provider 定义与凭据
+~/.koda/koda.db          Session 与 ADK 对话历史
+```
+
+Provider 配置保持独立，因为 Koda 会通过 API 更新它们，而 `koda.yaml` 是仅在启动时
+读取的用户配置。Provider/Model 选择、reasoning effort、workspace 和权限仍作为
+Session 配置保存在数据库中。Provider 文件仅允许当前用户访问。模型列表只读取本地
+状态；只有客户端显式调用 `RefreshModels` 时才会访问网络。Provider 连接发生变化后，
+之前发现的模型 snapshot 会失效。
+
+## Agent Run
+
+`Run` 通过 server stream 执行一个多模态用户 turn。输入可以按顺序包含文本、HTTPS
+图片 URL，或带 MIME type 的内联图片 bytes。流中有四种 frame：
+
+- `Event`：模型增量或完整对话事件；
+- `ToolApproval`：等待用户批准的操作；
+- `QuestionPrompt`：agent 发起的结构化提问；
+- `RunCompleted`：turn 成功提交后的完成信号。
+
+每个 Session 独立选择 Provider、Model、reasoning effort、workspace 和权限策略。同一
+Session 的 Run 会串行执行；如果已经提交的 turn 无法通过 `RunCompleted` 被确认，历史
+会回滚。
+
+## 工具与权限
+
+Plan agent 可以读取文件、列目录、搜索内容、查找文件、提问，并可通过 `run_shell`
+执行一条白名单内的只读 Git 命令。其他命令和会修改仓库的 Git 操作都会被拒绝。
+
+Build agent 额外提供整文件创建和写入、Hashline 编辑，以及支持任意命令语法的
+`run_shell`。Build 模式的 Shell 执行仍受 Session 的 Shell 审批策略控制。
+
+文件访问按 Session 配置：
+
+| 级别 | Workspace 内读取 | Workspace 内写入 | Workspace 外访问 |
+|---|---:|---:|---:|
+| `WORKSPACE_READ` | 允许 | 审批 | 审批 |
+| `WORKSPACE_WRITE` | 允许 | 允许 | 审批 |
+| `UNRESTRICTED` | 允许 | 允许 | 允许 |
+
+工具会先解析符号链接，再判断路径是否位于 workspace 内。Shell 权限独立配置，因为
+不受限的进程实际上可以访问整个文件系统。
+
+`read_file` 和 `search_text` 会返回内容 revision 与 `LINE:HASH` 锚点；`edit_file`
+在原子应用修改前再次校验它们。可预测的文件写入会在审批帧和结果帧中携带结构化 diff。
+
+## 开发
+
+API 的源文件是 [`proto/koda/v1/service.proto`](proto/koda/v1/service.proto)。`gen/`
+下的生成文件需要提交，但不能手工修改。
+
+修改 Go 代码后运行：
 
 ```bash
-koda
+gofmt -w .
+go build ./...
+go vet ./...
+go test ./...
+go test -cover ./...
+go test -race ./...
+git diff --check
 ```
 
-### 单次模式
+修改 Protocol Buffer 契约后，先运行 `buf format -w`、`buf lint`、`buf build` 和
+`buf generate`，再执行上述 Go 检查。
 
-```bash
-koda "列出当前目录下的文件"
-```
+贡献者需要遵循的仓库规则见 [AGENTS.md](AGENTS.md)。
 
-### 命令行参数
+## Agent 指令
 
-| 参数 | 说明 |
-|------|------|
-| `--provider` | LLM 供应商：`anthropic`、`openai` 或 `gemini` |
-| `--model` | 模型名称（如 `claude-sonnet-4-5`、`gpt-4o`） |
-| `--no-session` | 禁用 SQLite 会话持久化（仅内存） |
-| `--safe` | 在有副作用的工具调用执行前要求确认 |
+Koda 会分层组装 coding agent 的 system instruction。稳定的内嵌公共 Prompt
+和 Build 或 Plan 模式 Prompt 位于最前；每次 Run 再追加规范化工作目录、当前
+Session 的有效权限，以及从文件系统根目录到 workspace 的分层 `AGENTS.md`。
+同一次 Run 的所有工具调用轮次复用同一份 workspace 指令快照，下一次 Run
+会重新读取。
 
-### 环境变量
+运行时上下文和 workspace 指令只作用于当前请求。它们会在每次模型调用时
+发送，但不会加入 conversation event，也不会持久化到 Session history。
 
-| 变量 | 用途 |
-|------|------|
-| `KODA_PROVIDER` | 默认供应商 |
-| `KODA_MODEL` | 默认模型名称 |
-| `KODA_SAFE_MODE` | 默认启用安全模式（`true` / `false`） |
-| `KODA_BASE_URL` | OpenAI 兼容端点的自定义 Base URL |
-| `ANTHROPIC_API_KEY` | Anthropic API Key |
-| `OPENAI_API_KEY` | OpenAI API Key |
-| `GEMINI_API_KEY` | Google Gemini API Key |
+## License
 
-### 快捷键
-
-| 按键 | 操作 |
-|------|------|
-| `Enter` | 发送消息 |
-| `Ctrl+Enter` | 插入换行 |
-| `Tab` | 切换 Build / Plan 模式 |
-| `Ctrl+T` | 切换思考级别（关闭 / 低 / 中 / 高） |
-| `Esc` (x2) | 取消正在运行的 Agent |
-| `[` / `]` | 在消息间导航 |
-| `x` | 展开 / 折叠工具输出 |
-| `PgUp` / `PgDn` | 滚动视口 |
-
-### 斜杠命令
-
-| 命令 | 操作 |
-|------|------|
-| `/connect` | 选择 LLM 供应商并输入 API Key |
-| `/model` | 从供应商实时模型列表中选择模型 |
-| `/sessions` | 浏览并恢复历史会话 |
-| `/help` | 显示命令、快捷键和安全模式提示 |
-| `/new` | 创建新会话 |
-| `/compact` | 压缩当前会话上下文 |
-| `/undo` | 移除最后一轮用户输入及其后续消息 |
-
-## 项目结构
-
-```
-koda/
-├── cmd/koda/main.go              # CLI 入口
-├── internal/
-│   ├── agent/
-│   │   ├── setup.go              # LLM + 工具 + 会话组装
-│   │   ├── runtime.go            # Build/Plan Agent，会话生命周期
-│   │   ├── models.go             # 按供应商实时查询模型列表
-│   │   ├── session_catalog.go    # 会话元数据（SQLite + 内存）
-│   │   ├── prompt.md             # 系统提示词（嵌入）
-│   │   └── prompt_plan.md        # Plan 模式系统提示词
-│   ├── config/config.go          # 环境变量 / 命令行 / 文件配置
-│   ├── tools/                    # 工具实现
-│   │   ├── file.go               # 读取、写入、创建、列目录
-│   │   ├── shell.go              # run_shell
-│   │   ├── search.go             # grep_search、find_files
-│   │   └── git.go                # git_status、git_diff
-│   └── tui/                      # Bubbletea TUI
-│       ├── app.go                # 主模型、流式处理、渲染
-│       ├── commands.go           # 斜杠命令处理
-│       ├── messages.go           # 消息类型与 tea.Msg 定义
-│       └── styles.go             # lipgloss 样式
-├── go.mod
-└── AGENTS.md                     # 编程 Agent 指令
-```
-
-## 许可证
-
-[Apache 2.0](LICENSE)
+Apache License 2.0，详见 [LICENSE](LICENSE)。

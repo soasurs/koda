@@ -1,153 +1,158 @@
 # koda
 
-> **Warning: Early Development — Expect breaking changes, incomplete features, and rough edges.**
+`koda` is a local coding-agent service built with Go, Protocol Buffers,
+Connect RPC, and [`github.com/soasurs/adk`](https://github.com/soasurs/adk).
+It provides the runtime and API for clients that need streamed agent turns,
+workspace tools, approvals, questions, provider configuration, and durable
+conversation history.
 
-koda is a terminal-based AI coding assistant written in Go — similar in spirit to Claude Code and Aider. It provides a rich TUI for interactive conversations with LLMs, equipped with file editing, shell execution, code search, and git tools to help you code faster from the terminal.
+[中文说明](README_zh-CN.md)
 
-## Features
+Koda currently ships as a headless local service. A UI is not included.
 
-- **Interactive TUI** — Bubbletea-based interface with scrollable message history, multi-line input, and streaming responses
-- **One-shot mode** — Pipe a prompt as a CLI argument for quick, non-interactive use
-- **Multi-provider LLM support** — Anthropic (Claude), OpenAI (GPT), and Google Gemini, switchable at runtime via `/connect` and `/model` commands
-- **9 built-in tools** the agent can invoke:
-  | Tool | Description |
-  |------|-------------|
-  | `read_file` | Read file contents (with optional line range) |
-  | `write_file` | Overwrite a file |
-  | `create_file` | Create a new file (refuses to overwrite) |
-  | `list_directory` | List directory contents |
-  | `grep_search` | Regex search across files |
-  | `find_files` | Glob-based file finder |
-  | `run_shell` | Execute shell commands (60 s timeout) |
-  | `git_status` | Show working tree status |
-  | `git_diff` | Show diffs (staged or unstaged) |
-- **Build & Plan modes** — Toggle with `Tab` between full tool access (Build) and a read-only subset (Plan) for architecture analysis
-- **Thinking levels** — Cycle through Off / Low / Medium / High extended thinking with `Ctrl+T`
-- **Session persistence** — SQLite-backed conversation history at `~/.koda/sessions.db`; browse and resume with `/sessions`
-- **Context compaction** — Automatic sliding-window compaction keeps context manageable; trigger manually with `/compact`
-- **Collapsible tool output** — Long tool results are collapsed by default; press `x` to expand
-- **Project-aware** — Reads workspace `AGENTS.md` to pick up project-specific instructions
-- **Safe mode** — Optional confirmation for mutating tool calls such as `run_shell`, `write_file`, and `create_file`
+## Run the service
 
-## Requirements
+Requirements:
 
-- **Go 1.26+**
-- **C compiler** (CGo required by `go-sqlite3`) — on macOS: `xcode-select --install`
+- Go 1.26, or the version declared by `go.mod`;
+- a configured API key for at least one provider.
 
-## Installation
+Start the Connect API server:
 
 ```bash
-# Clone the repository
-git clone https://github.com/soasurs/koda.git
-cd koda
-
-# Build
-go build ./cmd/koda
-
-# Or install to $GOPATH/bin
-go install ./cmd/koda
+go run ./cmd/koda serve
 ```
 
-## Usage
-
-### Set up a provider
-
-Export one of the API key environment variables:
+Koda first tries `localhost:8080`. If that port is occupied, it selects another
+loopback port and prints the actual address. To select a port explicitly:
 
 ```bash
-export ANTHROPIC_API_KEY=sk-...    # Anthropic (default)
-export OPENAI_API_KEY=sk-...       # OpenAI
-export GEMINI_API_KEY=...          # Google Gemini
+go run ./cmd/koda serve --addr 127.0.0.1:8787
 ```
 
-Or store keys persistently via the `/connect` slash command inside the TUI.
+The server accepts loopback addresses only and never opens a browser. Koda also
+reads process-level settings from `~/.koda/koda.yaml`; command-line options take
+precedence over the file. The file is optional, and its first version contains
+only the server address:
 
-### Interactive mode
+```yaml
+version: 1
+server:
+  address: 127.0.0.1:8080
+```
+
+`--addr` overrides `server.address`. When neither is set, Koda tries the default
+address and falls back to an available loopback port if it is occupied.
+
+## Providers and local data
+
+The following providers are built in:
+
+| ID | API | Environment variable |
+|---|---|---|
+| `anthropic` | Anthropic Messages | `ANTHROPIC_API_KEY` |
+| `openai` | OpenAI Chat Completions | `OPENAI_API_KEY` |
+| `openai-responses` | OpenAI Responses | `OPENAI_API_KEY` |
+| `gemini` | Gemini GenerateContent | `GEMINI_API_KEY` |
+| `deepseek` | DeepSeek | `DEEPSEEK_API_KEY` |
+
+Environment credentials take precedence over stored credentials and are not
+copied into Koda's configuration file. Custom endpoints and model overrides can
+be managed through `koda.v1.KodaService`.
+
+Koda keeps its state under `~/.koda`:
+
+```text
+~/.koda/koda.yaml       optional process-level configuration
+~/.koda/providers.json   provider definitions and credentials
+~/.koda/koda.db          sessions and ADK conversation history
+```
+
+Provider definitions remain separate because Koda updates them through its API,
+while `koda.yaml` is startup-only user configuration. Provider/model selection,
+reasoning effort, workspace, and permissions remain session-scoped in the
+database. The provider file is private to the current user. Model listing is
+local-only; network discovery occurs only when a client explicitly calls
+`RefreshModels`. Changing a provider connection invalidates its previously
+discovered snapshot.
+
+## Agent runs
+
+`Run` executes one multimodal user turn as a server stream. Inputs may contain
+ordered text parts, HTTPS image URLs, or inline image bytes with a MIME type.
+The stream emits four frame kinds:
+
+- `Event` for model deltas and complete conversation events;
+- `ToolApproval` when an operation needs user consent;
+- `QuestionPrompt` when the agent asks for structured user input;
+- `RunCompleted` after the turn has been committed successfully.
+
+Sessions select their own provider, model, reasoning effort, workspace, and
+permission policy. Runs for the same session are serialized. If a turn cannot
+be acknowledged with `RunCompleted`, its committed history is rolled back.
+
+## Tools and permissions
+
+Plan agents can read files, list directories, search text, find files, ask
+questions, and use `run_shell` for one allowlisted read-only Git command.
+Other commands and mutating Git operations are rejected in Plan mode.
+
+Build agents additionally receive whole-file creation and writing, Hashline
+editing, and unrestricted command syntax through `run_shell`. Build shell
+execution still follows the session's Shell approval policy.
+
+Filesystem access is configured per session:
+
+| Level | Workspace read | Workspace write | Outside workspace |
+|---|---:|---:|---:|
+| `WORKSPACE_READ` | allowed | approval | approval |
+| `WORKSPACE_WRITE` | allowed | allowed | approval |
+| `UNRESTRICTED` | allowed | allowed | allowed |
+
+Paths are resolved through symlinks before their scope is classified. Shell
+permission is independent because an unrestricted process can effectively
+access the whole filesystem.
+
+`read_file` and `search_text` return a content revision and `LINE:HASH`
+anchors. `edit_file` validates them immediately before applying an atomic edit.
+Predictable writes include a structured diff in both approval and result
+frames.
+
+## Development
+
+The API source of truth is [`proto/koda/v1/service.proto`](proto/koda/v1/service.proto).
+Generated files under `gen/` are committed and must not be edited manually.
+
+After changing Go code, run:
 
 ```bash
-koda
+gofmt -w .
+go build ./...
+go vet ./...
+go test ./...
+go test -cover ./...
+go test -race ./...
+git diff --check
 ```
 
-### One-shot mode
+After changing the Protocol Buffer contract, run `buf format -w`, `buf lint`,
+`buf build`, and `buf generate` before the Go checks above.
 
-```bash
-koda "list the files in this directory"
-```
+Contributor-specific repository rules are in [AGENTS.md](AGENTS.md).
 
-### CLI flags
+## Agent instructions
 
-| Flag | Description |
-|------|-------------|
-| `--provider` | LLM provider: `anthropic`, `openai`, or `gemini` |
-| `--model` | Model name override (e.g. `claude-sonnet-4-5`, `gpt-4o`) |
-| `--no-session` | Disable SQLite session persistence (in-memory only) |
-| `--safe` | Require confirmation before mutating tool calls execute |
+Koda assembles each coding agent's system instruction in layers. A stable,
+embedded common prompt and Build or Plan mode prompt come first. Each Run then
+adds the normalized working directory, effective session permissions, and
+hierarchical `AGENTS.md` files from the filesystem root to the workspace. The
+workspace instruction snapshot is reused across tool-call iterations in that
+Run and refreshed on the next Run.
 
-### Environment variables
-
-| Variable | Purpose |
-|----------|---------|
-| `KODA_PROVIDER` | Default provider |
-| `KODA_MODEL` | Default model name |
-| `KODA_SAFE_MODE` | Enable safe mode by default (`true` / `false`) |
-| `KODA_BASE_URL` | Custom base URL for OpenAI-compatible endpoints |
-| `ANTHROPIC_API_KEY` | Anthropic API key |
-| `OPENAI_API_KEY` | OpenAI API key |
-| `GEMINI_API_KEY` | Google Gemini API key |
-
-### Keyboard shortcuts
-
-| Key | Action |
-|-----|--------|
-| `Enter` | Send message |
-| `Ctrl+Enter` | Insert newline |
-| `Tab` | Toggle Build / Plan mode |
-| `Ctrl+T` | Cycle thinking level (Off / Low / Medium / High) |
-| `Esc` (x2) | Cancel running agent |
-| `[` / `]` | Navigate between messages |
-| `x` | Expand / collapse tool output |
-| `PgUp` / `PgDn` | Scroll viewport |
-
-### Slash commands
-
-| Command | Action |
-|---------|--------|
-| `/connect` | Choose LLM provider and enter API key |
-| `/model` | Select model from live provider list |
-| `/sessions` | Browse and resume previous sessions |
-| `/help` | Show commands, shortcuts, and safe-mode hints |
-| `/new` | Create a new session |
-| `/compact` | Compact current session context |
-| `/undo` | Remove the last user turn and its follow-up messages |
-
-## Project Structure
-
-```
-koda/
-├── cmd/koda/main.go              # CLI entry point
-├── internal/
-│   ├── agent/
-│   │   ├── setup.go              # LLM + tools + session wiring
-│   │   ├── runtime.go            # Build/Plan agents, session lifecycle
-│   │   ├── models.go             # Live model listing per provider
-│   │   ├── session_catalog.go    # Session metadata (SQLite + in-memory)
-│   │   ├── prompt.md             # System prompt (embedded)
-│   │   └── prompt_plan.md        # Plan-mode system prompt
-│   ├── config/config.go          # Env / flag / file configuration
-│   ├── tools/                    # Tool implementations
-│   │   ├── file.go               # read, write, create, list
-│   │   ├── shell.go              # run_shell
-│   │   ├── search.go             # grep_search, find_files
-│   │   └── git.go                # git_status, git_diff
-│   └── tui/                      # Bubbletea TUI
-│       ├── app.go                # Main model, streaming, rendering
-│       ├── commands.go           # Slash command handling
-│       ├── messages.go           # Message types and tea.Msg definitions
-│       └── styles.go             # lipgloss styles
-├── go.mod
-└── AGENTS.md                     # Coding-agent instructions
-```
+Runtime and workspace instructions are request-scoped context. They are sent to
+the model for each iteration but are not added to conversation events or stored
+in session history.
 
 ## License
 
-[Apache 2.0](LICENSE)
+Apache License 2.0. See [LICENSE](LICENSE).

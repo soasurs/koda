@@ -1,124 +1,110 @@
 package tools
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"os/exec"
-	"reflect"
 	"strings"
+	"syscall"
 	"time"
 
-	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/soasurs/adk/tool"
+
+	"github.com/soasurs/koda/internal/permission"
 )
 
-const defaultShellTimeout = 60 * time.Second
-const maxOutputBytes = 50 * 1024 // 50 KB
-
-type ShellConfirmationRequest struct {
-	Command string
-	WorkDir string
-}
-
-type ShellConfirmationFunc func(ctx context.Context, request ShellConfirmationRequest) error
-
-type shellConfirmationContextKey struct{}
+const maxShellTimeout = 5 * time.Minute
 
 type runShellInput struct {
-	Command string `json:"command" jsonschema:"Shell command to execute"`
-	WorkDir string `json:"work_dir,omitempty" jsonschema:"Working directory for the command. Defaults to the current working directory if omitted"`
+	Command        string `json:"command" jsonschema:"Shell command to execute"`
+	Workdir        string `json:"workdir,omitempty" jsonschema:"Working directory; defaults to the session workspace"`
+	TimeoutSeconds int    `json:"timeout_seconds,omitempty" jsonschema:"Maximum runtime in seconds; defaults to 30 and is capped at 300"`
+	MaxChars       int    `json:"max_chars,omitempty" jsonschema:"Maximum returned characters; defaults to 32768 and is capped"`
 }
 
-type runShellTool struct{ def tool.Definition }
+type runShellOutput struct {
+	Stdout    string `json:"stdout"`
+	Stderr    string `json:"stderr"`
+	ExitCode  int    `json:"exit_code"`
+	Truncated bool   `json:"truncated"`
+}
 
-// NewRunShellTool creates a tool that executes shell commands.
-func NewRunShellTool() (tool.Tool, error) {
-	schema, err := jsonschema.ForType(reflect.TypeFor[runShellInput](), &jsonschema.ForOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("run_shell: build schema: %w", err)
-	}
-	return &runShellTool{tool.Definition{
+func (s service) newRunShellTool() (tool.Tool, error) {
+	return tool.NewFunc(tool.Definition{
 		Name:        "run_shell",
-		Description: "Execute a shell command and return its combined stdout/stderr output. The command runs with a 60-second timeout. Use work_dir to set the working directory.",
-		InputSchema: schema,
-	}}, nil
+		Description: "Execute an arbitrary shell command. It requires approval by default because its filesystem and process effects cannot be predicted.",
+	}, s.runShell)
 }
 
-func (t *runShellTool) Definition() tool.Definition { return t.def }
-
-func WithShellConfirmation(ctx context.Context, confirm ShellConfirmationFunc) context.Context {
-	if confirm == nil {
-		return ctx
+func (s service) runShell(ctx context.Context, input runShellInput) (runShellOutput, error) {
+	if strings.TrimSpace(input.Command) == "" {
+		return runShellOutput{}, handled(errors.New("command must not be empty"))
 	}
-	return context.WithValue(ctx, shellConfirmationContextKey{}, confirm)
-}
+	if strings.TrimSpace(input.Workdir) == "" {
+		input.Workdir = "."
+	}
+	workdir, err := s.resolver.existing(input.Workdir)
+	if err != nil {
+		return runShellOutput{}, handled(err)
+	}
+	if !workdir.info.IsDir() {
+		return runShellOutput{}, handled(errors.New("workdir is not a directory"))
+	}
+	if err := s.authorize(ctx, permission.KindShell, permission.ScopeGlobal, absoluteTargets(workdir), "run shell command in "+workdir.display, nil); err != nil {
+		return runShellOutput{}, err
+	}
 
-func shellConfirmationFromContext(ctx context.Context) ShellConfirmationFunc {
-	if ctx == nil {
+	timeout := shellTimeout(s.commandTimeout, input.TimeoutSeconds)
+	commandCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	command := exec.CommandContext(commandCtx, "sh", "-c", input.Command)
+	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	command.Cancel = func() error {
+		if command.Process == nil {
+			return os.ErrProcessDone
+		}
+		if err := syscall.Kill(-command.Process.Pid, syscall.SIGKILL); err != nil {
+			if errors.Is(err, syscall.ESRCH) {
+				return os.ErrProcessDone
+			}
+			return err
+		}
 		return nil
 	}
-	confirm, _ := ctx.Value(shellConfirmationContextKey{}).(ShellConfirmationFunc)
-	return confirm
+	command.WaitDelay = time.Second
+	command.Dir = workdir.real
+	stdout := newTruncatingBuffer(clamp(input.MaxChars, defaultMaxChars, defaultMaxChars))
+	stderr := newTruncatingBuffer(clamp(input.MaxChars, defaultMaxChars, defaultMaxChars))
+	command.Stdout = stdout
+	command.Stderr = stderr
+	err = command.Run()
+	if ctx.Err() != nil {
+		return runShellOutput{}, ctx.Err()
+	}
+	if commandCtx.Err() != nil {
+		return runShellOutput{}, handled(fmt.Errorf("shell command timed out after %s", timeout))
+	}
+	exitCode := 0
+	if err != nil {
+		var exitErr *exec.ExitError
+		if !errors.As(err, &exitErr) {
+			return runShellOutput{}, handled(fmt.Errorf("run shell command: %w", err))
+		}
+		exitCode = exitErr.ExitCode()
+	}
+	return runShellOutput{
+		Stdout:    stdout.String(),
+		Stderr:    stderr.String(),
+		ExitCode:  exitCode,
+		Truncated: stdout.truncated || stderr.truncated,
+	}, nil
 }
 
-func (t *runShellTool) Run(ctx context.Context, _ string, arguments string) (string, error) {
-	var input runShellInput
-	if err := json.Unmarshal([]byte(arguments), &input); err != nil {
-		return "", fmt.Errorf("run_shell: parse arguments: %w", err)
+func shellTimeout(fallback time.Duration, seconds int) time.Duration {
+	if seconds > 0 {
+		return min(time.Duration(seconds)*time.Second, maxShellTimeout)
 	}
-	return runShellCommand(ctx, input)
-}
-
-func runShellCommand(ctx context.Context, input runShellInput) (string, error) {
-	if confirm := shellConfirmationFromContext(ctx); confirm != nil {
-		if err := confirm(ctx, ShellConfirmationRequest{
-			Command: input.Command,
-			WorkDir: input.WorkDir,
-		}); err != nil {
-			return "", fmt.Errorf("run_shell: confirm execution: %w", err)
-		}
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, defaultShellTimeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "sh", "-c", input.Command)
-	if input.WorkDir != "" {
-		cmd.Dir = input.WorkDir
-	}
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-
-	runErr := cmd.Run()
-
-	output := out.String()
-	// Truncate huge outputs to avoid swamping the LLM context
-	if len(output) > maxOutputBytes {
-		output = output[:maxOutputBytes] + fmt.Sprintf("\n\n... (output truncated at %d KB)", maxOutputBytes/1024)
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("$ %s\n", input.Command))
-	if output != "" {
-		sb.WriteString(output)
-		if !strings.HasSuffix(output, "\n") {
-			sb.WriteByte('\n')
-		}
-	}
-
-	if runErr != nil {
-		if ctx.Err() != nil {
-			sb.WriteString(fmt.Sprintf("[timed out after %s]\n", defaultShellTimeout))
-		} else {
-			sb.WriteString(fmt.Sprintf("[exit: %s]\n", runErr))
-		}
-	} else {
-		sb.WriteString("[exit: 0]\n")
-	}
-
-	return sb.String(), nil
+	return fallback
 }
