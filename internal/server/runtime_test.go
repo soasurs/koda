@@ -205,7 +205,7 @@ func TestRunInitializesADKSessionBeforeResolvingProvider(t *testing.T) {
 	client, registry, handler := newTestService(t, staticDiscoverer{})
 	if _, err := registry.Save(t.Context(), provider.Provider{
 		ID: "unconfigured", Name: "Unconfigured", Type: provider.TypeOpenAIChatCompletions,
-		ModelOverrides: []provider.Model{{ID: "model"}},
+		Enabled: true, ModelOverrides: []provider.Model{{ID: "model"}},
 	}, nil); err != nil {
 		t.Fatalf("Registry.Save() error = %v", err)
 	}

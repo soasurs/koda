@@ -35,6 +35,7 @@ type storedProvider struct {
 	ModelOverrides    []Model `json:"model_overrides,omitempty"`
 	DiscoveredModels  []Model `json:"discovered_models,omitempty"`
 	ModelsRefreshedAt int64   `json:"models_refreshed_at,omitempty"`
+	Enabled           *bool   `json:"enabled,omitempty"`
 }
 
 type storedRegistry struct {
@@ -265,12 +266,17 @@ func (r *Registry) load() error {
 	}
 
 	for _, item := range stored.Providers {
+		enabled := true
+		if item.Enabled != nil {
+			enabled = *item.Enabled
+		}
 		p, err := normalizeProvider(Provider{
 			ID:             item.ID,
 			Name:           item.Name,
 			Type:           item.Type,
 			BaseURL:        item.BaseURL,
 			ModelOverrides: item.ModelOverrides,
+			Enabled:        enabled,
 		})
 		if err != nil {
 			return fmt.Errorf("provider registry: load %q: %w", item.ID, err)
@@ -409,6 +415,7 @@ func (r *Registry) persist(ctx context.Context, providers map[string]Provider, s
 		if !snapshot.RefreshedAt.IsZero() {
 			refreshedAt = snapshot.RefreshedAt.UnixMilli()
 		}
+		enabled := p.Enabled
 		stored.Providers = append(stored.Providers, storedProvider{
 			ID:                p.ID,
 			Name:              p.Name,
@@ -418,6 +425,7 @@ func (r *Registry) persist(ctx context.Context, providers map[string]Provider, s
 			ModelOverrides:    cloneModels(p.ModelOverrides),
 			DiscoveredModels:  cloneModels(snapshot.Models),
 			ModelsRefreshedAt: refreshedAt,
+			Enabled:           &enabled,
 		})
 	}
 	data, err := json.MarshalIndent(stored, "", "  ")

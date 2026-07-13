@@ -362,7 +362,7 @@ func startIntegrationService(t *testing.T, registryPath, databasePath, upstreamU
 	key := "integration-key"
 	if _, err := registry.Save(t.Context(), provider.Provider{
 		ID: "integration", Name: "Integration", Type: provider.TypeOpenAIChatCompletions,
-		BaseURL: upstreamURL, ModelOverrides: []provider.Model{{ID: "integration-model"}},
+		BaseURL: upstreamURL, Enabled: true, ModelOverrides: []provider.Model{{ID: "integration-model"}},
 	}, &key); err != nil {
 		t.Fatalf("Registry.Save() error = %v", err)
 	}

@@ -154,6 +154,10 @@ func providerFromProto(request *v1.SaveProviderRequest) (provider.Provider, erro
 		Type:           providerType,
 		BaseURL:        request.GetBaseUrl(),
 		ModelOverrides: models,
+		Enabled:        true,
+	}
+	if request.HasEnabled() {
+		p.Enabled = request.GetEnabled()
 	}
 	if err := provider.ValidateProvider(p); err != nil {
 		return provider.Provider{}, err
@@ -177,6 +181,7 @@ func providerToProto(p provider.Provider) *v1.Provider {
 		BaseUrl:    proto.String(p.BaseURL),
 		Configured: proto.Bool(p.Configured()),
 		Builtin:    proto.Bool(p.Builtin()),
+		Enabled:    proto.Bool(p.Enabled),
 	}.Build()
 }
 
