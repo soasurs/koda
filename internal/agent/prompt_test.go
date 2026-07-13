@@ -75,6 +75,28 @@ func TestRuntimeInstructionPermissions(t *testing.T) {
 	}
 }
 
+func TestRuntimeInstructionDescribesWorkingDirectoryBehavior(t *testing.T) {
+	instruction, err := runtimeInstruction(ModeBuild, RunEnvironment{
+		Workdir:     t.TempDir(),
+		FileAccess:  permission.FileAccessWorkspaceRead,
+		ShellAccess: permission.ShellAccessApprovalRequired,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"Relative tool paths are resolved against the working directory",
+		"`run_shell`",
+		"starts there by default",
+		"use relative paths",
+		"Do not prepend the working directory or run an unnecessary `cd`",
+	} {
+		if !strings.Contains(instruction, want) {
+			t.Fatalf("instruction = %q, want %q", instruction, want)
+		}
+	}
+}
+
 func TestInstructionProviderValidatesEnvironmentAndEscapesWorkdir(t *testing.T) {
 	root := t.TempDir()
 	workdir := filepath.Join(root, "work`space\n# injected")

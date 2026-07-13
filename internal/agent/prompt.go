@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/soasurs/adk/agent/llmagent"
 
@@ -44,6 +45,22 @@ func embeddedPrompt(name string) (string, error) {
 		return "", fmt.Errorf("agent: embedded prompt %q must not be empty", name)
 	}
 	return value, nil
+}
+
+func renderEmbeddedPrompt(name string, data any) (string, error) {
+	source, err := embeddedPrompt(name)
+	if err != nil {
+		return "", err
+	}
+	prompt, err := template.New(name).Option("missingkey=error").Parse(source)
+	if err != nil {
+		return "", fmt.Errorf("agent: parse embedded prompt %q: %w", name, err)
+	}
+	var builder strings.Builder
+	if err := prompt.Execute(&builder, data); err != nil {
+		return "", fmt.Errorf("agent: render embedded prompt %q: %w", name, err)
+	}
+	return builder.String(), nil
 }
 
 // LoadWorkspaceInstructions returns the AGENTS.md files from the filesystem
@@ -156,8 +173,19 @@ func runtimeInstruction(mode Mode, environment RunEnvironment) (string, error) {
 	} else {
 		permissions = buildPermissions(environment.FileAccess, environment.ShellAccess)
 	}
-	return fmt.Sprintf("# Runtime environment\n\n- Working directory: %s\n- Mode: `%s`\n- Session file access: `%s`\n- Session shell access: `%s`\n\n## Effective permissions\n\n%s",
-		strconv.Quote(workdir), mode, environment.FileAccess, environment.ShellAccess, permissions), nil
+	return renderEmbeddedPrompt("prompts/runtime.md", struct {
+		Workdir     string
+		Mode        Mode
+		FileAccess  permission.FileAccess
+		ShellAccess permission.ShellAccess
+		Permissions string
+	}{
+		Workdir:     strconv.Quote(workdir),
+		Mode:        mode,
+		FileAccess:  environment.FileAccess,
+		ShellAccess: environment.ShellAccess,
+		Permissions: permissions,
+	})
 }
 
 func buildPermissions(fileAccess permission.FileAccess, shellAccess permission.ShellAccess) string {
