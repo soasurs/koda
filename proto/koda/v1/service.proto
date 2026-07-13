@@ -185,6 +185,9 @@ message RunResponse {
 message RunCompleted {
   // turn_id identifies the committed turn shared by all of its events.
   string turn_id = 1;
+  // session is the durable session snapshot after committing the turn. On the
+  // first successful turn it may contain an LLM-generated title.
+  Session session = 2;
 }
 
 // Input is the user-authored content that starts a turn.

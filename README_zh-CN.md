@@ -86,11 +86,15 @@ Session 配置保存在数据库中。Provider 文件仅允许当前用户访问
 - `Event`：模型增量或完整对话事件；
 - `ToolApproval`：等待用户批准的操作；
 - `QuestionPrompt`：agent 发起的结构化提问；
-- `RunCompleted`：turn 成功提交后的完成信号。
+- `RunCompleted`：turn 成功提交后的完成信号，其中包含最新的持久化 `Session` 快照。
 
 每个 Session 独立选择 Provider、Model、reasoning effort、workspace 和权限策略。同一
 Session 的 Run 会串行执行；如果已经提交的 turn 无法通过 `RunCompleted` 被确认，历史
 会回滚。
+
+当 Session 标题仍为空时，第一次 Run 会并行使用当前选择的模型，根据首条用户输入
+生成简短标题。标题持久化后通过 `RunCompleted.session` 返回；标题生成失败不会导致
+agent turn 失败。Run 执行期间，客户端可以先显示首条输入的本地截断文本作为临时标题。
 
 ## 工具与权限
 

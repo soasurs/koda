@@ -424,10 +424,11 @@ func TestLockRunContextIsReentrantAndRollbackTurnRestoresSession(t *testing.T) {
 		t.Fatalf("CreateEvent() error = %v", err)
 	}
 	store.now = func() time.Time { return createdAt.Add(time.Hour) }
-	if err := store.TouchSession(lockedCtx, "session-1"); err != nil {
-		t.Fatalf("TouchSession() error = %v", err)
+	title := "Generated title"
+	if _, err := store.UpdateSession(lockedCtx, "session-1", UpdateSessionParams{Title: &title}); err != nil {
+		t.Fatalf("UpdateSession() error = %v", err)
 	}
-	if err := store.RollbackTurn(lockedCtx, "session-1", "turn-1", created.UpdatedAt); err != nil {
+	if err := store.RollbackTurn(lockedCtx, "session-1", "turn-1", created); err != nil {
 		t.Fatalf("RollbackTurn() error = %v", err)
 	}
 	listed, total, err := store.ListEvents(lockedCtx, "session-1", ListEventsParams{})
@@ -441,8 +442,8 @@ func TestLockRunContextIsReentrantAndRollbackTurnRestoresSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSession() error = %v", err)
 	}
-	if !got.UpdatedAt.Equal(created.UpdatedAt) {
-		t.Fatalf("UpdatedAt = %v, want %v", got.UpdatedAt, created.UpdatedAt)
+	if got.Title != created.Title || !got.UpdatedAt.Equal(created.UpdatedAt) {
+		t.Fatalf("session after rollback = %+v, want title %q and UpdatedAt %v", got, created.Title, created.UpdatedAt)
 	}
 }
 

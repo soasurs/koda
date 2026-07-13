@@ -114,6 +114,37 @@ func TestFactoryValidatesSessionAndModelConfiguration(t *testing.T) {
 	}
 }
 
+func TestFactoryGenerateTitleUsesEmbeddedPromptWithoutReasoning(t *testing.T) {
+	factory, _ := newTestFactory(t)
+	scripted := &scriptedModel{responses: []*model.LLMResponse{{
+		Content:      model.Content{Role: model.RoleAssistant, Content: "`Fix flaky tests`\nExplanation"},
+		FinishReason: model.FinishReasonStop,
+	}}}
+	var effort string
+	factory.newModel = func(_ context.Context, _ provider.Provider, _ string, gotEffort string) (model.LLM, error) {
+		effort = gotEffort
+		return scripted, nil
+	}
+
+	input := model.Content{Role: model.RoleUser, Content: "Please fix the flaky tests"}
+	title, err := factory.GenerateTitle(t.Context(), testSession(t.TempDir()), input)
+	if err != nil {
+		t.Fatalf("GenerateTitle() error = %v", err)
+	}
+	if title != "Fix flaky tests" || effort != "" {
+		t.Fatalf("GenerateTitle() = %q, effort = %q", title, effort)
+	}
+	if len(scripted.requests) != 1 || len(scripted.requests[0].Contents) != 2 ||
+		scripted.requests[0].Contents[0].Role != model.RoleSystem ||
+		!strings.Contains(scripted.requests[0].Contents[0].Content, "Return only the title") ||
+		scripted.requests[0].Contents[1].Content != input.Content {
+		t.Fatalf("title request = %+v", scripted.requests)
+	}
+	if len(scripted.configs) != 1 || scripted.configs[0].MaxTokens != 64 || len(scripted.streams) != 1 || scripted.streams[0] {
+		t.Fatalf("title generation options = configs %+v, streams %v", scripted.configs, scripted.streams)
+	}
+}
+
 func TestLoadWorkspaceInstructionsOrdersParentBeforeChild(t *testing.T) {
 	root := t.TempDir()
 	workspace := filepath.Join(root, "workspace")
@@ -329,6 +360,8 @@ func (m fakeModel) GenerateContent(context.Context, *model.LLMRequest, *model.Ge
 type scriptedModel struct {
 	responses []*model.LLMResponse
 	requests  []*model.LLMRequest
+	configs   []*model.GenerateConfig
+	streams   []bool
 	index     atomic.Int32
 }
 
@@ -336,8 +369,10 @@ func (m *scriptedModel) Name() string {
 	return "scripted"
 }
 
-func (m *scriptedModel) GenerateContent(_ context.Context, request *model.LLMRequest, _ *model.GenerateConfig, _ bool) iter.Seq2[*model.LLMResponse, error] {
+func (m *scriptedModel) GenerateContent(_ context.Context, request *model.LLMRequest, config *model.GenerateConfig, stream bool) iter.Seq2[*model.LLMResponse, error] {
 	m.requests = append(m.requests, request)
+	m.configs = append(m.configs, config)
+	m.streams = append(m.streams, stream)
 	return func(yield func(*model.LLMResponse, error) bool) {
 		index := int(m.index.Add(1) - 1)
 		if index < len(m.responses) {
