@@ -13,6 +13,10 @@ plugins:
     opt:
       - paths=source_relative
       - simple
+  - local: [pnpm, --dir, studio, exec, protoc-gen-es]
+    out: studio/src/gen
+    opt:
+      - target=ts
 
 managed:
   enabled: true

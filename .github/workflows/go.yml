@@ -3,14 +3,35 @@ name: Go
 on:
   push:
     branches: [master]
+    paths:
+      - ".github/workflows/go.yml"
+      - "cmd/**"
+      - "gen/**"
+      - "internal/**"
+      - "proto/**"
+      - "buf.gen.yaml"
+      - "buf.yaml"
+      - "go.mod"
+      - "go.sum"
   pull_request:
     branches: [master]
+    paths:
+      - ".github/workflows/go.yml"
+      - "cmd/**"
+      - "gen/**"
+      - "internal/**"
+      - "proto/**"
+      - "buf.gen.yaml"
+      - "buf.yaml"
+      - "go.mod"
+      - "go.sum"
 
 permissions:
   contents: read
 
 jobs:
   build:
+    name: Go
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository

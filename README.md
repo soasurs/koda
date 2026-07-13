@@ -8,8 +8,8 @@ conversation history.
 
 [中文说明](README_zh-CN.md)
 
-Koda includes an embedded local web interface built from
-[`soasurs/koda-studio`](https://github.com/soasurs/koda-studio).
+Koda includes an embedded local web interface whose source lives under
+[`studio/`](studio/).
 
 ## Run Koda Studio
 
@@ -160,12 +160,12 @@ frames.
 ## Development
 
 The API source of truth is [`proto/koda/v1/service.proto`](proto/koda/v1/service.proto).
-Generated files under `gen/` are committed and must not be edited manually.
+Generated files under `gen/` and `studio/src/gen/` are committed and must not
+be edited manually.
 
 Studio assets under `internal/studio/dist` are generated and ignored by Git.
-`build/studio/version.txt` pins the release tag embedded in Koda. After changing
-that version, or from a fresh checkout, build the frontend with Node.js 24 and
-pnpm 10:
+Build them from the monorepo source with Node.js 24 and pnpm 10 after changing
+Studio, or from a fresh checkout:
 
 ```bash
 ./build/studio.sh
@@ -188,10 +188,10 @@ After changing the Protocol Buffer contract, run `buf format -w`, `buf lint`,
 
 ## Release
 
-Pushing a `v*` tag runs the release workflow. It builds the Studio version
-pinned in `build/studio/version.txt`, tests and packages native macOS amd64 and
-arm64 binaries, generates SHA-256 checksums, and publishes the completed draft
-as a GitHub Release.
+Pushing a `v*` tag runs the release workflow. It builds Studio from the tagged
+monorepo source, tests and packages native macOS amd64 and arm64 binaries,
+generates SHA-256 checksums, and publishes the completed draft as a GitHub
+Release.
 
 Contributor-specific repository rules are in [AGENTS.md](AGENTS.md).
 

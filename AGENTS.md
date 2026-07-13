@@ -22,8 +22,9 @@ internal/store/      SQLite session metadata and ADK history integration
 internal/tools/      workspace-aware coding tools
 internal/permission/ session permission types and policy
 internal/studio/     embedded Studio assets and SPA HTTP handler
+studio/              React/Vite Studio source and generated TypeScript bindings
 cmd/koda/            command-line service entry point
-build/               release-controlled Studio version and asset build script
+build/               Studio asset build script
 ```
 
 Keep generated Proto types at the server boundary. Core packages should use
@@ -149,7 +150,7 @@ READMEs in the same change.
 ## Verification
 
 Before the first Go build or test in a fresh checkout, and after changing
-`build/studio/version.txt`, generate the ignored Studio assets:
+Studio, generate the ignored embedded assets:
 
 ```bash
 ./build/studio.sh
@@ -183,8 +184,19 @@ go test ./...
 go test -cover ./...
 ```
 
-Generation tools are pinned in `go.mod`; commit generated bindings with their
-Proto source.
+Go generation tools are pinned in `go.mod`, and the TypeScript generator is
+pinned in `studio/package.json`; commit generated bindings with their Proto
+source.
+
+After changing Studio:
+
+```bash
+pnpm --dir studio typecheck
+pnpm --dir studio lint
+pnpm --dir studio test
+pnpm --dir studio build
+pnpm --dir studio format:check
+```
 
 ## Change discipline
 
