@@ -37,3 +37,15 @@ go.work.sum
 
 # Generated release artifacts
 /dist/
+
+# Studio dependencies and generated artifacts
+/studio/node_modules/
+/studio/dist/
+/studio/coverage/
+
+.DS_Store
+.idea/
+
+.env.*
+!.env.example
+!.env.template

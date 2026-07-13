@@ -7,8 +7,7 @@
 
 [English](README.md)
 
-Koda 内置了由 [`soasurs/koda-studio`](https://github.com/soasurs/koda-studio)
-构建的本地 Web 界面。
+Koda 内置了本地 Web 界面，其源码位于 [`studio/`](studio/) 目录。
 
 ## 启动 Koda Studio
 
@@ -143,11 +142,11 @@ Build agent 额外提供整文件创建和写入、Hashline 编辑，以及支�
 ## 开发
 
 API 的源文件是 [`proto/koda/v1/service.proto`](proto/koda/v1/service.proto)。`gen/`
-下的生成文件需要提交，但不能手工修改。
+和 `studio/src/gen/` 下的生成文件需要提交，但不能手工修改。
 
 `internal/studio/dist` 下的 Studio 资源由构建生成，并被 Git 忽略。
-`build/studio/version.txt` 固定需要 embed 的 release tag。修改该版本或首次 checkout
-后，需要使用 Node.js 24 和 pnpm 10 构建前端：
+修改 Studio 后或首次 checkout 后，需要使用 Node.js 24 和 pnpm 10 从 monorepo
+源码构建前端：
 
 ```bash
 ./build/studio.sh
@@ -170,9 +169,9 @@ git diff --check
 
 ## 发布
 
-推送 `v*` tag 会触发 release workflow。它会构建 `build/studio/version.txt` 固定的
-Studio 版本，在原生 macOS runner 上测试并打包 amd64 与 arm64 binary，生成
-SHA-256 checksums，然后将完整的 draft 发布为 GitHub Release。
+推送 `v*` tag 会触发 release workflow。它会从该 tag 的 monorepo 源码构建
+Studio，在原生 macOS runner 上测试并打包 amd64 与 arm64 binary，生成 SHA-256
+checksums，然后将完整的 draft 发布为 GitHub Release。
 
 贡献者需要遵循的仓库规则见 [AGENTS.md](AGENTS.md)。
 
