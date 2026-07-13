@@ -80,6 +80,7 @@ func TestFactoryCachesPerSessionConfigurationAndProviderRevision(t *testing.T) {
 		Name:           "Test provider",
 		Type:           provider.TypeOpenAIChatCompletions,
 		BaseURL:        "https://example.test/v1",
+		Enabled:        true,
 		ModelOverrides: []provider.Model{{ID: "test-model", ReasoningEfforts: []string{"high"}, DefaultReasoningEffort: "high"}},
 	}, &key); err != nil {
 		t.Fatalf("Registry.Save(revision update) error = %v", err)
@@ -311,6 +312,7 @@ func newTestFactory(t *testing.T) (*Factory, *provider.Registry) {
 		ID:             "test",
 		Name:           "Test provider",
 		Type:           provider.TypeOpenAIChatCompletions,
+		Enabled:        true,
 		ModelOverrides: []provider.Model{{ID: "test-model", ReasoningEfforts: []string{"high"}, DefaultReasoningEffort: "high"}},
 	}, &key); err != nil {
 		t.Fatalf("Registry.Save() error = %v", err)

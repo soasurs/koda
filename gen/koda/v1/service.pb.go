@@ -7592,6 +7592,7 @@ type Provider struct {
 	xxx_hidden_BaseUrl     *string                `protobuf:"bytes,4,opt,name=base_url,json=baseUrl"`
 	xxx_hidden_Configured  bool                   `protobuf:"varint,5,opt,name=configured"`
 	xxx_hidden_Builtin     bool                   `protobuf:"varint,6,opt,name=builtin"`
+	xxx_hidden_Enabled     bool                   `protobuf:"varint,7,opt,name=enabled"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -7676,34 +7677,46 @@ func (x *Provider) GetBuiltin() bool {
 	return false
 }
 
+func (x *Provider) GetEnabled() bool {
+	if x != nil {
+		return x.xxx_hidden_Enabled
+	}
+	return false
+}
+
 func (x *Provider) SetId(v string) {
 	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
 }
 
 func (x *Provider) SetName(v string) {
 	x.xxx_hidden_Name = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
 }
 
 func (x *Provider) SetType(v ProviderType) {
 	x.xxx_hidden_Type = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
 }
 
 func (x *Provider) SetBaseUrl(v string) {
 	x.xxx_hidden_BaseUrl = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
 }
 
 func (x *Provider) SetConfigured(v bool) {
 	x.xxx_hidden_Configured = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
 }
 
 func (x *Provider) SetBuiltin(v bool) {
 	x.xxx_hidden_Builtin = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+}
+
+func (x *Provider) SetEnabled(v bool) {
+	x.xxx_hidden_Enabled = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
 }
 
 func (x *Provider) HasId() bool {
@@ -7748,6 +7761,13 @@ func (x *Provider) HasBuiltin() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
 }
 
+func (x *Provider) HasEnabled() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
 func (x *Provider) ClearId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Id = nil
@@ -7778,6 +7798,11 @@ func (x *Provider) ClearBuiltin() {
 	x.xxx_hidden_Builtin = false
 }
 
+func (x *Provider) ClearEnabled() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_Enabled = false
+}
+
 type Provider_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -7793,6 +7818,8 @@ type Provider_builder struct {
 	Configured *bool
 	// builtin providers cannot be deleted or changed to another type.
 	Builtin *bool
+	// enabled controls whether the provider is allowed for generation.
+	Enabled *bool
 }
 
 func (b0 Provider_builder) Build() *Provider {
@@ -7800,28 +7827,32 @@ func (b0 Provider_builder) Build() *Provider {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
 		x.xxx_hidden_Id = b.Id
 	}
 	if b.Name != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
 		x.xxx_hidden_Name = b.Name
 	}
 	if b.Type != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
 		x.xxx_hidden_Type = *b.Type
 	}
 	if b.BaseUrl != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
 		x.xxx_hidden_BaseUrl = b.BaseUrl
 	}
 	if b.Configured != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
 		x.xxx_hidden_Configured = *b.Configured
 	}
 	if b.Builtin != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
 		x.xxx_hidden_Builtin = *b.Builtin
+	}
+	if b.Enabled != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		x.xxx_hidden_Enabled = *b.Enabled
 	}
 	return m0
 }
@@ -8102,6 +8133,7 @@ type SaveProviderRequest struct {
 	xxx_hidden_BaseUrl        *string                `protobuf:"bytes,4,opt,name=base_url,json=baseUrl"`
 	xxx_hidden_ApiKey         *string                `protobuf:"bytes,5,opt,name=api_key,json=apiKey"`
 	xxx_hidden_ModelOverrides *[]*Model              `protobuf:"bytes,6,rep,name=model_overrides,json=modelOverrides"`
+	xxx_hidden_Enabled        bool                   `protobuf:"varint,7,opt,name=enabled"`
 	XXX_raceDetectHookData    protoimpl.RaceDetectHookData
 	XXX_presence              [1]uint32
 	unknownFields             protoimpl.UnknownFields
@@ -8191,33 +8223,45 @@ func (x *SaveProviderRequest) GetModelOverrides() []*Model {
 	return nil
 }
 
+func (x *SaveProviderRequest) GetEnabled() bool {
+	if x != nil {
+		return x.xxx_hidden_Enabled
+	}
+	return false
+}
+
 func (x *SaveProviderRequest) SetId(v string) {
 	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
 }
 
 func (x *SaveProviderRequest) SetName(v string) {
 	x.xxx_hidden_Name = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
 }
 
 func (x *SaveProviderRequest) SetType(v ProviderType) {
 	x.xxx_hidden_Type = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
 }
 
 func (x *SaveProviderRequest) SetBaseUrl(v string) {
 	x.xxx_hidden_BaseUrl = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
 }
 
 func (x *SaveProviderRequest) SetApiKey(v string) {
 	x.xxx_hidden_ApiKey = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 6)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
 }
 
 func (x *SaveProviderRequest) SetModelOverrides(v []*Model) {
 	x.xxx_hidden_ModelOverrides = &v
+}
+
+func (x *SaveProviderRequest) SetEnabled(v bool) {
+	x.xxx_hidden_Enabled = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
 }
 
 func (x *SaveProviderRequest) HasId() bool {
@@ -8255,6 +8299,13 @@ func (x *SaveProviderRequest) HasApiKey() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
 }
 
+func (x *SaveProviderRequest) HasEnabled() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
 func (x *SaveProviderRequest) ClearId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Id = nil
@@ -8280,6 +8331,11 @@ func (x *SaveProviderRequest) ClearApiKey() {
 	x.xxx_hidden_ApiKey = nil
 }
 
+func (x *SaveProviderRequest) ClearEnabled() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_Enabled = false
+}
+
 type SaveProviderRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -8293,6 +8349,9 @@ type SaveProviderRequest_builder struct {
 	ApiKey *string
 	// model_overrides add custom models or override bundled/discovered metadata by ID.
 	ModelOverrides []*Model
+	// enabled controls whether the provider is allowed for generation.
+	// When omitted the provider defaults to enabled.
+	Enabled *bool
 }
 
 func (b0 SaveProviderRequest_builder) Build() *SaveProviderRequest {
@@ -8300,26 +8359,30 @@ func (b0 SaveProviderRequest_builder) Build() *SaveProviderRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
 		x.xxx_hidden_Id = b.Id
 	}
 	if b.Name != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
 		x.xxx_hidden_Name = b.Name
 	}
 	if b.Type != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
 		x.xxx_hidden_Type = *b.Type
 	}
 	if b.BaseUrl != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
 		x.xxx_hidden_BaseUrl = b.BaseUrl
 	}
 	if b.ApiKey != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 6)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
 		x.xxx_hidden_ApiKey = b.ApiKey
 	}
 	x.xxx_hidden_ModelOverrides = &b.ModelOverrides
+	if b.Enabled != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		x.xxx_hidden_Enabled = *b.Enabled
+	}
 	return m0
 }
 
@@ -9166,7 +9229,7 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\x17UndoLastMessageResponse\x12\x17\n" +
 	"\aturn_id\x18\x01 \x01(\tR\x06turnId\x12.\n" +
 	"\x13deleted_event_count\x18\x02 \x01(\x03R\x11deletedEventCount\x12$\n" +
-	"\x05input\x18\x03 \x01(\v2\x0e.koda.v1.InputR\x05input\"\xae\x01\n" +
+	"\x05input\x18\x03 \x01(\v2\x0e.koda.v1.InputR\x05input\"\xc8\x01\n" +
 	"\bProvider\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12)\n" +
@@ -9175,7 +9238,8 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\n" +
 	"configured\x18\x05 \x01(\bR\n" +
 	"configured\x12\x18\n" +
-	"\abuiltin\x18\x06 \x01(\bR\abuiltin\"\x92\x01\n" +
+	"\abuiltin\x18\x06 \x01(\bR\abuiltin\x12\x18\n" +
+	"\aenabled\x18\a \x01(\bR\aenabled\"\x92\x01\n" +
 	"\x05Model\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12+\n" +
@@ -9183,14 +9247,15 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\x18default_reasoning_effort\x18\x04 \x01(\tR\x16defaultReasoningEffort\"\x16\n" +
 	"\x14ListProvidersRequest\"H\n" +
 	"\x15ListProvidersResponse\x12/\n" +
-	"\tproviders\x18\x01 \x03(\v2\x11.koda.v1.ProviderR\tproviders\"\xd8\x01\n" +
+	"\tproviders\x18\x01 \x03(\v2\x11.koda.v1.ProviderR\tproviders\"\xf9\x01\n" +
 	"\x13SaveProviderRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12)\n" +
 	"\x04type\x18\x03 \x01(\x0e2\x15.koda.v1.ProviderTypeR\x04type\x12\x19\n" +
 	"\bbase_url\x18\x04 \x01(\tR\abaseUrl\x12\x1e\n" +
 	"\aapi_key\x18\x05 \x01(\tB\x05\xaa\x01\x02\b\x01R\x06apiKey\x127\n" +
-	"\x0fmodel_overrides\x18\x06 \x03(\v2\x0e.koda.v1.ModelR\x0emodelOverrides\"E\n" +
+	"\x0fmodel_overrides\x18\x06 \x03(\v2\x0e.koda.v1.ModelR\x0emodelOverrides\x12\x1f\n" +
+	"\aenabled\x18\a \x01(\bB\x05\xaa\x01\x02\b\x01R\aenabled\"E\n" +
 	"\x14SaveProviderResponse\x12-\n" +
 	"\bprovider\x18\x01 \x01(\v2\x11.koda.v1.ProviderR\bprovider\"8\n" +
 	"\x15DeleteProviderRequest\x12\x1f\n" +

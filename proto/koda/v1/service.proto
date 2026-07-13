@@ -603,6 +603,8 @@ message Provider {
   bool configured = 5;
   // builtin providers cannot be deleted or changed to another type.
   bool builtin = 6;
+  // enabled controls whether the provider is allowed for generation.
+  bool enabled = 7;
 }
 
 // Model describes one model exposed by a provider.
@@ -614,7 +616,7 @@ message Model {
   // reasoning_efforts contains provider-specific values such as high, max, or ultra.
   repeated string reasoning_efforts = 3;
   // default_reasoning_effort is empty when the provider should choose the default.
-  string default_reasoning_effort = 4;
+ string default_reasoning_effort = 4;
 }
 
 // ListProvidersRequest requests all registered providers.
@@ -637,6 +639,9 @@ message SaveProviderRequest {
   string api_key = 5 [features.field_presence = EXPLICIT];
   // model_overrides add custom models or override bundled/discovered metadata by ID.
   repeated Model model_overrides = 6;
+  // enabled controls whether the provider is allowed for generation.
+  // When omitted the provider defaults to enabled.
+  bool enabled = 7 [features.field_presence = EXPLICIT];
 }
 
 // SaveProviderResponse returns the saved provider without its API key.

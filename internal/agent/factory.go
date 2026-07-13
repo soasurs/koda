@@ -202,6 +202,9 @@ func (f *Factory) resolveProviderAndModel(ctx context.Context, session store.Ses
 	if err != nil {
 		return provider.Provider{}, "", fmt.Errorf("agent: resolve provider: %w", err)
 	}
+	if !value.Enabled {
+		return provider.Provider{}, "", fmt.Errorf("agent: provider %q is disabled", session.ProviderID)
+	}
 	catalog, err := f.catalog.List(ctx, session.ProviderID)
 	if err != nil {
 		return provider.Provider{}, "", fmt.Errorf("agent: resolve model catalog: %w", err)

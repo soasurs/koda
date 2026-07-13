@@ -55,6 +55,7 @@ type Provider struct {
 	Type           Type    `json:"type"`
 	BaseURL        string  `json:"base_url,omitempty"`
 	ModelOverrides []Model `json:"model_overrides,omitempty"`
+	Enabled        bool    `json:"enabled,omitempty"`
 
 	apiKey   string
 	builtin  bool
