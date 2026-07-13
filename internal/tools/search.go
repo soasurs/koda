@@ -19,7 +19,7 @@ import (
 type searchTextInput struct {
 	Pattern       string   `json:"pattern" jsonschema:"Ripgrep regular expression to find"`
 	Path          string   `json:"path,omitempty" jsonschema:"File or directory to search; defaults to the session workspace"`
-	Globs         []string `json:"globs,omitempty" jsonschema:"Optional ripgrep glob filters such as **/*.go"`
+	Globs         []string `json:"globs,omitempty" jsonschema:"Optional ripgrep glob filters as a JSON string array, for example [\"**/*.go\"]"`
 	FixedStrings  bool     `json:"fixed_strings,omitempty" jsonschema:"Treat pattern as literal text instead of a regular expression"`
 	CaseSensitive bool     `json:"case_sensitive,omitempty" jsonschema:"Use case-sensitive matching; the default is smart case"`
 	IncludeHidden bool     `json:"include_hidden,omitempty" jsonschema:"Include hidden files, excluding .git"`
@@ -42,7 +42,7 @@ type searchTextOutput struct {
 
 type findFilesInput struct {
 	Path          string   `json:"path,omitempty" jsonschema:"Directory to search; defaults to the session workspace"`
-	Globs         []string `json:"globs,omitempty" jsonschema:"Optional ripgrep glob filters such as **/*_test.go"`
+	Globs         []string `json:"globs,omitempty" jsonschema:"Optional ripgrep glob filters as a JSON string array, for example [\"**/*_test.go\"]"`
 	IncludeHidden bool     `json:"include_hidden,omitempty" jsonschema:"Include hidden files, excluding .git"`
 	MaxResults    int      `json:"max_results,omitempty" jsonschema:"Maximum files to return; defaults to 200 and is capped"`
 	MaxChars      int      `json:"max_chars,omitempty" jsonschema:"Maximum returned characters; defaults to 32768 and is capped"`
