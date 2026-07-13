@@ -30,7 +30,19 @@ loopback port and prints the actual address. To select a port explicitly:
 go run ./cmd/koda serve --addr 127.0.0.1:8787
 ```
 
-The server accepts loopback addresses only and never opens a browser.
+The server accepts loopback addresses only and never opens a browser. Koda also
+reads process-level settings from `~/.koda/koda.yaml`; command-line options take
+precedence over the file. The file is optional, and its first version contains
+only the server address:
+
+```yaml
+version: 1
+server:
+  address: 127.0.0.1:8080
+```
+
+`--addr` overrides `server.address`. When neither is set, Koda tries the default
+address and falls back to an available loopback port if it is occupied.
 
 ## Providers and local data
 
@@ -51,13 +63,18 @@ be managed through `koda.v1.KodaService`.
 Koda keeps its state under `~/.koda`:
 
 ```text
+~/.koda/koda.yaml       optional process-level configuration
 ~/.koda/providers.json   provider definitions and credentials
 ~/.koda/koda.db          sessions and ADK conversation history
 ```
 
-The provider file is private to the current user. Model listing is local-only;
-network discovery occurs only when a client explicitly calls `RefreshModels`.
-Changing a provider connection invalidates its previously discovered snapshot.
+Provider definitions remain separate because Koda updates them through its API,
+while `koda.yaml` is startup-only user configuration. Provider/model selection,
+reasoning effort, workspace, and permissions remain session-scoped in the
+database. The provider file is private to the current user. Model listing is
+local-only; network discovery occurs only when a client explicitly calls
+`RefreshModels`. Changing a provider connection invalidates its previously
+discovered snapshot.
 
 ## Agent runs
 

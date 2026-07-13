@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	kodaconfig "github.com/soasurs/koda/internal/config"
 	"github.com/soasurs/koda/internal/provider"
 	kodaserver "github.com/soasurs/koda/internal/server"
 	"github.com/soasurs/koda/internal/store"
@@ -27,12 +28,14 @@ type serveConfig struct {
 }
 
 type dependencies struct {
+	loadConfig   func() (kodaconfig.Config, error)
 	openRegistry func() (*provider.Registry, error)
 	openStore    func(context.Context) (*store.Store, error)
 	listen       func(network, address string) (net.Listener, error)
 }
 
 var productionDependencies = dependencies{
+	loadConfig:   kodaconfig.LoadDefault,
 	openRegistry: provider.OpenDefault,
 	openStore:    store.OpenDefault,
 	listen:       net.Listen,
@@ -91,6 +94,16 @@ func runServe(ctx context.Context, args []string, stdout, stderr io.Writer, depe
 	}
 	if dependencies.openRegistry == nil || dependencies.openStore == nil || dependencies.listen == nil {
 		return errors.New("command dependencies must not be nil")
+	}
+	if dependencies.loadConfig != nil {
+		fileConfig, err := dependencies.loadConfig()
+		if err != nil {
+			return fmt.Errorf("load configuration: %w", err)
+		}
+		config, err = applyFileConfig(config, fileConfig)
+		if err != nil {
+			return err
+		}
 	}
 	registry, err := dependencies.openRegistry()
 	if err != nil {
@@ -169,6 +182,18 @@ func rejectSingleDashOptions(args []string) error {
 	return nil
 }
 
+func applyFileConfig(cli serveConfig, file kodaconfig.Config) (serveConfig, error) {
+	if cli.explicitly || file.Server.Address == "" {
+		return cli, nil
+	}
+	if !loopbackAddress(file.Server.Address) {
+		return serveConfig{}, errors.New("server.address in koda.yaml must be a loopback address")
+	}
+	cli.address = file.Server.Address
+	cli.explicitly = true
+	return cli, nil
+}
+
 func listenForServe(config serveConfig, listen func(network, address string) (net.Listener, error)) (net.Listener, error) {
 	if config.explicitly {
 		listener, err := listen("tcp", config.address)
@@ -216,6 +241,7 @@ func printServeUsage(output io.Writer) {
 	fmt.Fprintln(output, "Usage: koda serve [--addr ADDRESS]")
 	fmt.Fprintln(output)
 	fmt.Fprintln(output, "Start the loopback-only Connect API server without opening a browser.")
-	fmt.Fprintln(output, "Without --addr, Koda tries 127.0.0.1:8080 and uses an available")
-	fmt.Fprintln(output, "loopback port if it is occupied.")
+	fmt.Fprintln(output, "--addr overrides server.address in ~/.koda/koda.yaml.")
+	fmt.Fprintln(output, "Without either setting, Koda tries 127.0.0.1:8080 and uses an")
+	fmt.Fprintln(output, "available loopback port if it is occupied.")
 }

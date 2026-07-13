@@ -29,7 +29,18 @@ Koda 会先尝试 `localhost:8080`。若端口已被占用，它会选择另一�
 go run ./cmd/koda serve --addr 127.0.0.1:8787
 ```
 
-服务只接受 loopback 地址，并且不会打开浏览器。
+服务只接受 loopback 地址，并且不会打开浏览器。Koda 还会从
+`~/.koda/koda.yaml` 读取进程级配置；命令行参数优先于配置文件。配置文件可选，
+第一版仅包含服务地址：
+
+```yaml
+version: 1
+server:
+  address: 127.0.0.1:8080
+```
+
+`--addr` 会覆盖 `server.address`。两者都未设置时，Koda 会尝试默认地址；如果
+默认端口已被占用，则回退到可用的 loopback 端口。
 
 ## Provider 与本地数据
 
@@ -49,13 +60,16 @@ Koda 内置以下 Provider：
 Koda 将状态保存在 `~/.koda`：
 
 ```text
+~/.koda/koda.yaml       可选的进程级配置
 ~/.koda/providers.json   Provider 定义与凭据
 ~/.koda/koda.db          Session 与 ADK 对话历史
 ```
 
-Provider 文件仅允许当前用户访问。模型列表只读取本地状态；只有客户端显式调用
-`RefreshModels` 时才会访问网络。Provider 连接发生变化后，之前发现的模型 snapshot
-会失效。
+Provider 配置保持独立，因为 Koda 会通过 API 更新它们，而 `koda.yaml` 是仅在启动时
+读取的用户配置。Provider/Model 选择、reasoning effort、workspace 和权限仍作为
+Session 配置保存在数据库中。Provider 文件仅允许当前用户访问。模型列表只读取本地
+状态；只有客户端显式调用 `RefreshModels` 时才会访问网络。Provider 连接发生变化后，
+之前发现的模型 snapshot 会失效。
 
 ## Agent Run
 

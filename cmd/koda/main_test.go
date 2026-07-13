@@ -17,6 +17,7 @@ import (
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
+	kodaconfig "github.com/soasurs/koda/internal/config"
 	"github.com/soasurs/koda/internal/provider"
 	kodaserver "github.com/soasurs/koda/internal/server"
 	"github.com/soasurs/koda/internal/store"
@@ -42,6 +43,22 @@ func TestParseServeConfigRejectsUnsafeOrSingleDashOptions(t *testing.T) {
 		if _, err := parseServeConfig(args, &bytes.Buffer{}); err == nil {
 			t.Fatalf("parseServeConfig(%q) error = nil", args)
 		}
+	}
+}
+
+func TestApplyFileConfig(t *testing.T) {
+	file := kodaconfig.Config{Version: 1, Server: kodaconfig.ServerConfig{Address: "127.0.0.1:8787"}}
+	got, err := applyFileConfig(serveConfig{}, file)
+	if err != nil || !got.explicitly || got.address != file.Server.Address {
+		t.Fatalf("applyFileConfig() = %+v, %v", got, err)
+	}
+	cli := serveConfig{address: "127.0.0.1:9999", explicitly: true}
+	got, err = applyFileConfig(cli, file)
+	if err != nil || got != cli {
+		t.Fatalf("applyFileConfig(CLI override) = %+v, %v", got, err)
+	}
+	if _, err := applyFileConfig(serveConfig{}, kodaconfig.Config{Server: kodaconfig.ServerConfig{Address: "0.0.0.0:8787"}}); err == nil {
+		t.Fatal("applyFileConfig(non-loopback) error = nil")
 	}
 }
 
