@@ -11,6 +11,8 @@ durable conversation history.
 Koda includes an embedded local web interface whose source lives under
 [`studio/`](studio/).
 
+![Koda Studio Screenshot](docs/images/screenshot.png)
+
 ## Run Koda Studio
 
 Requirements:

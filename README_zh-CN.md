@@ -9,6 +9,8 @@
 
 Koda 内置了本地 Web 界面，其源码位于 [`studio/`](studio/) 目录。
 
+![Koda Studio 截图](docs/images/screenshot.png)
+
 ## 启动 Koda Studio
 
 环境要求：
