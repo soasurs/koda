@@ -195,8 +195,8 @@ func TestToolsForMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toolsForMode(build) error = %v", err)
 	}
-	if len(plan) != 8 || len(build) != 11 {
-		t.Fatalf("tool counts = %d, %d; want 8, 11", len(plan), len(build))
+	if len(plan) != 9 || len(build) != 12 {
+		t.Fatalf("tool counts = %d, %d; want 9, 12", len(plan), len(build))
 	}
 	for _, values := range [][]tool.Tool{plan, build} {
 		if values[len(values)-2].Definition().Name != "load_skill" || values[len(values)-1].Definition().Name != "read_skill_resource" {
