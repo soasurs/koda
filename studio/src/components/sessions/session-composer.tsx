@@ -5,7 +5,7 @@ import {
   Hammer,
   Send,
 } from 'lucide-react'
-import { useState, type RefObject } from 'react'
+import { memo, useState, type RefObject } from 'react'
 
 import { SessionModelPicker } from '@/components/sessions/session-model-picker'
 import {
@@ -63,7 +63,7 @@ function matchesSendShortcut(
   }
 }
 
-export function SessionComposer({
+export const SessionComposer = memo(function SessionComposer({
   initialInput,
   inputRef,
   isRunning,
@@ -227,4 +227,4 @@ export function SessionComposer({
       </div>
     </footer>
   )
-}
+})

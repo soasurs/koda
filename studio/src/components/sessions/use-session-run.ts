@@ -1,6 +1,6 @@
 import { create } from '@bufbuild/protobuf'
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type {
   Event,
@@ -222,16 +222,37 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     [persistedEvents, liveEvents, optimisticUserEvent],
   )
 
-  return {
-    approvals,
-    clearApproval: (approvalId: string) =>
+  const clearApproval = useCallback(
+    (approvalId: string) =>
       setApprovals((current) =>
         current.filter((approval) => approval.id !== approvalId),
       ),
-    clearQuestionPrompt: (promptId: string) =>
+    [],
+  )
+  const clearQuestionPrompt = useCallback(
+    (promptId: string) =>
       setQuestionPrompts((current) =>
         current.filter((prompt) => prompt.id !== promptId),
       ),
+    [],
+  )
+  const stop = useCallback(() => abortRef.current?.abort(), [])
+
+  const runRef = useRef(run)
+  useEffect(() => {
+    runRef.current = run
+  })
+  const stableRun = useCallback(
+    (input: string): void => {
+      runRef.current(input)
+    },
+    [],
+  )
+
+  return {
+    approvals,
+    clearApproval,
+    clearQuestionPrompt,
     editLastTurn,
     events,
     inputRef,
@@ -246,7 +267,8 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     rewindingTurnId,
     run,
     runError,
+    runStable: stableRun,
     setMode,
-    stop: () => abortRef.current?.abort(),
+    stop,
   }
 }
