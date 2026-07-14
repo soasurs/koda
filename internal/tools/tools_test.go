@@ -437,10 +437,10 @@ func TestEditFileSupportsInsertDeleteAndRejectsOverlap(t *testing.T) {
 	if _, err := validateEdits(file, []editOperation{
 		{Operation: "delete", Start: first},
 		{Operation: "replace", Start: first, Content: "ONE"},
-	}); err == nil {
+	}, nil, t.Context()); err == nil {
 		t.Fatal("validateEdits(overlap) error = nil")
 	}
-	if _, err := validateEdits(file, []editOperation{{Operation: "unknown", Start: first}}); err == nil {
+	if _, err := validateEdits(file, []editOperation{{Operation: "unknown", Start: first}}, nil, t.Context()); err == nil {
 		t.Fatal("validateEdits(unknown) error = nil")
 	}
 }
