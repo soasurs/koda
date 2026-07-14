@@ -66,9 +66,10 @@ const ToolCallRow = memo(function ToolCallRow({
   response?: NonNullable<Event['message']>['toolResponse']
   toolCall: NonNullable<Event['message']>['toolCalls'][number]
 }) {
-  const { label, detail } = toolCallPresentation(toolCall)
+  const finished = Boolean(response)
+  const { label, detail } = toolCallPresentation(toolCall, finished)
   const failed = response?.outcome.case === 'error'
-  const status = response ? (failed ? 'Failed' : 'Completed') : 'Pending'
+  const status = finished ? (failed ? 'Failed' : 'Completed') : 'Running...'
   const fileChanges =
     response?.outcome.case === 'result'
       ? response.outcome.value.fileChanges

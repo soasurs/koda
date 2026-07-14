@@ -30,7 +30,7 @@ export const ReasoningView = memo(function ReasoningView({
         }}
       >
         <ChevronRight className="size-3 transition-transform group-open/reasoning:rotate-90" />
-        Reasoning
+        {streaming ? 'Thinking' : 'Thought'}
         {streaming && (
           <LoaderCircle className="size-3 animate-spin text-neutral-500" />
         )}
