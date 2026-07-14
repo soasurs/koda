@@ -175,10 +175,7 @@ export function ProviderCard({
               className={`size-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`}
             />
           </Button>
-          <Button
-            onClick={onEdit}
-            variant="outline"
-          >
+          <Button onClick={onEdit} variant="outline">
             Configure
           </Button>
           {!provider.builtin && (

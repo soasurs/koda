@@ -160,11 +160,7 @@ export const SessionComposer = memo(function SessionComposer({
                 session={session}
               />
               {isRunning ? (
-                <Button
-                  aria-label="Stop"
-                  onClick={onStop}
-                  size="icon"
-                >
+                <Button aria-label="Stop" onClick={onStop} size="icon">
                   <CircleStop className="size-4" />
                 </Button>
               ) : (

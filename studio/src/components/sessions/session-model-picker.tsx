@@ -218,10 +218,7 @@ export function SessionModelPicker({
           )}
 
           <div className="mt-4 flex justify-end gap-2">
-            <Button
-              onClick={() => setOpen(false)}
-              variant="outline"
-            >
+            <Button onClick={() => setOpen(false)} variant="outline">
               Cancel
             </Button>
             <Button
