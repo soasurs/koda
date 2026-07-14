@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import type { Model, Provider } from '@/gen/koda/v1/service_pb'
 import { kodaClient } from '@/lib/connect'
@@ -91,11 +92,10 @@ export function AddModelDialog({
         )}
 
         <footer className="flex justify-end gap-2 pt-1">
-          <button className="button-secondary" onClick={onClose} type="button">
+          <Button variant="outline" onClick={onClose} type="button">
             Cancel
-          </button>
-          <button
-            className="button-primary"
+          </Button>
+          <Button
             disabled={!id.trim() || duplicate || saveMutation.isPending}
             type="submit"
           >
@@ -103,7 +103,7 @@ export function AddModelDialog({
               <LoaderCircle className="size-4 animate-spin" />
             )}
             Add model
-          </button>
+          </Button>
         </footer>
       </form>
     </Modal>

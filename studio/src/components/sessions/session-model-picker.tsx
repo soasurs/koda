@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronUp, LoaderCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
+
 import {
   Select,
   SelectContent,
@@ -114,10 +116,10 @@ export function SessionModelPicker({
 
   return (
     <div className="relative" ref={pickerRef}>
-      <button
+      <Button
         aria-expanded={open}
         aria-label="Session model settings"
-        className="flex h-8 max-w-56 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs text-muted-foreground transition-colors hover:border-border/80 hover:text-foreground disabled:opacity-40"
+        className="h-8 max-w-56 px-2.5 text-xs"
         disabled={disabled}
         onClick={() => {
           if (!open) {
@@ -128,14 +130,14 @@ export function SessionModelPicker({
           setOpen((value) => !value)
         }}
         title={`${session.providerId} · ${session.modelId} · ${displayEffort}`}
-        type="button"
+        variant="outline"
       >
         <span className="truncate">{displayModel}</span>
         <span className="shrink-0 text-muted-foreground">
           · {displayEffort}
         </span>
         <ChevronUp className="size-3 shrink-0 text-muted-foreground" />
-      </button>
+      </Button>
 
       {open && (
         <div className="absolute bottom-full right-0 z-20 mb-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-border bg-popover p-4 shadow-2xl">
@@ -216,26 +218,23 @@ export function SessionModelPicker({
           )}
 
           <div className="mt-4 flex justify-end gap-2">
-            <button
-              className="button-secondary px-2.5 py-1.5"
+            <Button
               onClick={() => setOpen(false)}
-              type="button"
+              variant="outline"
             >
               Cancel
-            </button>
-            <button
-              className="button-primary px-2.5 py-1.5"
+            </Button>
+            <Button
               disabled={
                 !providerId || !selectedModelId || updateMutation.isPending
               }
               onClick={() => updateMutation.mutate()}
-              type="button"
             >
               {updateMutation.isPending && (
                 <LoaderCircle className="size-3.5 animate-spin" />
               )}
               Apply
-            </button>
+            </Button>
           </div>
         </div>
       )}

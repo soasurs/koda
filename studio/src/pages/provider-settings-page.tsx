@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LoaderCircle, Plus } from 'lucide-react'
 import { useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { ProviderCard } from '@/components/providers/provider-card'
 import { ProviderDialog } from '@/components/providers/provider-dialog'
 import { SettingsLayout } from '@/components/settings/settings-layout'
@@ -35,14 +36,10 @@ export function ProviderSettingsPage() {
               local Koda service.
             </p>
           </div>
-          <button
-            className="button-primary shrink-0"
-            onClick={() => setEditingProvider(null)}
-            type="button"
-          >
+          <Button onClick={() => setEditingProvider(null)}>
             <Plus className="size-4" />
             Add provider
-          </button>
+          </Button>
         </div>
 
         {providersQuery.isPending ? (

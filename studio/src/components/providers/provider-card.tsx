@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { AddModelDialog } from '@/components/providers/add-model-dialog'
 import { EditModelDialog } from '@/components/providers/edit-model-dialog'
 import { providerTypeLabels } from '@/components/providers/provider-types'
@@ -100,11 +101,11 @@ export function ProviderCard({
         }`}
       />
       <div className="flex items-center gap-1">
-        <button
+        <Button
           aria-expanded={expanded}
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left"
+          className="h-auto flex-1 justify-start rounded-md p-0 text-left"
           onClick={() => setExpanded((value) => !value)}
-          type="button"
+          variant="ghost"
         >
           <ChevronDown
             className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${expanded ? '' : '-rotate-90'}`}
@@ -132,7 +133,7 @@ export function ProviderCard({
                 : `${modelsQuery.data?.models.length ?? 0} models`}
             </p>
           </div>
-        </button>
+        </Button>
         <div className="flex shrink-0 items-center gap-1">
           <span
             className={`inline-flex items-center gap-1.5 text-xs font-medium ${
@@ -162,36 +163,35 @@ export function ProviderCard({
             />
             <span className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-border bg-muted transition-colors after:absolute after:inset-s-0.75 after:size-4 after:rounded-full after:bg-muted-foreground after:transition-transform peer-checked:border-emerald-700 peer-checked:bg-emerald-900/60 peer-checked:after:translate-x-3.75 peer-checked:after:bg-emerald-400 peer-disabled:cursor-not-allowed peer-disabled:opacity-50" />
           </label>
-          <button
+          <Button
             aria-label={`Refresh ${provider.name} models`}
-            className="icon-button"
             disabled={!provider.configured || refreshMutation.isPending}
             onClick={() => refreshMutation.mutate()}
+            size="icon"
             title="Refresh models"
-            type="button"
+            variant="ghost"
           >
             <RefreshCw
               className={`size-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`}
             />
-          </button>
-          <button
-            className="button-secondary px-2.5 py-1.5"
+          </Button>
+          <Button
             onClick={onEdit}
-            type="button"
+            variant="outline"
           >
             Configure
-          </button>
+          </Button>
           {!provider.builtin && (
-            <button
+            <Button
               aria-label={`Delete ${provider.name}`}
-              className="icon-button hover:text-red-400"
               onClick={() => {
                 if (window.confirm(`Delete ${provider.name}?`)) onDelete()
               }}
-              type="button"
+              size="icon"
+              variant="ghost"
             >
               <Trash2 className="size-4" />
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -200,15 +200,15 @@ export function ProviderCard({
         <div className="ml-6 mt-3 border-t border-border/80 pt-3">
           <div className="mb-2 flex items-center justify-between gap-3">
             <p className="text-xs font-medium text-muted-foreground">Models</p>
-            <button
-              className="button-secondary px-2 py-1 text-xs"
+            <Button
               disabled={modelsQuery.isPending || modelsQuery.isError}
               onClick={() => setShowAddModel(true)}
-              type="button"
+              size="xs"
+              variant="outline"
             >
               <Plus className="size-3.5" />
               Add model
-            </button>
+            </Button>
           </div>
           {modelsQuery.isPending ? (
             <div className="flex h-16 items-center justify-center">
@@ -242,27 +242,27 @@ export function ProviderCard({
                       <span className="text-[11px] text-muted-foreground">
                         Delete this model?
                       </span>
-                      <button
+                      <Button
                         aria-label="Confirm delete"
-                        className="rounded p-0.5 text-red-400 hover:bg-red-950/50"
                         disabled={deleteModelMutation.isPending}
                         onClick={() => deleteModelMutation.mutate()}
-                        type="button"
+                        size="icon-xs"
+                        variant="ghost"
                       >
                         {deleteModelMutation.isPending ? (
                           <LoaderCircle className="size-3 animate-spin" />
                         ) : (
                           <Check className="size-3" />
                         )}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         aria-label="Cancel delete"
-                        className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                         onClick={() => setDeletingModelId(null)}
-                        type="button"
+                        size="icon-xs"
+                        variant="ghost"
                       >
                         <X className="size-3" />
-                      </button>
+                      </Button>
                     </div>
                   ) : (
                     <>
@@ -271,22 +271,22 @@ export function ProviderCard({
                           Reasoning: {model.reasoningEfforts.join(', ')}
                         </span>
                       )}
-                      <button
+                      <Button
                         aria-label={`Edit ${model.id}`}
-                        className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                         onClick={() => setEditingModel(model)}
-                        type="button"
+                        size="icon-xs"
+                        variant="ghost"
                       >
                         <Pencil className="size-3" />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         aria-label={`Delete ${model.id}`}
-                        className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-red-400"
                         onClick={() => setDeletingModelId(model.id)}
-                        type="button"
+                        size="icon-xs"
+                        variant="ghost"
                       >
                         <Trash2 className="size-3" />
-                      </button>
+                      </Button>
                     </>
                   )}
                 </div>

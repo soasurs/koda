@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { memo, useState, type RefObject } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { SessionModelPicker } from '@/components/sessions/session-model-picker'
 import {
   DropdownMenu,
@@ -159,28 +160,27 @@ export const SessionComposer = memo(function SessionComposer({
                 session={session}
               />
               {isRunning ? (
-                <button
+                <Button
                   aria-label="Stop"
-                  className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={onStop}
-                  type="button"
+                  size="icon"
                 >
                   <CircleStop className="size-4" />
-                </button>
+                </Button>
               ) : (
                 <div className="flex overflow-hidden rounded-md bg-primary text-primary-foreground">
-                  <button
+                  <Button
                     aria-label="Send"
-                    className="flex h-8 w-8 items-center justify-center bg-transparent hover:bg-primary/90"
+                    className="border-0 bg-transparent hover:bg-primary/90 rounded-none"
                     disabled={!input.trim()}
                     onClick={submit}
+                    size="icon"
                     title={`Send (${sendShortcutLabel})`}
-                    type="button"
                   >
                     <Send
                       className={`size-4 ${input.trim() ? '' : 'opacity-50'}`}
                     />
-                  </button>
+                  </Button>
                   <DropdownMenu
                     onOpenChange={(open) => {
                       if (!open)
@@ -188,14 +188,14 @@ export const SessionComposer = memo(function SessionComposer({
                     }}
                   >
                     <DropdownMenuTrigger asChild>
-                      <button
+                      <Button
                         aria-label="Choose send shortcut"
-                        className="flex h-8 w-5 items-center justify-center border-l border-primary-foreground/30 bg-transparent text-primary-foreground/70 hover:bg-primary/90 hover:text-primary-foreground"
+                        className="border-0 border-l border-primary-foreground/30 bg-transparent text-primary-foreground/70 hover:bg-primary/90 hover:text-primary-foreground rounded-none"
+                        size="icon"
                         title={`Send shortcut: ${sendShortcutLabel}`}
-                        type="button"
                       >
                         <ChevronUp className="size-3" />
-                      </button>
+                      </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" side="top" sideOffset={8}>
                       <DropdownMenuLabel>Send message with</DropdownMenuLabel>

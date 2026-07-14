@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, KeyRound, LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import {
   editableProviderTypes,
   providerTypeLabels,
@@ -167,11 +168,10 @@ export function ProviderDialog({
         )}
 
         <footer className="flex justify-end gap-2 pt-1">
-          <button className="button-secondary" onClick={onClose} type="button">
+          <Button variant="outline" onClick={onClose} type="button">
             Cancel
-          </button>
-          <button
-            className="button-primary"
+          </Button>
+          <Button
             disabled={
               !id ||
               !name ||
@@ -187,7 +187,7 @@ export function ProviderDialog({
               <CheckCircle2 className="size-4" />
             )}
             Save provider
-          </button>
+          </Button>
         </footer>
       </form>
     </Modal>

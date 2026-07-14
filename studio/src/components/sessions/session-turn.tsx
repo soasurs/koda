@@ -1,6 +1,7 @@
 import { Copy, LoaderCircle, Pencil, RotateCcw, Send, X } from 'lucide-react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { EventView, ReasoningView } from '@/components/sessions/session-message'
 import { ToolGroup } from '@/components/sessions/tool-activity'
 import { Role } from '@/gen/koda/v1/service_pb'
@@ -87,16 +88,16 @@ export const SessionTurn = memo(function SessionTurn({
       )}
       {canRevise && !isEditing && (
         <div className="-mt-3 flex justify-end gap-1">
-          <button
+          <Button
             aria-label="Edit message"
-            className="icon-button"
             disabled={isRewinding}
             onClick={onEditStart}
+            size="icon"
             title="Edit message"
-            type="button"
+            variant="ghost"
           >
             <Pencil className="size-3.5" />
-          </button>
+          </Button>
         </div>
       )}
       {activities.map((activity, index) => (
@@ -116,20 +117,20 @@ export const SessionTurn = memo(function SessionTurn({
       {canRevise && !isEditing && (
         <div className="-mt-3 ml-9 flex items-center gap-1">
           <CopyButton text={lastAssistantText} />
-          <button
+          <Button
             aria-label="Retry turn"
-            className="icon-button"
             disabled={isRewinding}
             onClick={onRetry}
+            size="icon"
             title="Retry turn"
-            type="button"
+            variant="ghost"
           >
             {isRewinding ? (
               <LoaderCircle className="size-3.5 animate-spin" />
             ) : (
               <RotateCcw className="size-3.5" />
             )}
-          </button>
+          </Button>
         </div>
       )}
     </section>
@@ -211,25 +212,25 @@ function InlineEditComposer({
             value={input}
           />
           <div className="flex items-center justify-between px-2.5 pb-2.5">
-            <button
+            <Button
               aria-label="Cancel editing"
-              className="icon-button"
               onClick={onCancel}
+              size="icon"
               title="Cancel editing"
-              type="button"
+              variant="ghost"
             >
               <X className="size-4" />
-            </button>
-            <button
+            </Button>
+            <Button
               aria-label="Send"
-              className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+              className="rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={!input.trim()}
               onClick={submit}
+              size="icon"
               title={`Send (${sendShortcutLabel})`}
-              type="button"
             >
               <Send className="size-4" />
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -249,19 +250,19 @@ function CopyButton({ text }: { text: string }) {
   }, [text])
 
   return (
-    <button
+    <Button
       aria-label="Copy response"
-      className="icon-button"
       disabled={!text}
       onClick={handleCopy}
+      size="icon"
       title="Copy response"
-      type="button"
+      variant="ghost"
     >
       {copied ? (
         <span className="text-[10px] font-medium text-green-400">Copied!</span>
       ) : (
         <Copy className="size-3.5" />
       )}
-    </button>
+    </Button>
   )
 }

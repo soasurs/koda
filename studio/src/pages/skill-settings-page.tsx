@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, FileText, LoaderCircle, PackageOpen } from 'lucide-react'
 import { lazy, Suspense, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { SettingsLayout } from '@/components/settings/settings-layout'
 import { Modal } from '@/components/ui/modal'
 import type { Skill } from '@/gen/koda/v1/service_pb'
@@ -55,12 +56,12 @@ export function SkillSettingsPage() {
       ) : (
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {skillsQuery.data.map((skill) => (
-            <button
+            <Button
               aria-label={`Open ${skill.name}`}
-              className="group flex min-h-28 items-start gap-3 rounded-lg border border-border bg-background p-4 text-left transition hover:border-border/80 hover:bg-accent"
+              className="group flex h-auto min-h-28 items-start gap-3 rounded-lg border border-border bg-background p-4 text-left hover:border-border/80 hover:bg-accent"
               key={skill.name}
               onClick={() => setSelectedName(skill.name)}
-              type="button"
+              variant="ghost"
             >
               <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground group-hover:text-foreground">
                 <FileText className="size-4" aria-hidden="true" />
@@ -77,7 +78,7 @@ export function SkillSettingsPage() {
                 className="mt-1 size-4 shrink-0 text-muted-foreground group-hover:text-foreground"
                 aria-hidden="true"
               />
-            </button>
+            </Button>
           ))}
         </div>
       )}

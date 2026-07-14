@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Check, Folder, ShieldAlert, User, Wrench, X } from 'lucide-react'
 import { memo, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { FileChangesView } from '@/components/sessions/tool-activity'
 import type {
   QuestionAnswer,
@@ -80,22 +81,19 @@ export const ApprovalCard = memo(function ApprovalCard({
             </p>
           )}
           <div className="mt-4 flex gap-2">
-            <button
-              className="button-primary"
+            <Button
               disabled={mutation.isPending}
               onClick={() => mutation.mutate(true)}
-              type="button"
             >
               <Check className="size-4" /> Approve
-            </button>
-            <button
-              className="button-secondary"
+            </Button>
+            <Button
               disabled={mutation.isPending}
               onClick={() => mutation.mutate(false)}
-              type="button"
+              variant="outline"
             >
               <X className="size-4" /> Reject
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -230,22 +228,19 @@ export const QuestionCard = memo(function QuestionCard({
             </p>
           )}
           <div className="flex gap-2">
-            <button
-              className="button-primary"
+            <Button
               disabled={mutation.isPending || !canSubmit}
               onClick={() => mutation.mutate(false)}
-              type="button"
             >
               Submit answers
-            </button>
-            <button
-              className="button-secondary"
+            </Button>
+            <Button
               disabled={mutation.isPending}
               onClick={() => mutation.mutate(true)}
-              type="button"
+              variant="outline"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       </div>

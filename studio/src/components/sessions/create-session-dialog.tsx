@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { FolderSearch, LoaderCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { DirectoryPicker } from '@/components/sessions/directory-picker'
 import { Modal } from '@/components/ui/modal'
 import {
@@ -104,16 +105,16 @@ export function CreateSessionDialog({
         >
           <label className="field-label">
             Workspace
-            <button
-              className="input flex w-full items-center gap-2 text-left"
+            <Button
+              className="justify-start"
               onClick={() => setShowDirectoryPicker(true)}
-              type="button"
+              variant="outline"
             >
               <FolderSearch className="size-4 shrink-0 text-muted-foreground" />
               <span className={workdir ? 'truncate' : 'text-muted-foreground'}>
                 {workdir || 'Choose a local directory'}
               </span>
-            </button>
+            </Button>
           </label>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -250,15 +251,10 @@ export function CreateSessionDialog({
           )}
 
           <footer className="flex justify-end gap-2 pt-1">
-            <button
-              className="button-secondary"
-              onClick={onClose}
-              type="button"
-            >
+            <Button onClick={onClose} variant="outline">
               Cancel
-            </button>
-            <button
-              className="button-primary"
+            </Button>
+            <Button
               disabled={
                 !workdir ||
                 !selectedProviderId ||
@@ -271,7 +267,7 @@ export function CreateSessionDialog({
                 <LoaderCircle className="size-4 animate-spin" />
               )}
               Create session
-            </button>
+            </Button>
           </footer>
         </form>
       </Modal>

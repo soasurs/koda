@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { LoaderCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import {
   Select,
@@ -146,19 +147,15 @@ export function EditModelDialog({
         )}
 
         <footer className="flex justify-end gap-2 pt-1">
-          <button className="button-secondary" onClick={onClose} type="button">
+          <Button variant="outline" onClick={onClose} type="button">
             Cancel
-          </button>
-          <button
-            className="button-primary"
-            disabled={saveMutation.isPending}
-            type="submit"
-          >
+          </Button>
+          <Button disabled={saveMutation.isPending} type="submit">
             {saveMutation.isPending && (
               <LoaderCircle className="size-4 animate-spin" />
             )}
             Save
-          </button>
+          </Button>
         </footer>
       </form>
     </Modal>

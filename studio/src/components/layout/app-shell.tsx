@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
+import { Button, buttonVariants } from '@/components/ui/button'
 import { CreateSessionDialog } from '@/components/sessions/create-session-dialog'
 import { SidebarContext } from '@/components/layout/sidebar-context'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -67,29 +68,29 @@ export function AppShell() {
             <span className="text-sm font-semibold tracking-tight">
               Koda Studio
             </span>
-            <button
+            <Button
               aria-label="Collapse sidebar"
-              className="icon-button ml-auto"
+              className="ml-auto"
               onClick={() => {
                 const next = !sidebarCollapsed
                 setSidebarCollapsed(next)
                 window.localStorage.setItem(sidebarCollapsedKey, String(next))
               }}
-              type="button"
+              size="icon"
+              variant="ghost"
             >
               <PanelLeftClose className="size-4" aria-hidden="true" />
-            </button>
+            </Button>
           </div>
 
           <div className="p-3">
-            <button
-              className="button-primary w-full"
+            <Button
+              className="w-full"
               onClick={() => setCreateSessionWorkdir('')}
-              type="button"
             >
               <Plus className="size-4" aria-hidden="true" />
               New session
-            </button>
+            </Button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
@@ -142,15 +143,15 @@ export function AppShell() {
                       <span className="px-1 text-[10px] text-muted-foreground">
                         {group.sessions?.length}
                       </span>
-                      <button
+                      <Button
                         aria-label={`New session in ${group.name}`}
-                        className="icon-button size-6"
                         onClick={() => setCreateSessionWorkdir(group.path)}
+                        size="icon-xs"
                         title={`New session in ${group.path}`}
-                        type="button"
+                        variant="ghost"
                       >
                         <Plus className="size-3.5" aria-hidden="true" />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -162,7 +163,7 @@ export function AppShell() {
             <ThemeToggle />
             <Link
               aria-label="Settings"
-              className="icon-button"
+              className={buttonVariants({ variant: 'ghost', size: 'icon' })}
               to="/settings/providers"
             >
               <Settings2 className="size-4" aria-hidden="true" />
@@ -176,14 +177,14 @@ export function AppShell() {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold">Koda Studio</span>
               </div>
-              <button
-                className="button-secondary px-2.5 py-1.5"
+              <Button
                 onClick={() => setCreateSessionWorkdir('')}
-                type="button"
+                size="sm"
+                variant="outline"
               >
                 <Plus className="size-4" />
                 New
-              </button>
+              </Button>
               <ThemeToggle compact />
             </header>
           )}

@@ -1,5 +1,6 @@
 import { PanelLeftOpen } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/components/layout/sidebar-context'
 
 export function SidebarExpandButton() {
@@ -8,16 +9,16 @@ export function SidebarExpandButton() {
   if (!collapsed) return null
 
   return (
-    <button
+    <Button
       aria-label="Expand sidebar"
-      className="icon-button shrink-0"
       onClick={() => {
         setCollapsed(false)
         window.localStorage.setItem('koda-studio-sidebar-collapsed', 'false')
       }}
-      type="button"
+      size="icon"
+      variant="ghost"
     >
       <PanelLeftOpen className="size-4" aria-hidden="true" />
-    </button>
+    </Button>
   )
 }

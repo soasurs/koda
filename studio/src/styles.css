@@ -127,18 +127,6 @@ textarea:disabled {
 }
 
 @layer components {
-  .button-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40;
-  }
-
-  .button-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40;
-  }
-
-  .icon-button {
-    @apply inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-30;
-  }
-
   .field-label {
     @apply grid gap-2 text-xs font-medium text-muted-foreground;
   }

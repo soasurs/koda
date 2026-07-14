@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronLeft, Folder, FolderOpen, LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { kodaClient } from '@/lib/connect'
 import { errorMessage } from '@/lib/koda'
@@ -51,25 +52,25 @@ export function DirectoryPicker({
         ) : (
           <div className="space-y-1">
             {directoryQuery.data.parentPath && (
-              <button
-                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              <Button
+                className="h-auto w-full justify-start px-3 py-2.5"
                 onClick={() => setPath(directoryQuery.data.parentPath)}
-                type="button"
+                variant="ghost"
               >
                 <ChevronLeft className="size-4" />
                 Parent directory
-              </button>
+              </Button>
             )}
             {directoryQuery.data.directories.map((directory) => (
-              <button
-                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
+              <Button
+                className="h-auto w-full justify-start px-3 py-2.5"
                 key={directory.path}
                 onClick={() => setPath(directory.path)}
-                type="button"
+                variant="ghost"
               >
                 <Folder className="size-4 shrink-0 text-muted-foreground" />
                 <span className="truncate">{directory.name}</span>
-              </button>
+              </Button>
             ))}
             {!directoryQuery.data.parentPath &&
               directoryQuery.data.directories.length === 0 && (
@@ -82,19 +83,17 @@ export function DirectoryPicker({
       </div>
 
       <footer className="flex justify-end gap-2 border-t border-border px-5 py-4">
-        <button className="button-secondary" onClick={onClose} type="button">
+        <Button onClick={onClose} variant="outline">
           Cancel
-        </button>
-        <button
-          className="button-primary"
+        </Button>
+        <Button
           disabled={!directoryQuery.data}
           onClick={() => {
             if (directoryQuery.data) onSelect(directoryQuery.data.path)
           }}
-          type="button"
         >
           Select this directory
-        </button>
+        </Button>
       </footer>
     </Modal>
   )

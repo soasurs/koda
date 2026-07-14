@@ -1,6 +1,8 @@
 import { X } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 
+import { Button } from '@/components/ui/button'
+
 type ModalProps = {
   children: ReactNode
   description?: string
@@ -43,14 +45,14 @@ export function Modal({
               </p>
             )}
           </div>
-          <button
+          <Button
             aria-label="Close"
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             onClick={onClose}
-            type="button"
+            size="icon"
+            variant="ghost"
           >
             <X className="size-4" />
-          </button>
+          </Button>
         </header>
         {children}
       </section>
