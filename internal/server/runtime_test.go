@@ -46,7 +46,7 @@ func (r *fakeTurnRunner) Run(ctx context.Context, sessionID string, input model.
 func TestRunLogsLifecycleWithoutMessageContent(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	var output bytes.Buffer
-	logger, err := logging.New(&output, "info")
+	logger, err := logging.New(&output, "info", "")
 	if err != nil {
 		t.Fatalf("logging.New() error = %v", err)
 	}
