@@ -1,12 +1,12 @@
 import { Check, ChevronRight, LoaderCircle, Wrench, X } from 'lucide-react'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 
 import type { Event, FileChange } from '@/gen/koda/v1/service_pb'
 import { DiffLineKind } from '@/gen/koda/v1/service_pb'
 import { parseShellOutput, type ShellOutput } from '@/lib/shell-output'
 import { toolCallPresentation } from '@/lib/session-turns'
 
-export function ToolGroup({
+export const ToolGroup = memo(function ToolGroup({
   assistant,
   toolEvents,
 }: {
@@ -57,9 +57,9 @@ export function ToolGroup({
       </div>
     </details>
   )
-}
+})
 
-function ToolCallRow({
+const ToolCallRow = memo(function ToolCallRow({
   response,
   toolCall,
 }: {
@@ -137,7 +137,7 @@ function ToolCallRow({
       {shellOutput && <ShellOutputView output={shellOutput} />}
     </details>
   )
-}
+})
 
 function ShellOutputView({ output }: { output: ShellOutput }) {
   return (

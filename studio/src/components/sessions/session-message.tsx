@@ -1,5 +1,5 @@
 import { Bot, ChevronRight, LoaderCircle } from 'lucide-react'
-import { lazy, Suspense, useState } from 'react'
+import { lazy, memo, Suspense, useState } from 'react'
 
 import type { Event } from '@/gen/koda/v1/service_pb'
 import { Role } from '@/gen/koda/v1/service_pb'
@@ -7,7 +7,7 @@ import { eventText } from '@/lib/session-turns'
 
 const MarkdownText = lazy(() => import('@/components/markdown-text'))
 
-export function ReasoningView({
+export const ReasoningView = memo(function ReasoningView({
   reasoning,
   streaming = false,
 }: {
@@ -47,9 +47,9 @@ export function ReasoningView({
       </div>
     </details>
   )
-}
+})
 
-export function EventView({ event }: { event: Event }) {
+export const EventView = memo(function EventView({ event }: { event: Event }) {
   const message = event.message
   if (!message || message.role === Role.SYSTEM) return null
 
@@ -72,9 +72,9 @@ export function EventView({ event }: { event: Event }) {
   if (message.role === Role.TOOL) return null
 
   return text && <AssistantText text={text} />
-}
+})
 
-export function AssistantText({
+export const AssistantText = memo(function AssistantText({
   text,
   streaming = false,
 }: {
@@ -98,4 +98,4 @@ export function AssistantText({
       </div>
     </div>
   )
-}
+})

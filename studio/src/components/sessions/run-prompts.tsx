@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { Check, Folder, ShieldAlert, User, Wrench, X } from 'lucide-react'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 
 import { FileChangesView } from '@/components/sessions/tool-activity'
 import type {
@@ -12,7 +12,7 @@ import { kodaClient } from '@/lib/connect'
 import { errorMessage } from '@/lib/koda'
 import { toolPresentation } from '@/lib/session-turns'
 
-export function ApprovalCard({
+export const ApprovalCard = memo(function ApprovalCard({
   approval,
   onResolved,
 }: {
@@ -101,9 +101,9 @@ export function ApprovalCard({
       </div>
     </div>
   )
-}
+})
 
-export function QuestionCard({
+export const QuestionCard = memo(function QuestionCard({
   onResolved,
   prompt,
 }: {
@@ -249,4 +249,4 @@ export function QuestionCard({
       </div>
     </div>
   )
-}
+})

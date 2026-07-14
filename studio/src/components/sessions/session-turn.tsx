@@ -1,9 +1,8 @@
 import { Copy, LoaderCircle, Pencil, RotateCcw, Send, X } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 
 import { EventView, ReasoningView } from '@/components/sessions/session-message'
 import { ToolGroup } from '@/components/sessions/tool-activity'
-import type { Event } from '@/gen/koda/v1/service_pb'
 import { Role } from '@/gen/koda/v1/service_pb'
 import { eventText, groupTurnActivities, type Turn } from '@/lib/session-turns'
 
@@ -35,7 +34,7 @@ function matchesSendShortcut(
   }
 }
 
-export function SessionTurn({
+export const SessionTurn = memo(function SessionTurn({
   canRevise,
   isEditing,
   isRewinding,
@@ -109,10 +108,7 @@ export function SessionTurn({
           <EventView event={activity.assistant} />
           <ToolGroup
             assistant={activity.assistant}
-            key={`${activity.assistant.id}-${hasPendingToolCalls(
-              activity.assistant,
-              activity.tools,
-            )}`}
+            key={`${activity.assistant.id}-${activity.tools.length}`}
             toolEvents={activity.tools}
           />
         </div>
@@ -138,6 +134,29 @@ export function SessionTurn({
       )}
     </section>
   )
+}, areTurnPropsEqual)
+
+function areTurnPropsEqual(prev: TurnProps, next: TurnProps): boolean {
+  return (
+    prev.turn.id === next.turn.id &&
+    prev.turn.events.length === next.turn.events.length &&
+    prev.turn.events[prev.turn.events.length - 1] ===
+      next.turn.events[next.turn.events.length - 1] &&
+    prev.canRevise === next.canRevise &&
+    prev.isEditing === next.isEditing &&
+    prev.isRewinding === next.isRewinding
+  )
+}
+
+type TurnProps = {
+  canRevise: boolean
+  isEditing: boolean
+  isRewinding: boolean
+  onEditCancel: () => void
+  onEditStart: () => void
+  onEditSubmit: (text: string) => void
+  onRetry: () => void
+  turn: Turn
 }
 
 function InlineEditComposer({
@@ -244,19 +263,5 @@ function CopyButton({ text }: { text: string }) {
         <Copy className="size-3.5" />
       )}
     </button>
-  )
-}
-
-function hasPendingToolCalls(assistant: Event, toolEvents: Event[]) {
-  const completedCallIDs = new Set(
-    toolEvents.flatMap((event) => {
-      const toolCallID = event.message?.toolResponse?.toolCallId
-      return toolCallID ? [toolCallID] : []
-    }),
-  )
-  return Boolean(
-    assistant.message?.toolCalls.some(
-      (toolCall) => !completedCallIDs.has(toolCall.id),
-    ),
   )
 }

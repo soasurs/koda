@@ -29,16 +29,18 @@ function SessionContent({ sessionId }: { sessionId: string }) {
   })
   const eventsQuery = useQuery({
     queryKey: kodaKeys.events(sessionId),
-    queryFn: async () =>
-      (await kodaClient.listEvents({ sessionId })).events,
+    queryFn: async () => (await kodaClient.listEvents({ sessionId })).events,
   })
   const sessionRun = useSessionRun(sessionId, eventsQuery.data ?? [])
   const [editingTurnId, setEditingTurnId] = useState('')
-  const turns = groupEventsByTurn(sessionRun.events)
+  const turns = useMemo(
+    () => groupEventsByTurn(sessionRun.events),
+    [sessionRun.events],
+  )
   const scrollContent = useMemo(
     () => [
       eventsQuery.data,
-      sessionRun.events,
+      sessionRun.events.length,
       sessionRun.partialReasoning,
       sessionRun.partialText,
       sessionRun.approvals,
@@ -46,7 +48,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
     ],
     [
       eventsQuery.data,
-      sessionRun.events,
+      sessionRun.events.length,
       sessionRun.partialReasoning,
       sessionRun.partialText,
       sessionRun.approvals,
@@ -158,7 +160,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
         key={`${session.id}:${sessionRun.inputRevision}`}
         mode={sessionRun.mode}
         onModeChange={sessionRun.setMode}
-        onRun={(input) => void sessionRun.run(input)}
+        onRun={sessionRun.runStable}
         onStop={sessionRun.stop}
         runError={sessionRun.runError}
         session={session}
