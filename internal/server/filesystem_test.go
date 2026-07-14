@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 )
@@ -42,7 +41,7 @@ func TestListDirectoriesUsesHomeForEmptyPath(t *testing.T) {
 
 func TestListDirectoriesRejectsRelativePath(t *testing.T) {
 	response, err := (&Handler{}).ListDirectories(t.Context(), v1.ListDirectoriesRequest_builder{
-		Path: proto.String("relative/path"),
+		Path: new("relative/path"),
 	}.Build())
 	if response != nil || connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListDirectories() = %+v, %v, want nil, invalid_argument", response, err)
@@ -52,7 +51,7 @@ func TestListDirectoriesRejectsRelativePath(t *testing.T) {
 func TestListDirectoriesMapsMissingPath(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "missing")
 	response, err := (&Handler{}).ListDirectories(t.Context(), v1.ListDirectoriesRequest_builder{
-		Path: proto.String(missing),
+		Path: new(missing),
 	}.Build())
 	if response != nil || connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ListDirectories() = %+v, %v, want nil, not_found", response, err)
@@ -65,7 +64,7 @@ func TestListDirectoriesRejectsFilePath(t *testing.T) {
 		t.Fatalf("os.WriteFile() error = %v", err)
 	}
 	response, err := (&Handler{}).ListDirectories(t.Context(), v1.ListDirectoriesRequest_builder{
-		Path: proto.String(path),
+		Path: new(path),
 	}.Build())
 	if response != nil || connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListDirectories() = %+v, %v, want nil, invalid_argument", response, err)
@@ -91,7 +90,7 @@ func TestListDirectoriesReturnsOnlySortedImmediateDirectories(t *testing.T) {
 	}
 
 	response, err := (&Handler{}).ListDirectories(t.Context(), v1.ListDirectoriesRequest_builder{
-		Path: proto.String(root),
+		Path: new(root),
 	}.Build())
 	if err != nil {
 		t.Fatalf("ListDirectories() error = %v", err)
@@ -119,7 +118,7 @@ func TestListDirectoriesRootHasNoParent(t *testing.T) {
 	temp := t.TempDir()
 	root := filepath.VolumeName(temp) + string(filepath.Separator)
 	response, err := (&Handler{}).ListDirectories(t.Context(), v1.ListDirectoriesRequest_builder{
-		Path: proto.String(root),
+		Path: new(root),
 	}.Build())
 	if err != nil {
 		t.Fatalf("ListDirectories() error = %v", err)
@@ -143,7 +142,7 @@ func TestListDirectoriesCanonicalizesCurrentSymlink(t *testing.T) {
 	}
 
 	response, err := (&Handler{}).ListDirectories(t.Context(), v1.ListDirectoriesRequest_builder{
-		Path: proto.String(link),
+		Path: new(link),
 	}.Build())
 	if err != nil {
 		t.Fatalf("ListDirectories() error = %v", err)
@@ -168,7 +167,7 @@ func TestListDirectoriesFiltersSymlinkTargets(t *testing.T) {
 	createTestSymlink(t, filepath.Join(root, "missing"), filepath.Join(root, "broken-link"))
 
 	response, err := (&Handler{}).ListDirectories(t.Context(), v1.ListDirectoriesRequest_builder{
-		Path: proto.String(root),
+		Path: new(root),
 	}.Build())
 	if err != nil {
 		t.Fatalf("ListDirectories() error = %v", err)
@@ -216,7 +215,7 @@ func TestListDirectoriesMapsCanceledContexts(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			response, err := (&Handler{}).ListDirectories(test.ctx, v1.ListDirectoriesRequest_builder{
-				Path: proto.String(t.TempDir()),
+				Path: new(t.TempDir()),
 			}.Build())
 			if response != nil || connect.CodeOf(err) != test.want {
 				t.Fatalf("ListDirectories() = %+v, %v, want nil, %v", response, err, test.want)

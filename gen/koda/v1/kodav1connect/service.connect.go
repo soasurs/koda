@@ -108,7 +108,7 @@ type KodaServiceClient interface {
 	UpdateSession(context.Context, *v1.UpdateSessionRequest) (*v1.UpdateSessionResponse, error)
 	// DeleteSession deletes a coding session and its event history.
 	DeleteSession(context.Context, *v1.DeleteSessionRequest) (*v1.DeleteSessionResponse, error)
-	// ListEvents returns a page of active events in a session.
+	// ListEvents returns all active events in a session.
 	ListEvents(context.Context, *v1.ListEventsRequest) (*v1.ListEventsResponse, error)
 	// UndoLastMessage removes the most recent user turn.
 	UndoLastMessage(context.Context, *v1.UndoLastMessageRequest) (*v1.UndoLastMessageResponse, error)
@@ -451,7 +451,7 @@ type KodaServiceHandler interface {
 	UpdateSession(context.Context, *v1.UpdateSessionRequest) (*v1.UpdateSessionResponse, error)
 	// DeleteSession deletes a coding session and its event history.
 	DeleteSession(context.Context, *v1.DeleteSessionRequest) (*v1.DeleteSessionResponse, error)
-	// ListEvents returns a page of active events in a session.
+	// ListEvents returns all active events in a session.
 	ListEvents(context.Context, *v1.ListEventsRequest) (*v1.ListEventsResponse, error)
 	// UndoLastMessage removes the most recent user turn.
 	UndoLastMessage(context.Context, *v1.UndoLastMessageRequest) (*v1.UndoLastMessageResponse, error)

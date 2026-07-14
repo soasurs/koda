@@ -7134,12 +7134,10 @@ func (b0 TokenUsageDetails_builder) Build() *TokenUsageDetails {
 	return m0
 }
 
-// ListEventsRequest selects a page of active events in conversation order.
+// ListEventsRequest selects all active events in conversation order.
 type ListEventsRequest struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_SessionId   *string                `protobuf:"bytes,1,opt,name=session_id,json=sessionId"`
-	xxx_hidden_Limit       int32                  `protobuf:"varint,2,opt,name=limit"`
-	xxx_hidden_Offset      int64                  `protobuf:"varint,3,opt,name=offset"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -7181,33 +7179,9 @@ func (x *ListEventsRequest) GetSessionId() string {
 	return ""
 }
 
-func (x *ListEventsRequest) GetLimit() int32 {
-	if x != nil {
-		return x.xxx_hidden_Limit
-	}
-	return 0
-}
-
-func (x *ListEventsRequest) GetOffset() int64 {
-	if x != nil {
-		return x.xxx_hidden_Offset
-	}
-	return 0
-}
-
 func (x *ListEventsRequest) SetSessionId(v string) {
 	x.xxx_hidden_SessionId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
-}
-
-func (x *ListEventsRequest) SetLimit(v int32) {
-	x.xxx_hidden_Limit = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
-}
-
-func (x *ListEventsRequest) SetOffset(v int64) {
-	x.xxx_hidden_Offset = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 1)
 }
 
 func (x *ListEventsRequest) HasSessionId() bool {
@@ -7217,43 +7191,15 @@ func (x *ListEventsRequest) HasSessionId() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
 }
 
-func (x *ListEventsRequest) HasLimit() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
-}
-
-func (x *ListEventsRequest) HasOffset() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
-}
-
 func (x *ListEventsRequest) ClearSessionId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_SessionId = nil
-}
-
-func (x *ListEventsRequest) ClearLimit() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_Limit = 0
-}
-
-func (x *ListEventsRequest) ClearOffset() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
-	x.xxx_hidden_Offset = 0
 }
 
 type ListEventsRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	SessionId *string
-	// limit defaults to 50 when zero and is capped at 200.
-	Limit *int32
-	// offset is a zero-based offset into active events ordered oldest first.
-	Offset *int64
 }
 
 func (b0 ListEventsRequest_builder) Build() *ListEventsRequest {
@@ -7261,29 +7207,18 @@ func (b0 ListEventsRequest_builder) Build() *ListEventsRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.SessionId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 1)
 		x.xxx_hidden_SessionId = b.SessionId
-	}
-	if b.Limit != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
-		x.xxx_hidden_Limit = *b.Limit
-	}
-	if b.Offset != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
-		x.xxx_hidden_Offset = *b.Offset
 	}
 	return m0
 }
 
-// ListEventsResponse contains one page and the unpaginated active-event total.
+// ListEventsResponse contains all active events.
 type ListEventsResponse struct {
-	state                  protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Events      *[]*Event              `protobuf:"bytes,1,rep,name=events"`
-	xxx_hidden_Total       int64                  `protobuf:"varint,2,opt,name=total"`
-	XXX_raceDetectHookData protoimpl.RaceDetectHookData
-	XXX_presence           [1]uint32
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Events *[]*Event              `protobuf:"bytes,1,rep,name=events"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ListEventsResponse) Reset() {
@@ -7320,39 +7255,14 @@ func (x *ListEventsResponse) GetEvents() []*Event {
 	return nil
 }
 
-func (x *ListEventsResponse) GetTotal() int64 {
-	if x != nil {
-		return x.xxx_hidden_Total
-	}
-	return 0
-}
-
 func (x *ListEventsResponse) SetEvents(v []*Event) {
 	x.xxx_hidden_Events = &v
-}
-
-func (x *ListEventsResponse) SetTotal(v int64) {
-	x.xxx_hidden_Total = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
-}
-
-func (x *ListEventsResponse) HasTotal() bool {
-	if x == nil {
-		return false
-	}
-	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
-}
-
-func (x *ListEventsResponse) ClearTotal() {
-	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
-	x.xxx_hidden_Total = 0
 }
 
 type ListEventsResponse_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Events []*Event
-	Total  *int64
 }
 
 func (b0 ListEventsResponse_builder) Build() *ListEventsResponse {
@@ -7360,10 +7270,6 @@ func (b0 ListEventsResponse_builder) Build() *ListEventsResponse {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Events = &b.Events
-	if b.Total != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
-		x.xxx_hidden_Total = *b.Total
-	}
 	return m0
 }
 
@@ -9831,15 +9737,12 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\x13audio_prompt_tokens\x18\x06 \x01(\x03R\x11audioPromptTokens\x126\n" +
 	"\x17audio_completion_tokens\x18\a \x01(\x03R\x15audioCompletionTokens\x12<\n" +
 	"\x1aaccepted_prediction_tokens\x18\b \x01(\x03R\x18acceptedPredictionTokens\x12<\n" +
-	"\x1arejected_prediction_tokens\x18\t \x01(\x03R\x18rejectedPredictionTokens\"`\n" +
+	"\x1arejected_prediction_tokens\x18\t \x01(\x03R\x18rejectedPredictionTokens\"2\n" +
 	"\x11ListEventsRequest\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x03R\x06offset\"R\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"<\n" +
 	"\x12ListEventsResponse\x12&\n" +
-	"\x06events\x18\x01 \x03(\v2\x0e.koda.v1.EventR\x06events\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x03R\x05total\"7\n" +
+	"\x06events\x18\x01 \x03(\v2\x0e.koda.v1.EventR\x06events\"7\n" +
 	"\x16UndoLastMessageRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"\x88\x01\n" +

@@ -12,7 +12,6 @@ import (
 
 	"github.com/soasurs/adk/model"
 	"github.com/soasurs/adk/tool"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/tools"
@@ -46,7 +45,7 @@ func inputToProto(content model.Content) (*v1.Input, error) {
 		if text == "" {
 			return nil, errors.New("input must contain at least one part")
 		}
-		part := v1.Part_builder{Text: proto.String(text)}.Build()
+		part := v1.Part_builder{Text: new(text)}.Build()
 		return v1.Input_builder{Parts: []*v1.Part{part}}.Build(), nil
 	}
 	parts, err := partsToProto(content.Parts)
@@ -124,13 +123,13 @@ func partsToProto(parts []model.ContentPart) ([]*v1.Part, error) {
 func partToProto(part model.ContentPart) (*v1.Part, error) {
 	switch part.Type {
 	case model.ContentPartTypeText:
-		return v1.Part_builder{Text: proto.String(part.Text)}.Build(), nil
+		return v1.Part_builder{Text: new(part.Text)}.Build(), nil
 	case model.ContentPartTypeImageURL:
 		if err := validateHTTPSImageURL(part.ImageURL); err != nil {
 			return nil, err
 		}
 		image := v1.Image_builder{
-			Url:    proto.String(part.ImageURL),
+			Url:    new(part.ImageURL),
 			Detail: imageDetailToProto(part.ImageDetail).Enum(),
 		}.Build()
 		return v1.Part_builder{Image: image}.Build(), nil
@@ -145,7 +144,7 @@ func partToProto(part model.ContentPart) (*v1.Part, error) {
 		}
 		image := v1.Image_builder{
 			Data:     data,
-			MimeType: proto.String(mimeType),
+			MimeType: new(mimeType),
 			Detail:   imageDetailToProto(part.ImageDetail).Enum(),
 		}.Build()
 		return v1.Part_builder{Image: image}.Build(), nil
@@ -280,8 +279,8 @@ func toolResponseToProto(response *model.ToolResponse) (*v1.ToolResponse, error)
 			return nil, errors.New("tool response contains a nil handled error")
 		}
 		errMsg := v1.ToolError_builder{
-			Content:               proto.String(outcome.Content),
-			StructuredContentJson: proto.String(string(outcome.StructuredContent)),
+			Content:               new(outcome.Content),
+			StructuredContentJson: new(string(outcome.StructuredContent)),
 		}.Build()
 		converted.SetError(errMsg)
 	default:

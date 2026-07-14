@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/soasurs/adk/model"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
@@ -62,7 +61,7 @@ func TestHTTPServerServesConnectRunAndShutsDown(t *testing.T) {
 		t.Fatalf("os.Mkdir() error = %v", err)
 	}
 	directories, err := client.ListDirectories(t.Context(), v1.ListDirectoriesRequest_builder{
-		Path: proto.String(browseRoot),
+		Path: new(browseRoot),
 	}.Build())
 	if err != nil || len(directories.GetDirectories()) != 1 || directories.GetDirectories()[0].GetName() != "workspace" {
 		t.Fatalf("ListDirectories() = %+v, %v", directories, err)
@@ -77,14 +76,14 @@ func TestHTTPServerServesConnectRunAndShutsDown(t *testing.T) {
 		t.Fatalf("ListSkills() = %+v, %v", skills, err)
 	}
 	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
-		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+		Workdir: new(t.TempDir()), ProviderId: new("openai-responses"), ModelId: new("gpt-5.6"),
 	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
-	input := v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: proto.String("hello")}.Build()}}.Build()
+	input := v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: new("hello")}.Build()}}.Build()
 	stream, err := client.Run(t.Context(), v1.RunRequest_builder{
-		SessionId: proto.String(created.GetSession().GetId()),
+		SessionId: new(created.GetSession().GetId()),
 		Mode:      v1.AgentMode_AGENT_MODE_PLAN.Enum(),
 		Input:     input,
 	}.Build())
@@ -172,7 +171,7 @@ func TestHTTPServerServesInteractionRPCs(t *testing.T) {
 		err      error
 	}, 1)
 	go func() {
-		accepted, err := handler.approvals.Await(approvalContext, v1.ToolApproval_builder{Id: proto.String("approval-1")}.Build(), func(*v1.ToolApproval) error {
+		accepted, err := handler.approvals.Await(approvalContext, v1.ToolApproval_builder{Id: new("approval-1")}.Build(), func(*v1.ToolApproval) error {
 			publishedApproval <- struct{}{}
 			return nil
 		})
@@ -183,7 +182,7 @@ func TestHTTPServerServesInteractionRPCs(t *testing.T) {
 	}()
 	awaitSignal(t, publishedApproval)
 	if _, err := client.ResolveToolApproval(t.Context(), v1.ResolveToolApprovalRequest_builder{
-		ApprovalId: proto.String("approval-1"), Approved: proto.Bool(true),
+		ApprovalId: new("approval-1"), Approved: new(true),
 	}.Build()); err != nil {
 		t.Fatalf("ResolveToolApproval() error = %v", err)
 	}
@@ -199,12 +198,12 @@ func TestHTTPServerServesInteractionRPCs(t *testing.T) {
 		err      error
 	}, 1)
 	prompt := v1.QuestionPrompt_builder{
-		Id: proto.String("prompt-1"),
+		Id: new("prompt-1"),
 		Questions: []*v1.Question{v1.Question_builder{
-			Id: proto.String("choice"), Header: proto.String("Choice"), Prompt: proto.String("Choose one"),
+			Id: new("choice"), Header: new("Choice"), Prompt: new("Choose one"),
 			Options: []*v1.QuestionOption{
-				v1.QuestionOption_builder{Id: proto.String("one"), Label: proto.String("One")}.Build(),
-				v1.QuestionOption_builder{Id: proto.String("two"), Label: proto.String("Two")}.Build(),
+				v1.QuestionOption_builder{Id: new("one"), Label: new("One")}.Build(),
+				v1.QuestionOption_builder{Id: new("two"), Label: new("Two")}.Build(),
 			},
 		}.Build()},
 	}.Build()
@@ -220,7 +219,7 @@ func TestHTTPServerServesInteractionRPCs(t *testing.T) {
 	}()
 	awaitSignal(t, publishedQuestion)
 	if _, err := client.SubmitQuestionAnswers(t.Context(), v1.SubmitQuestionAnswersRequest_builder{
-		PromptId: proto.String("prompt-1"), Canceled: proto.Bool(true),
+		PromptId: new("prompt-1"), Canceled: new(true),
 	}.Build()); err != nil {
 		t.Fatalf("SubmitQuestionAnswers() error = %v", err)
 	}
@@ -239,16 +238,16 @@ func TestHTTPServerShutdownCancelsBlockedRun(t *testing.T) {
 	_, client, stop := startHTTPTestServer(t, handler, HTTPServerConfig{})
 	defer stop()
 	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
-		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+		Workdir: new(t.TempDir()), ProviderId: new("openai-responses"), ModelId: new("gpt-5.6"),
 	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
-	input := v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: proto.String("hello")}.Build()}}.Build()
+	input := v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: new("hello")}.Build()}}.Build()
 	runDone := make(chan error, 1)
 	go func() {
 		stream, err := client.Run(t.Context(), v1.RunRequest_builder{
-			SessionId: proto.String(created.GetSession().GetId()),
+			SessionId: new(created.GetSession().GetId()),
 			Mode:      v1.AgentMode_AGENT_MODE_PLAN.Enum(),
 			Input:     input,
 		}.Build())

@@ -31,7 +31,7 @@ func TestSaveProviderLogsCredentialActionWithoutCredential(t *testing.T) {
 	handler.logger = logger
 	const apiKey = "top-secret-provider-key"
 	if _, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
-		Id: proto.String("custom"), Name: proto.String("Custom"),
+		Id: new("custom"), Name: new("Custom"),
 		Type: v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES.Enum(), ApiKey: proto.String(apiKey),
 	}.Build()); err != nil {
 		t.Fatalf("SaveProvider() error = %v", err)
@@ -62,16 +62,16 @@ func TestProviderAndModelHandlers(t *testing.T) {
 
 	apiKey := "test-api-key"
 	modelOverride := v1.Model_builder{
-		Id:                     proto.String("private-model"),
+		Id:                     new("private-model"),
 		ReasoningEfforts:       []string{"low", "max"},
-		DefaultReasoningEffort: proto.String("max"),
+		DefaultReasoningEffort: new("max"),
 	}.Build()
 	saved, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
-		Id:             proto.String("custom"),
-		Name:           proto.String("Custom"),
+		Id:             new("custom"),
+		Name:           new("Custom"),
 		Type:           v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES.Enum(),
-		BaseUrl:        proto.String("https://models.example/v1"),
-		ApiKey:         proto.String(apiKey),
+		BaseUrl:        new("https://models.example/v1"),
+		ApiKey:         new(apiKey),
 		ModelOverrides: []*v1.Model{modelOverride},
 	}.Build())
 	if err != nil {
@@ -90,10 +90,10 @@ func TestProviderAndModelHandlers(t *testing.T) {
 	}
 
 	updated, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
-		Id:             proto.String("custom"),
-		Name:           proto.String("Custom Updated"),
+		Id:             new("custom"),
+		Name:           new("Custom Updated"),
 		Type:           v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES.Enum(),
-		BaseUrl:        proto.String("https://models.example/v1"),
+		BaseUrl:        new("https://models.example/v1"),
 		ModelOverrides: []*v1.Model{modelOverride},
 	}.Build())
 	if err != nil {
@@ -111,7 +111,7 @@ func TestProviderAndModelHandlers(t *testing.T) {
 		t.Fatal("omitted API key did not preserve the stored credential")
 	}
 
-	models, err := client.ListModels(t.Context(), v1.ListModelsRequest_builder{ProviderId: proto.String("custom")}.Build())
+	models, err := client.ListModels(t.Context(), v1.ListModelsRequest_builder{ProviderId: new("custom")}.Build())
 	if err != nil {
 		t.Fatalf("ListModels() error = %v", err)
 	}
@@ -122,7 +122,7 @@ func TestProviderAndModelHandlers(t *testing.T) {
 		t.Fatalf("ListModels().Models[0].ReasoningEfforts = %v", models.GetModels()[0].GetReasoningEfforts())
 	}
 
-	refreshed, err := client.RefreshModels(t.Context(), v1.RefreshModelsRequest_builder{ProviderId: proto.String("custom")}.Build())
+	refreshed, err := client.RefreshModels(t.Context(), v1.RefreshModelsRequest_builder{ProviderId: new("custom")}.Build())
 	if err != nil {
 		t.Fatalf("RefreshModels() error = %v", err)
 	}
@@ -130,10 +130,10 @@ func TestProviderAndModelHandlers(t *testing.T) {
 		t.Fatalf("RefreshModels() = %+v, want refreshed private and discovered models", refreshed)
 	}
 
-	if _, err := client.DeleteProvider(t.Context(), v1.DeleteProviderRequest_builder{ProviderId: proto.String("custom")}.Build()); err != nil {
+	if _, err := client.DeleteProvider(t.Context(), v1.DeleteProviderRequest_builder{ProviderId: new("custom")}.Build()); err != nil {
 		t.Fatalf("DeleteProvider() error = %v", err)
 	}
-	if _, err := client.ListModels(t.Context(), v1.ListModelsRequest_builder{ProviderId: proto.String("custom")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := client.ListModels(t.Context(), v1.ListModelsRequest_builder{ProviderId: new("custom")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ListModels(deleted) code = %v, want not_found; error = %v", connect.CodeOf(err), err)
 	}
 }
@@ -142,29 +142,29 @@ func TestProviderAndModelHandlersMapErrors(t *testing.T) {
 	client, _ := newTestClient(t, staticDiscoverer{err: errors.New("offline")})
 
 	if _, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
-		Id:   proto.String("invalid"),
-		Name: proto.String("Invalid"),
+		Id:   new("invalid"),
+		Name: new("Invalid"),
 		Type: v1.ProviderType_PROVIDER_TYPE_UNSPECIFIED.Enum(),
 	}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("SaveProvider(unspecified type) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
 	if _, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
-		Id:   proto.String("openai"),
-		Name: proto.String("OpenAI"),
+		Id:   new("openai"),
+		Name: new("OpenAI"),
 		Type: v1.ProviderType_PROVIDER_TYPE_ANTHROPIC.Enum(),
 	}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("SaveProvider(change built-in type) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.DeleteProvider(t.Context(), v1.DeleteProviderRequest_builder{ProviderId: proto.String("openai")}.Build()); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+	if _, err := client.DeleteProvider(t.Context(), v1.DeleteProviderRequest_builder{ProviderId: new("openai")}.Build()); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("DeleteProvider(built-in) code = %v, want failed_precondition; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.ListModels(t.Context(), v1.ListModelsRequest_builder{ProviderId: proto.String("missing")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := client.ListModels(t.Context(), v1.ListModelsRequest_builder{ProviderId: new("missing")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ListModels(missing) code = %v, want not_found; error = %v", connect.CodeOf(err), err)
 	}
 	if _, err := client.ListModels(t.Context(), v1.ListModelsRequest_builder{}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("ListModels(empty provider) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
-	if _, err := client.RefreshModels(t.Context(), v1.RefreshModelsRequest_builder{ProviderId: proto.String("openai")}.Build()); connect.CodeOf(err) != connect.CodeUnavailable {
+	if _, err := client.RefreshModels(t.Context(), v1.RefreshModelsRequest_builder{ProviderId: new("openai")}.Build()); connect.CodeOf(err) != connect.CodeUnavailable {
 		t.Fatalf("RefreshModels(offline) code = %v, want unavailable; error = %v", connect.CodeOf(err), err)
 	}
 }

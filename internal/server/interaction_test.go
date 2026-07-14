@@ -6,7 +6,6 @@ import (
 	"time"
 
 	adktrace "github.com/soasurs/adk/trace"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/permission"
@@ -104,7 +103,7 @@ func TestRunInteractionsTranslateRejectionAndQuestions(t *testing.T) {
 		t.Fatalf("prompt = %+v", prompt)
 	}
 	resolvedAnswer := v1.QuestionAnswer_builder{
-		QuestionId:        proto.String("storage"),
+		QuestionId:        new("storage"),
 		SelectedOptionIds: []string{"sqlite"},
 	}.Build()
 	if err := handler.questions.ResolveAnswers(prompt.GetId(), v1.QuestionAnswers_builder{Answers: []*v1.QuestionAnswer{resolvedAnswer}}.Build()); err != nil {

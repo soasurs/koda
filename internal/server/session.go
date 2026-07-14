@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/permission"
@@ -101,7 +100,7 @@ func (h *Handler) ListSessions(ctx context.Context, request *v1.ListSessionsRequ
 	}
 	return v1.ListSessionsResponse_builder{
 		Sessions: sessionsToProto(sessions),
-		Total:    proto.Int64(total),
+		Total:    new(total),
 	}.Build(), nil
 }
 
@@ -334,17 +333,17 @@ func sessionIDFromRequest(id string) (string, error) {
 
 func sessionToProto(session store.Session) *v1.Session {
 	return v1.Session_builder{
-		Id:              proto.String(session.ID),
-		Title:           proto.String(session.Title),
-		Workdir:         proto.String(session.Workdir),
-		ProviderId:      proto.String(session.ProviderID),
-		ModelId:         proto.String(session.ModelID),
-		ReasoningEffort: proto.String(session.ReasoningEffort),
+		Id:              new(session.ID),
+		Title:           new(session.Title),
+		Workdir:         new(session.Workdir),
+		ProviderId:      new(session.ProviderID),
+		ModelId:         new(session.ModelID),
+		ReasoningEffort: new(session.ReasoningEffort),
 		FileAccess:      fileAccessToProto(session.FileAccess).Enum(),
 		ShellAccess:     shellAccessToProto(session.ShellAccess).Enum(),
-		CreatedAt:       proto.Int64(session.CreatedAt.UnixMilli()),
-		UpdatedAt:       proto.Int64(session.UpdatedAt.UnixMilli()),
-		EventCount:      proto.Int64(session.EventCount),
+		CreatedAt:       new(session.CreatedAt.UnixMilli()),
+		UpdatedAt:       new(session.UpdatedAt.UnixMilli()),
+		EventCount:      new(session.EventCount),
 	}.Build()
 }
 

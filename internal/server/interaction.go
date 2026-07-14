@@ -8,7 +8,6 @@ import (
 	"time"
 
 	adktrace "github.com/soasurs/adk/trace"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/agent"
@@ -62,13 +61,13 @@ func (a brokerAuthorizer) Authorize(ctx context.Context, approval tools.Approval
 		return fmt.Errorf("server: generate approval ID: %w", err)
 	}
 	request := v1.ToolApproval_builder{
-		Id:            proto.String(id),
-		SessionId:     proto.String(info.SessionID),
-		TurnId:        proto.String(info.TurnID),
-		ToolCallId:    proto.String(approval.ToolCallID),
-		ToolName:      proto.String(approval.ToolName),
-		Summary:       proto.String(approval.Summary),
-		ArgumentsJson: proto.String(string(approval.Arguments)),
+		Id:            new(id),
+		SessionId:     new(info.SessionID),
+		TurnId:        new(info.TurnID),
+		ToolCallId:    new(approval.ToolCallID),
+		ToolName:      new(approval.ToolName),
+		Summary:       new(approval.Summary),
+		ArgumentsJson: new(string(approval.Arguments)),
 		FileChanges:   fileChangesToProto(approval.FileChanges),
 		Kind:          approvalKindToProto(approval.Kind).Enum(),
 		Scope:         approvalScopeToProto(approval.Scope).Enum(),
@@ -143,10 +142,10 @@ func (q brokerQuestioner) Ask(ctx context.Context, request tools.QuestionRequest
 		return tools.QuestionResolution{}, fmt.Errorf("server: generate question prompt ID: %w", err)
 	}
 	prompt := v1.QuestionPrompt_builder{
-		Id:         proto.String(id),
-		SessionId:  proto.String(info.SessionID),
-		TurnId:     proto.String(info.TurnID),
-		ToolCallId: proto.String(request.ToolCallID),
+		Id:         new(id),
+		SessionId:  new(info.SessionID),
+		TurnId:     new(info.TurnID),
+		ToolCallId: new(request.ToolCallID),
 		Questions:  questionsToProto(request.Questions),
 	}.Build()
 	startedAt := time.Now()
@@ -204,18 +203,18 @@ func questionsToProto(questions []tools.Question) []*v1.Question {
 		options := make([]*v1.QuestionOption, len(question.Options))
 		for optionIndex, option := range question.Options {
 			options[optionIndex] = v1.QuestionOption_builder{
-				Id:          proto.String(option.ID),
-				Label:       proto.String(option.Label),
-				Description: proto.String(option.Description),
+				Id:          new(option.ID),
+				Label:       new(option.Label),
+				Description: new(option.Description),
 			}.Build()
 		}
 		result[index] = v1.Question_builder{
-			Id:            proto.String(question.ID),
-			Header:        proto.String(question.Header),
-			Prompt:        proto.String(question.Prompt),
+			Id:            new(question.ID),
+			Header:        new(question.Header),
+			Prompt:        new(question.Prompt),
 			Options:       options,
-			Multiple:      proto.Bool(question.Multiple),
-			AllowFreeform: proto.Bool(question.AllowFreeform),
+			Multiple:      new(question.Multiple),
+			AllowFreeform: new(question.AllowFreeform),
 		}.Build()
 	}
 	return result

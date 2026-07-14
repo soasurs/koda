@@ -15,7 +15,6 @@ type queries struct {
 	deleteADKSession string
 	deleteEvents     string
 	sessionExists    string
-	countEvents      string
 	listEvents       string
 	latestUserEvent  string
 	deleteTurnEvents string
@@ -143,13 +142,6 @@ func newQueries(adkTablePrefix string) queries {
 			FROM koda_sessions
 			WHERE id = $1 AND deleted_at = 0
 		`,
-		countEvents: `
-			SELECT COUNT(*)
-			FROM ` + adkEventsTable + `
-			WHERE session_id = $1
-				AND deleted_at = 0
-				AND archived_at = 0
-		`,
 		listEvents: `
 			SELECT ` + eventColumns + `
 			FROM ` + adkEventsTable + `
@@ -157,7 +149,6 @@ func newQueries(adkTablePrefix string) queries {
 				AND deleted_at = 0
 				AND archived_at = 0
 			ORDER BY created_at ASC, event_id ASC
-			LIMIT $2 OFFSET $3
 		`,
 		latestUserEvent: `
 			SELECT ` + eventColumns + `

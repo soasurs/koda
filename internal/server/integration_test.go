@@ -19,7 +19,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/soasurs/adk/model"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
@@ -54,7 +53,7 @@ func TestIntegrationRunApprovalPersistsAndRestoresHistory(t *testing.T) {
 		if value := frame.GetApproval(); value != nil {
 			approval = value
 			if _, err := client.ResolveToolApproval(t.Context(), v1.ResolveToolApprovalRequest_builder{
-				ApprovalId: proto.String(value.GetId()), Approved: proto.Bool(true),
+				ApprovalId: new(value.GetId()), Approved: new(true),
 			}.Build()); err != nil {
 				t.Fatalf("ResolveToolApproval() error = %v", err)
 			}
@@ -77,7 +76,7 @@ func TestIntegrationRunApprovalPersistsAndRestoresHistory(t *testing.T) {
 	if len(history) != 4 || history[len(history)-1].GetMessage().GetText() != "done" {
 		t.Fatalf("history = %+v, want user/tool-call/tool-result/assistant", history)
 	}
-	after, err := client.GetSession(t.Context(), v1.GetSessionRequest_builder{SessionId: proto.String(created.GetId())}.Build())
+	after, err := client.GetSession(t.Context(), v1.GetSessionRequest_builder{SessionId: new(created.GetId())}.Build())
 	if err != nil || after.GetSession().GetUpdatedAt() <= before {
 		t.Fatalf("updated session = %+v, %v; before = %d", after, err, before)
 	}
@@ -110,10 +109,10 @@ func TestIntegrationQuestionAndMultimodalUndo(t *testing.T) {
 	defer sessionStore.Close()
 	session := createIntegrationSession(t, client, t.TempDir())
 	request := v1.RunRequest_builder{
-		SessionId: proto.String(session.GetId()), Mode: v1.AgentMode_AGENT_MODE_PLAN.Enum(),
+		SessionId: new(session.GetId()), Mode: v1.AgentMode_AGENT_MODE_PLAN.Enum(),
 		Input: v1.Input_builder{Parts: []*v1.Part{
-			v1.Part_builder{Text: proto.String("choose")}.Build(),
-			v1.Part_builder{Image: v1.Image_builder{Data: []byte("image"), MimeType: proto.String("image/png")}.Build()}.Build(),
+			v1.Part_builder{Text: new("choose")}.Build(),
+			v1.Part_builder{Image: v1.Image_builder{Data: []byte("image"), MimeType: new("image/png")}.Build()}.Build(),
 		}}.Build(),
 	}.Build()
 	stream, err := client.Run(t.Context(), request)
@@ -123,8 +122,8 @@ func TestIntegrationQuestionAndMultimodalUndo(t *testing.T) {
 	for stream.Receive() {
 		if prompt := stream.Msg().GetQuestionPrompt(); prompt != nil {
 			_, err := client.SubmitQuestionAnswers(t.Context(), v1.SubmitQuestionAnswersRequest_builder{
-				PromptId: proto.String(prompt.GetId()), Answers: v1.QuestionAnswers_builder{Answers: []*v1.QuestionAnswer{
-					v1.QuestionAnswer_builder{QuestionId: proto.String("storage"), SelectedOptionIds: []string{"sqlite"}}.Build(),
+				PromptId: new(prompt.GetId()), Answers: v1.QuestionAnswers_builder{Answers: []*v1.QuestionAnswer{
+					v1.QuestionAnswer_builder{QuestionId: new("storage"), SelectedOptionIds: []string{"sqlite"}}.Build(),
 				}}.Build(),
 			}.Build())
 			if err != nil {
@@ -135,7 +134,7 @@ func TestIntegrationQuestionAndMultimodalUndo(t *testing.T) {
 	if err := stream.Err(); err != nil {
 		t.Fatalf("Run() stream error = %v", err)
 	}
-	undone, err := client.UndoLastMessage(t.Context(), v1.UndoLastMessageRequest_builder{SessionId: proto.String(session.GetId())}.Build())
+	undone, err := client.UndoLastMessage(t.Context(), v1.UndoLastMessageRequest_builder{SessionId: new(session.GetId())}.Build())
 	if err != nil {
 		t.Fatalf("UndoLastMessage() error = %v", err)
 	}
@@ -201,13 +200,13 @@ func TestIntegrationProviderRefreshPersistsWithoutLeakingCredential(t *testing.T
 	_, client, stop := startHTTPTestServer(t, handler, HTTPServerConfig{Address: "127.0.0.1:0"})
 	secret := "provider-secret"
 	_, err = client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
-		Id: proto.String("custom"), Name: proto.String("Custom"), Type: v1.ProviderType_PROVIDER_TYPE_OPENAI_CHAT_COMPLETIONS.Enum(),
-		BaseUrl: proto.String(upstream.URL), ApiKey: proto.String(secret),
+		Id: new("custom"), Name: new("Custom"), Type: v1.ProviderType_PROVIDER_TYPE_OPENAI_CHAT_COMPLETIONS.Enum(),
+		BaseUrl: new(upstream.URL), ApiKey: new(secret),
 	}.Build())
 	if err != nil {
 		t.Fatalf("SaveProvider() error = %v", err)
 	}
-	refreshed, err := client.RefreshModels(t.Context(), v1.RefreshModelsRequest_builder{ProviderId: proto.String("custom")}.Build())
+	refreshed, err := client.RefreshModels(t.Context(), v1.RefreshModelsRequest_builder{ProviderId: new("custom")}.Build())
 	if err != nil || len(refreshed.GetModels()) != 1 || refreshed.GetModels()[0].GetId() != "discovered-model" {
 		t.Fatalf("RefreshModels() = %+v, %v", refreshed, err)
 	}
@@ -272,16 +271,16 @@ func TestIntegrationSameSessionRunsSerializeAndDifferentSessionsRunConcurrently(
 	}
 	assertSessionMutationWaitsForRun(t, func(ctx context.Context) error {
 		_, err := client.UpdateSession(ctx, v1.UpdateSessionRequest_builder{
-			SessionId: proto.String(first.GetId()), Title: proto.String("blocked update"),
+			SessionId: new(first.GetId()), Title: new("blocked update"),
 		}.Build())
 		return err
 	})
 	assertSessionMutationWaitsForRun(t, func(ctx context.Context) error {
-		_, err := client.UndoLastMessage(ctx, v1.UndoLastMessageRequest_builder{SessionId: proto.String(first.GetId())}.Build())
+		_, err := client.UndoLastMessage(ctx, v1.UndoLastMessageRequest_builder{SessionId: new(first.GetId())}.Build())
 		return err
 	})
 	assertSessionMutationWaitsForRun(t, func(ctx context.Context) error {
-		_, err := client.DeleteSession(ctx, v1.DeleteSessionRequest_builder{SessionId: proto.String(first.GetId())}.Build())
+		_, err := client.DeleteSession(ctx, v1.DeleteSessionRequest_builder{SessionId: new(first.GetId())}.Build())
 		return err
 	})
 	close(release)
@@ -388,7 +387,7 @@ func startIntegrationService(t *testing.T, registryPath, databasePath, upstreamU
 func createIntegrationSession(t *testing.T, client kodav1connect.KodaServiceClient, workdir string) *v1.Session {
 	t.Helper()
 	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
-		Workdir: proto.String(workdir), ProviderId: proto.String("integration"), ModelId: proto.String("integration-model"),
+		Workdir: new(workdir), ProviderId: new("integration"), ModelId: new("integration-model"),
 	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
@@ -398,7 +397,7 @@ func createIntegrationSession(t *testing.T, client kodav1connect.KodaServiceClie
 
 func createBuiltinSession(t *testing.T, client kodav1connect.KodaServiceClient, workdir string) *v1.Session {
 	t.Helper()
-	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{Workdir: proto.String(workdir), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6")}.Build())
+	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{Workdir: new(workdir), ProviderId: new("openai-responses"), ModelId: new("gpt-5.6")}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
@@ -406,7 +405,7 @@ func createBuiltinSession(t *testing.T, client kodav1connect.KodaServiceClient, 
 }
 
 func runRequest(sessionID, text string, mode v1.AgentMode) *v1.RunRequest {
-	return v1.RunRequest_builder{SessionId: proto.String(sessionID), Mode: mode.Enum(), Input: v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: proto.String(text)}.Build()}}.Build()}.Build()
+	return v1.RunRequest_builder{SessionId: new(sessionID), Mode: mode.Enum(), Input: v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: new(text)}.Build()}}.Build()}.Build()
 }
 
 func runToCompletion(t *testing.T, client kodav1connect.KodaServiceClient, request *v1.RunRequest) {
@@ -424,7 +423,7 @@ func runToCompletion(t *testing.T, client kodav1connect.KodaServiceClient, reque
 
 func listIntegrationEvents(t *testing.T, client kodav1connect.KodaServiceClient, sessionID string) []*v1.Event {
 	t.Helper()
-	result, err := client.ListEvents(t.Context(), v1.ListEventsRequest_builder{SessionId: proto.String(sessionID)}.Build())
+	result, err := client.ListEvents(t.Context(), v1.ListEventsRequest_builder{SessionId: new(sessionID)}.Build())
 	if err != nil {
 		t.Fatalf("ListEvents() error = %v", err)
 	}

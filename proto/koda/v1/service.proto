@@ -31,7 +31,7 @@ service KodaService {
   // DeleteSession deletes a coding session and its event history.
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
 
-  // ListEvents returns a page of active events in a session.
+  // ListEvents returns all active events in a session.
   rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
   // UndoLastMessage removes the most recent user turn.
   rpc UndoLastMessage(UndoLastMessageRequest) returns (UndoLastMessageResponse);
@@ -564,19 +564,14 @@ message TokenUsageDetails {
   int64 rejected_prediction_tokens = 9;
 }
 
-// ListEventsRequest selects a page of active events in conversation order.
+// ListEventsRequest selects all active events in conversation order.
 message ListEventsRequest {
   string session_id = 1;
-  // limit defaults to 50 when zero and is capped at 200.
-  int32 limit = 2;
-  // offset is a zero-based offset into active events ordered oldest first.
-  int64 offset = 3;
 }
 
-// ListEventsResponse contains one page and the unpaginated active-event total.
+// ListEventsResponse contains all active events.
 message ListEventsResponse {
   repeated Event events = 1;
-  int64 total = 2;
 }
 
 // UndoLastMessageRequest identifies the session to modify.

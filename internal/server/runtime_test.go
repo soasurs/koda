@@ -9,7 +9,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/soasurs/adk/model"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/agent"
@@ -62,15 +61,15 @@ func TestRunLogsLifecycleWithoutMessageContent(t *testing.T) {
 		}}}, nil
 	}
 	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
-		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+		Workdir: new(t.TempDir()), ProviderId: new("openai-responses"), ModelId: new("gpt-5.6"),
 	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
 	stream, err := client.Run(t.Context(), v1.RunRequest_builder{
-		SessionId: proto.String(created.GetSession().GetId()),
+		SessionId: new(created.GetSession().GetId()),
 		Mode:      v1.AgentMode_AGENT_MODE_PLAN.Enum(),
-		Input:     v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: proto.String("private user content")}.Build()}}.Build(),
+		Input:     v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: new("private user content")}.Build()}}.Build(),
 	}.Build())
 	if err == nil {
 		for stream.Receive() {
@@ -114,7 +113,7 @@ func TestRunStreamsInjectedTurnRunner(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	handler.newSessionID = func() (string, error) { return "session-1", nil }
 	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
-		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+		Workdir: new(t.TempDir()), ProviderId: new("openai-responses"), ModelId: new("gpt-5.6"),
 	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
@@ -138,9 +137,9 @@ func TestRunStreamsInjectedTurnRunner(t *testing.T) {
 		return "Generated title", nil
 	}
 
-	input := v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: proto.String("hello")}.Build()}}.Build()
+	input := v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: new("hello")}.Build()}}.Build()
 	stream, err := client.Run(t.Context(), v1.RunRequest_builder{
-		SessionId: proto.String(sessionID),
+		SessionId: new(sessionID),
 		Mode:      v1.AgentMode_AGENT_MODE_PLAN.Enum(),
 		Input:     input,
 	}.Build())
@@ -190,7 +189,7 @@ func TestRunUsesExpectedErrorCodes(t *testing.T) {
 	handler.turnRunnerFactory = func(context.Context, store.Session, v1.AgentMode) (TurnRunner, error) {
 		return &fakeTurnRunner{}, nil
 	}
-	stream, err = client.Run(t.Context(), v1.RunRequest_builder{SessionId: proto.String("session-1")}.Build())
+	stream, err = client.Run(t.Context(), v1.RunRequest_builder{SessionId: new("session-1")}.Build())
 	if err == nil {
 		for stream.Receive() {
 		}
@@ -211,14 +210,14 @@ func TestRunInitializesADKSessionBeforeResolvingProvider(t *testing.T) {
 	}
 	handler.newSessionID = func() (string, error) { return "session-1", nil }
 	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
-		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("unconfigured"), ModelId: proto.String("model"),
+		Workdir: new(t.TempDir()), ProviderId: new("unconfigured"), ModelId: new("model"),
 	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
-	input := v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: proto.String("hello")}.Build()}}.Build()
+	input := v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: new("hello")}.Build()}}.Build()
 	stream, err := client.Run(t.Context(), v1.RunRequest_builder{
-		SessionId: proto.String(created.GetSession().GetId()),
+		SessionId: new(created.GetSession().GetId()),
 		Mode:      v1.AgentMode_AGENT_MODE_PLAN.Enum(),
 		Input:     input,
 	}.Build())

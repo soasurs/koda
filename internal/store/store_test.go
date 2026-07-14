@@ -284,12 +284,12 @@ func TestListEventsAndUndoLastMessage(t *testing.T) {
 		}
 	}
 
-	listed, total, err := store.ListEvents(t.Context(), "session-1", ListEventsParams{Limit: 2, Offset: 1})
+	listed, err := store.ListEvents(t.Context(), "session-1")
 	if err != nil {
 		t.Fatalf("ListEvents() error = %v", err)
 	}
-	if total != 4 || len(listed) != 2 || listed[0].ID != 2 || listed[1].ID != 3 {
-		t.Fatalf("ListEvents() = %+v, total %d; want events 2 and 3 of 4", listed, total)
+	if len(listed) != 4 || listed[0].ID != 1 || listed[1].ID != 2 || listed[2].ID != 3 || listed[3].ID != 4 {
+		t.Fatalf("ListEvents() = %+v; want all 4 events", listed)
 	}
 
 	undone, err := store.UndoLastMessage(t.Context(), "session-1")
@@ -301,12 +301,12 @@ func TestListEventsAndUndoLastMessage(t *testing.T) {
 		t.Fatalf("UndoLastMessage() = %+v", undone)
 	}
 
-	listed, total, err = store.ListEvents(t.Context(), "session-1", ListEventsParams{})
+	listed, err = store.ListEvents(t.Context(), "session-1")
 	if err != nil {
 		t.Fatalf("ListEvents(after undo) error = %v", err)
 	}
-	if total != 2 || len(listed) != 2 || listed[0].TurnID != "turn-1" || listed[1].TurnID != "turn-1" {
-		t.Fatalf("ListEvents(after undo) = %+v, total %d; want turn-1 only", listed, total)
+	if len(listed) != 2 || listed[0].TurnID != "turn-1" || listed[1].TurnID != "turn-1" {
+		t.Fatalf("ListEvents(after undo) = %+v; want turn-1 only", listed)
 	}
 	updated, err := store.GetSession(t.Context(), "session-1")
 	if err != nil {
@@ -335,20 +335,14 @@ func TestEventHistoryValidationAndEmptyLedger(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
-	events, total, err := store.ListEvents(t.Context(), "session-1", ListEventsParams{})
+	events, err := store.ListEvents(t.Context(), "session-1")
 	if err != nil {
 		t.Fatalf("ListEvents(empty ledger) error = %v", err)
 	}
-	if total != 0 || len(events) != 0 {
-		t.Fatalf("ListEvents(empty ledger) = %+v, total %d", events, total)
+	if len(events) != 0 {
+		t.Fatalf("ListEvents(empty ledger) = %+v", events)
 	}
-	if _, _, err := store.ListEvents(t.Context(), "session-1", ListEventsParams{Limit: -1}); err == nil {
-		t.Fatal("ListEvents(negative limit) error = nil, want error")
-	}
-	if _, _, err := store.ListEvents(t.Context(), "session-1", ListEventsParams{Offset: -1}); err == nil {
-		t.Fatal("ListEvents(negative offset) error = nil, want error")
-	}
-	if _, _, err := store.ListEvents(t.Context(), "missing", ListEventsParams{}); !errors.Is(err, ErrNotFound) {
+	if _, err := store.ListEvents(t.Context(), "missing"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("ListEvents(missing) error = %v, want ErrNotFound", err)
 	}
 	if _, err := store.UndoLastMessage(t.Context(), "missing"); !errors.Is(err, ErrNotFound) {
@@ -431,12 +425,12 @@ func TestLockRunContextIsReentrantAndRollbackTurnRestoresSession(t *testing.T) {
 	if err := store.RollbackTurn(lockedCtx, "session-1", "turn-1", created); err != nil {
 		t.Fatalf("RollbackTurn() error = %v", err)
 	}
-	listed, total, err := store.ListEvents(lockedCtx, "session-1", ListEventsParams{})
+	listed, err := store.ListEvents(lockedCtx, "session-1")
 	if err != nil {
 		t.Fatalf("ListEvents() error = %v", err)
 	}
-	if total != 0 || len(listed) != 0 {
-		t.Fatalf("ListEvents() = %+v, total %d; want empty", listed, total)
+	if len(listed) != 0 {
+		t.Fatalf("ListEvents() = %+v; want empty", listed)
 	}
 	got, err := store.GetSession(lockedCtx, "session-1")
 	if err != nil {

@@ -8,7 +8,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/soasurs/adk/model"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/agent"
@@ -184,7 +183,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	}
 	completed := v1.RunResponse{}
 	completed.SetCompleted(v1.RunCompleted_builder{
-		TurnId:  proto.String(turnID),
+		TurnId:  new(turnID),
 		Session: sessionToProto(committedSession),
 	}.Build())
 	if err := publisher.Publish(&completed); err != nil {
@@ -285,7 +284,7 @@ func terminalEvent(event model.Event) bool {
 	}
 }
 
-// ListEvents returns one page of active, complete events in conversation order.
+// ListEvents returns all active, complete events in conversation order.
 func (h *Handler) ListEvents(ctx context.Context, request *v1.ListEventsRequest) (*v1.ListEventsResponse, error) {
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("list events request must not be nil"))
@@ -294,16 +293,7 @@ func (h *Handler) ListEvents(ctx context.Context, request *v1.ListEventsRequest)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if request.GetLimit() < 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("event list limit must not be negative"))
-	}
-	if request.GetOffset() < 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("event list offset must not be negative"))
-	}
-	events, total, err := h.store.ListEvents(ctx, id, store.ListEventsParams{
-		Limit:  int(request.GetLimit()),
-		Offset: request.GetOffset(),
-	})
+	events, err := h.store.ListEvents(ctx, id)
 	if err != nil {
 		return nil, h.sessionFailure(ctx, "list events", err, slog.String("session_id", id))
 	}
@@ -315,7 +305,6 @@ func (h *Handler) ListEvents(ctx context.Context, request *v1.ListEventsRequest)
 	}
 	return v1.ListEventsResponse_builder{
 		Events: converted,
-		Total:  proto.Int64(total),
 	}.Build(), nil
 }
 

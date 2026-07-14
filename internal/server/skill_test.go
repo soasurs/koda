@@ -6,7 +6,6 @@ import (
 	"testing/fstest"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	adkskill "github.com/soasurs/adk/skill"
 	v1 "github.com/soasurs/koda/gen/koda/v1"
@@ -30,7 +29,7 @@ func TestListAndGetSkills(t *testing.T) {
 		t.Fatalf("ListSkills() = %+v", listed)
 	}
 
-	got, err := handler.GetSkill(t.Context(), v1.GetSkillRequest_builder{Name: proto.String("review-go")}.Build())
+	got, err := handler.GetSkill(t.Context(), v1.GetSkillRequest_builder{Name: new("review-go")}.Build())
 	if err != nil {
 		t.Fatalf("GetSkill() error = %v", err)
 	}
@@ -49,7 +48,7 @@ func TestGetSkillValidatesRequest(t *testing.T) {
 	if _, err := handler.GetSkill(t.Context(), v1.GetSkillRequest_builder{}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("GetSkill(empty) code = %v", connect.CodeOf(err))
 	}
-	if _, err := handler.GetSkill(t.Context(), v1.GetSkillRequest_builder{Name: proto.String("missing")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := handler.GetSkill(t.Context(), v1.GetSkillRequest_builder{Name: new("missing")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("GetSkill(missing) code = %v", connect.CodeOf(err))
 	}
 }

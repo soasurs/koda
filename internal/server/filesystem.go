@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 )
@@ -74,8 +73,8 @@ func (h *Handler) ListDirectories(ctx context.Context, request *v1.ListDirectori
 			continue
 		}
 		directories = append(directories, v1.DirectoryEntry_builder{
-			Name: proto.String(entry.Name()),
-			Path: proto.String(entryPath),
+			Name: new(entry.Name()),
+			Path: new(entryPath),
 		}.Build())
 	}
 
@@ -84,8 +83,8 @@ func (h *Handler) ListDirectories(ctx context.Context, request *v1.ListDirectori
 		parentPath = ""
 	}
 	return v1.ListDirectoriesResponse_builder{
-		Path:        proto.String(resolved),
-		ParentPath:  proto.String(parentPath),
+		Path:        new(resolved),
+		ParentPath:  new(parentPath),
 		Directories: directories,
 	}.Build(), nil
 }

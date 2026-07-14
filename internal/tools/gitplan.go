@@ -359,7 +359,7 @@ func planGitSafetyArgs(ctx context.Context, configPaths []string) ([]string, err
 			}
 			return nil, fmt.Errorf("inspect Git filters: %w", err)
 		}
-		for _, encodedKey := range bytes.Split(output, []byte{0}) {
+		for encodedKey := range bytes.SplitSeq(output, []byte{0}) {
 			key := string(encodedKey)
 			if key == "" {
 				continue

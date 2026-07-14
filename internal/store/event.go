@@ -54,12 +54,6 @@ func (s *Store) RollbackTurn(ctx context.Context, id, turnID string, previous Se
 	return nil
 }
 
-// ListEventsParams selects one page of active events in conversation order.
-type ListEventsParams struct {
-	Limit  int
-	Offset int64
-}
-
 // UndoLastMessageResult describes the most recently removed user turn.
 type UndoLastMessageResult struct {
 	TurnID            string
@@ -67,42 +61,34 @@ type UndoLastMessageResult struct {
 	Input             model.Content
 }
 
-// ListEvents returns a page of active ADK events and their unpaginated total.
+// ListEvents returns all active ADK events in conversation order.
 // It waits for any active turn so callers never observe an incomplete ledger.
-func (s *Store) ListEvents(ctx context.Context, id string, params ListEventsParams) ([]model.Event, int64, error) {
+func (s *Store) ListEvents(ctx context.Context, id string) ([]model.Event, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	id, err := normalizeSessionID(id)
 	if err != nil {
-		return nil, 0, err
-	}
-	params, err = normalizeEventListParams(params)
-	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	unlock, err := s.LockRun(ctx, id)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	defer unlock()
 	if _, err := s.GetSession(ctx, id); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	var total int64
-	if err := s.db.GetContext(ctx, &total, s.queries.countEvents, id); err != nil {
-		return nil, 0, fmt.Errorf("store: count events for %q: %w", id, err)
-	}
 	persisted := make([]sessionevent.Event, 0)
-	if err := s.db.SelectContext(ctx, &persisted, s.queries.listEvents, id, params.Limit, params.Offset); err != nil {
-		return nil, 0, fmt.Errorf("store: list events for %q: %w", id, err)
+	if err := s.db.SelectContext(ctx, &persisted, s.queries.listEvents, id); err != nil {
+		return nil, fmt.Errorf("store: list events for %q: %w", id, err)
 	}
 	events := make([]model.Event, len(persisted))
 	for index := range persisted {
 		events[index] = persisted[index].ToModel()
 	}
-	return events, total, nil
+	return events, nil
 }
 
 // UndoLastMessage deletes the most recent active user turn. It returns an
@@ -165,20 +151,4 @@ func (s *Store) UndoLastMessage(ctx context.Context, id string) (UndoLastMessage
 		DeletedEventCount: deleted,
 		Input:             userEvent.ToModel().Content,
 	}, nil
-}
-
-func normalizeEventListParams(params ListEventsParams) (ListEventsParams, error) {
-	if params.Limit < 0 {
-		return ListEventsParams{}, errors.New("store: event list limit must not be negative")
-	}
-	if params.Offset < 0 {
-		return ListEventsParams{}, errors.New("store: event list offset must not be negative")
-	}
-	if params.Limit == 0 {
-		params.Limit = defaultListLimit
-	}
-	if params.Limit > maxListLimit {
-		params.Limit = maxListLimit
-	}
-	return params, nil
 }

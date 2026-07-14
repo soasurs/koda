@@ -15,7 +15,6 @@ import (
 	"time"
 
 	adkskill "github.com/soasurs/adk/skill"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
@@ -246,7 +245,7 @@ func TestIntegrationServeRestartPreservesSessions(t *testing.T) {
 
 	client, cancel, done := start()
 	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
-		Workdir: proto.String(t.TempDir()), ProviderId: proto.String("openai-responses"), ModelId: proto.String("gpt-5.6"),
+		Workdir: new(t.TempDir()), ProviderId: new("openai-responses"), ModelId: new("gpt-5.6"),
 	}.Build())
 	if err != nil {
 		t.Fatalf("CreateSession() error = %v", err)
@@ -263,7 +262,7 @@ func TestIntegrationServeRestartPreservesSessions(t *testing.T) {
 			t.Errorf("second serve error = %v", err)
 		}
 	}()
-	got, err := client.GetSession(t.Context(), v1.GetSessionRequest_builder{SessionId: proto.String(created.GetSession().GetId())}.Build())
+	got, err := client.GetSession(t.Context(), v1.GetSessionRequest_builder{SessionId: new(created.GetSession().GetId())}.Build())
 	if err != nil || got.GetSession().GetId() != created.GetSession().GetId() {
 		t.Fatalf("GetSession(after restart) = %+v, %v", got, err)
 	}

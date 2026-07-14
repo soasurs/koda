@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/provider"
@@ -96,9 +95,9 @@ func (h *Handler) ListModels(ctx context.Context, request *v1.ListModelsRequest)
 		return nil, h.providerFailure(ctx, "list models", err, slog.String("provider_id", providerID))
 	}
 	return v1.ListModelsResponse_builder{
-		ProviderId:  proto.String(providerID),
+		ProviderId:  new(providerID),
 		Models:      modelsToProto(catalog.Models),
-		RefreshedAt: proto.Int64(unixMilli(catalog.RefreshedAt)),
+		RefreshedAt: new(unixMilli(catalog.RefreshedAt)),
 	}.Build(), nil
 }
 
@@ -126,9 +125,9 @@ func (h *Handler) RefreshModels(ctx context.Context, request *v1.RefreshModelsRe
 		slog.Duration("duration", time.Since(startedAt)),
 	)
 	return v1.RefreshModelsResponse_builder{
-		ProviderId:  proto.String(providerID),
+		ProviderId:  new(providerID),
 		Models:      modelsToProto(catalog.Models),
-		RefreshedAt: proto.Int64(unixMilli(catalog.RefreshedAt)),
+		RefreshedAt: new(unixMilli(catalog.RefreshedAt)),
 	}.Build(), nil
 }
 
@@ -175,13 +174,13 @@ func providerIDFromRequest(id string) (string, error) {
 
 func providerToProto(p provider.Provider) *v1.Provider {
 	return v1.Provider_builder{
-		Id:         proto.String(p.ID),
-		Name:       proto.String(p.Name),
+		Id:         new(p.ID),
+		Name:       new(p.Name),
 		Type:       providerTypeToProto(p.Type).Enum(),
-		BaseUrl:    proto.String(p.BaseURL),
-		Configured: proto.Bool(p.Configured()),
-		Builtin:    proto.Bool(p.Builtin()),
-		Enabled:    proto.Bool(p.Enabled),
+		BaseUrl:    new(p.BaseURL),
+		Configured: new(p.Configured()),
+		Builtin:    new(p.Builtin()),
+		Enabled:    new(p.Enabled),
 	}.Build()
 }
 
@@ -206,10 +205,10 @@ func modelsToProto(models []provider.Model) []*v1.Model {
 	result := make([]*v1.Model, len(models))
 	for i, model := range models {
 		result[i] = v1.Model_builder{
-			Id:                     proto.String(model.ID),
-			Name:                   proto.String(model.Name),
+			Id:                     new(model.ID),
+			Name:                   new(model.Name),
 			ReasoningEfforts:       slices.Clone(model.ReasoningEfforts),
-			DefaultReasoningEffort: proto.String(model.DefaultReasoningEffort),
+			DefaultReasoningEffort: new(model.DefaultReasoningEffort),
 		}.Build()
 	}
 	return result

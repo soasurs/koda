@@ -6,21 +6,20 @@ import (
 
 	"github.com/soasurs/adk/model"
 	"github.com/soasurs/adk/tool"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/tools"
 )
 
 func TestInputFromProtoPreservesMultimodalOrder(t *testing.T) {
-	textPart := v1.Part_builder{Text: proto.String("describe this")}.Build()
+	textPart := v1.Part_builder{Text: new("describe this")}.Build()
 	imageDataPart := v1.Part_builder{Image: v1.Image_builder{
 		Data:     []byte("image-bytes"),
-		MimeType: proto.String("image/png"),
+		MimeType: new("image/png"),
 		Detail:   v1.ImageDetail_IMAGE_DETAIL_HIGH.Enum(),
 	}.Build()}.Build()
 	imageURLPart := v1.Part_builder{Image: v1.Image_builder{
-		Url:    proto.String("https://example.com/diagram.png"),
+		Url:    new("https://example.com/diagram.png"),
 		Detail: v1.ImageDetail_IMAGE_DETAIL_LOW.Enum(),
 	}.Build()}.Build()
 	input, err := inputFromProto(v1.Input_builder{Parts: []*v1.Part{textPart, imageDataPart, imageURLPart}}.Build())
@@ -47,11 +46,11 @@ func TestInputFromProtoPreservesMultimodalOrder(t *testing.T) {
 
 func TestInputFromProtoRejectsInvalidImages(t *testing.T) {
 	makeImageData := func(data []byte, mimeType string) *v1.Input {
-		img := v1.Image_builder{Data: data, MimeType: proto.String(mimeType)}.Build()
+		img := v1.Image_builder{Data: data, MimeType: new(mimeType)}.Build()
 		return v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Image: img}.Build()}}.Build()
 	}
 	makeImageURL := func(url string) *v1.Input {
-		img := v1.Image_builder{Url: proto.String(url)}.Build()
+		img := v1.Image_builder{Url: new(url)}.Build()
 		return v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Image: img}.Build()}}.Build()
 	}
 	tests := []struct {

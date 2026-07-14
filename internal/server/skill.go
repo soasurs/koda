@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	adkskill "github.com/soasurs/adk/skill"
 	v1 "github.com/soasurs/koda/gen/koda/v1"
@@ -21,8 +20,8 @@ func (h *Handler) ListSkills(ctx context.Context, _ *v1.ListSkillsRequest) (*v1.
 	result := make([]*v1.SkillSummary, len(skills))
 	for index, skill := range skills {
 		result[index] = v1.SkillSummary_builder{
-			Name:        proto.String(skill.Name),
-			Description: proto.String(skill.Description),
+			Name:        new(skill.Name),
+			Description: new(skill.Description),
 		}.Build()
 	}
 	return v1.ListSkillsResponse_builder{Skills: result}.Build(), nil
@@ -50,13 +49,13 @@ func (h *Handler) GetSkill(ctx context.Context, request *v1.GetSkillRequest) (*v
 
 func skillToProto(skill adkskill.Skill) *v1.Skill {
 	return v1.Skill_builder{
-		Name:          proto.String(skill.Name),
-		Description:   proto.String(skill.Description),
-		License:       proto.String(skill.License),
-		Compatibility: proto.String(skill.Compatibility),
+		Name:          new(skill.Name),
+		Description:   new(skill.Description),
+		License:       new(skill.License),
+		Compatibility: new(skill.Compatibility),
 		Metadata:      skill.Metadata,
 		AllowedTools:  skill.AllowedTools,
-		Instructions:  proto.String(skill.Instructions),
+		Instructions:  new(skill.Instructions),
 		Resources:     skill.Resources,
 	}.Build()
 }

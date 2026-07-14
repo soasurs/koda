@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 )
@@ -17,7 +16,7 @@ func TestApprovalBrokerResolvesAndCleansUp(t *testing.T) {
 	resolved := make(chan bool, 1)
 	published := make(chan *v1.ToolApproval, 1)
 	go func() {
-		approved, err := broker.Await(t.Context(), v1.ToolApproval_builder{Id: proto.String("approval-1")}.Build(), func(approval *v1.ToolApproval) error {
+		approved, err := broker.Await(t.Context(), v1.ToolApproval_builder{Id: new("approval-1")}.Build(), func(approval *v1.ToolApproval) error {
 			published <- approval
 			return nil
 		})
@@ -58,7 +57,7 @@ func TestApprovalBrokerCancelsPendingApproval(t *testing.T) {
 	published := make(chan struct{}, 1)
 	done := make(chan error, 1)
 	go func() {
-		_, err := broker.Await(ctx, v1.ToolApproval_builder{Id: proto.String("approval-1")}.Build(), func(*v1.ToolApproval) error {
+		_, err := broker.Await(ctx, v1.ToolApproval_builder{Id: new("approval-1")}.Build(), func(*v1.ToolApproval) error {
 			published <- struct{}{}
 			return nil
 		})
@@ -87,7 +86,7 @@ func TestResolveToolApprovalHandler(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	done := make(chan error, 1)
 	go func() {
-		_, err := handler.approvals.Await(t.Context(), v1.ToolApproval_builder{Id: proto.String("approval-1")}.Build(), func(*v1.ToolApproval) error { return nil })
+		_, err := handler.approvals.Await(t.Context(), v1.ToolApproval_builder{Id: new("approval-1")}.Build(), func(*v1.ToolApproval) error { return nil })
 		done <- err
 	}()
 	for deadline := time.Now().Add(time.Second); ; {
@@ -102,13 +101,13 @@ func TestResolveToolApprovalHandler(t *testing.T) {
 		}
 		time.Sleep(time.Millisecond)
 	}
-	if _, err := client.ResolveToolApproval(t.Context(), v1.ResolveToolApprovalRequest_builder{ApprovalId: proto.String("approval-1"), Approved: proto.Bool(false)}.Build()); err != nil {
+	if _, err := client.ResolveToolApproval(t.Context(), v1.ResolveToolApprovalRequest_builder{ApprovalId: new("approval-1"), Approved: new(false)}.Build()); err != nil {
 		t.Fatalf("ResolveToolApproval() error = %v", err)
 	}
 	if err := <-done; err != nil {
 		t.Fatalf("Await() error = %v", err)
 	}
-	if _, err := client.ResolveToolApproval(t.Context(), v1.ResolveToolApprovalRequest_builder{ApprovalId: proto.String("approval-1")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
+	if _, err := client.ResolveToolApproval(t.Context(), v1.ResolveToolApprovalRequest_builder{ApprovalId: new("approval-1")}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("ResolveToolApproval(expired) code = %v, want not_found; error = %v", connect.CodeOf(err), err)
 	}
 }
@@ -117,7 +116,7 @@ func TestResolveToolApprovalMapsExpiredContext(t *testing.T) {
 	client, _, _ := newTestService(t, staticDiscoverer{})
 	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
 	defer cancel()
-	_, err := client.ResolveToolApproval(ctx, v1.ResolveToolApprovalRequest_builder{ApprovalId: proto.String("approval-1")}.Build())
+	_, err := client.ResolveToolApproval(ctx, v1.ResolveToolApprovalRequest_builder{ApprovalId: new("approval-1")}.Build())
 	if connect.CodeOf(err) != connect.CodeDeadlineExceeded {
 		t.Fatalf("ResolveToolApproval() code = %v, want deadline_exceeded; error = %v", connect.CodeOf(err), err)
 	}
@@ -125,7 +124,7 @@ func TestResolveToolApprovalMapsExpiredContext(t *testing.T) {
 
 func TestApprovalBrokerRejectsInvalidAndDuplicateRequests(t *testing.T) {
 	broker := NewApprovalBroker()
-	if _, err := broker.Await(nil, v1.ToolApproval_builder{Id: proto.String("approval-1")}.Build(), func(*v1.ToolApproval) error { return nil }); err == nil {
+	if _, err := broker.Await(nil, v1.ToolApproval_builder{Id: new("approval-1")}.Build(), func(*v1.ToolApproval) error { return nil }); err == nil {
 		t.Fatal("Await(nil context) error = nil")
 	}
 	if _, err := broker.Await(t.Context(), nil, func(*v1.ToolApproval) error { return nil }); err == nil {
@@ -134,7 +133,7 @@ func TestApprovalBrokerRejectsInvalidAndDuplicateRequests(t *testing.T) {
 	if _, err := broker.Await(t.Context(), v1.ToolApproval_builder{}.Build(), func(*v1.ToolApproval) error { return nil }); err == nil {
 		t.Fatal("Await(empty ID) error = nil")
 	}
-	if _, err := broker.Await(t.Context(), v1.ToolApproval_builder{Id: proto.String("approval-1")}.Build(), nil); err == nil {
+	if _, err := broker.Await(t.Context(), v1.ToolApproval_builder{Id: new("approval-1")}.Build(), nil); err == nil {
 		t.Fatal("Await(nil publish) error = nil")
 	}
 	if err := broker.Resolve(" ", true); err == nil {
@@ -146,7 +145,7 @@ func TestApprovalBrokerRejectsInvalidAndDuplicateRequests(t *testing.T) {
 	published := make(chan struct{}, 1)
 	done := make(chan error, 1)
 	go func() {
-		_, err := broker.Await(ctx, v1.ToolApproval_builder{Id: proto.String("approval-1")}.Build(), func(*v1.ToolApproval) error {
+		_, err := broker.Await(ctx, v1.ToolApproval_builder{Id: new("approval-1")}.Build(), func(*v1.ToolApproval) error {
 			published <- struct{}{}
 			return nil
 		})
@@ -157,7 +156,7 @@ func TestApprovalBrokerRejectsInvalidAndDuplicateRequests(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("Await() did not publish")
 	}
-	if _, err := broker.Await(t.Context(), v1.ToolApproval_builder{Id: proto.String("approval-1")}.Build(), func(*v1.ToolApproval) error { return nil }); err == nil {
+	if _, err := broker.Await(t.Context(), v1.ToolApproval_builder{Id: new("approval-1")}.Build(), func(*v1.ToolApproval) error { return nil }); err == nil {
 		t.Fatal("Await(duplicate ID) error = nil")
 	}
 	cancel()
@@ -166,7 +165,7 @@ func TestApprovalBrokerRejectsInvalidAndDuplicateRequests(t *testing.T) {
 	}
 
 	publishErr := errors.New("stream closed")
-	if _, err := broker.Await(t.Context(), v1.ToolApproval_builder{Id: proto.String("approval-2")}.Build(), func(*v1.ToolApproval) error { return publishErr }); !errors.Is(err, publishErr) {
+	if _, err := broker.Await(t.Context(), v1.ToolApproval_builder{Id: new("approval-2")}.Build(), func(*v1.ToolApproval) error { return publishErr }); !errors.Is(err, publishErr) {
 		t.Fatalf("Await(publish error) error = %v, want %v", err, publishErr)
 	}
 	if err := broker.Resolve("approval-2", true); !errors.Is(err, ErrApprovalNotFound) {
