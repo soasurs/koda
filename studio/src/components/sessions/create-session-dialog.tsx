@@ -109,8 +109,8 @@ export function CreateSessionDialog({
               onClick={() => setShowDirectoryPicker(true)}
               type="button"
             >
-              <FolderSearch className="size-4 shrink-0 text-neutral-500" />
-              <span className={workdir ? 'truncate' : 'text-neutral-600'}>
+              <FolderSearch className="size-4 shrink-0 text-muted-foreground" />
+              <span className={workdir ? 'truncate' : 'text-muted-foreground'}>
                 {workdir || 'Choose a local directory'}
               </span>
             </button>

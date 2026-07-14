@@ -55,13 +55,13 @@ export function AppShell() {
       value={{ collapsed: sidebarCollapsed, setCollapsed: setSidebarCollapsed }}
     >
       <div
-        className={`grid h-svh grid-cols-1 overflow-hidden bg-neutral-950 text-neutral-100 ${sidebarCollapsed ? '' : 'md:grid-cols-[17rem_minmax(0,1fr)]'}`}
+        className={`grid h-svh grid-cols-1 overflow-hidden bg-background text-foreground ${sidebarCollapsed ? '' : 'md:grid-cols-[17rem_minmax(0,1fr)]'}`}
       >
         <aside
-          className={`hidden h-svh border-r border-neutral-800/80 bg-neutral-950 ${sidebarCollapsed ? '' : 'md:flex md:flex-col'}`}
+          className={`hidden h-svh border-r border-border bg-background ${sidebarCollapsed ? '' : 'md:flex md:flex-col'}`}
         >
-          <div className="flex h-12 items-center gap-2 border-b border-neutral-800/80 px-4">
-            <div className="flex size-7 items-center justify-center rounded-md bg-neutral-100 text-neutral-950">
+          <div className="flex h-12 items-center gap-2 border-b border-border px-4">
+            <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Bot className="size-4" aria-hidden="true" />
             </div>
             <span className="text-sm font-semibold tracking-tight">
@@ -93,17 +93,17 @@ export function AppShell() {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
-            <p className="px-2.5 pb-2 text-[11px] font-medium uppercase tracking-wider text-neutral-600">
+            <p className="px-2.5 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               Projects
             </p>
             {sessionsQuery.isPending ? (
-              <LoaderCircle className="mx-auto mt-4 size-4 animate-spin text-neutral-600" />
+              <LoaderCircle className="mx-auto mt-4 size-4 animate-spin text-muted-foreground" />
             ) : sessionsQuery.isError ? (
               <p className="px-2.5 text-xs leading-5 text-red-400">
                 {errorMessage(sessionsQuery.error)}
               </p>
             ) : sessionsQuery.data.length === 0 ? (
-              <p className="px-2.5 text-xs leading-5 text-neutral-600">
+              <p className="px-2.5 text-xs leading-5 text-muted-foreground">
                 No sessions yet
               </p>
             ) : (
@@ -112,20 +112,20 @@ export function AppShell() {
                   <div className="relative" key={group.path}>
                     <details className="group/project" open>
                       <summary
-                        className="flex min-w-0 cursor-pointer list-none items-center gap-2 rounded-md py-2 pl-2.5 pr-16 text-xs font-medium text-neutral-400 transition-colors hover:bg-neutral-900 hover:text-neutral-200 [&::-webkit-details-marker]:hidden"
+                        className="flex min-w-0 cursor-pointer list-none items-center gap-2 rounded-md py-2 pl-2.5 pr-16 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&::-webkit-details-marker]:hidden"
                         title={group.path}
                       >
                         <ChevronRight className="size-3 shrink-0 transition-transform group-open/project:rotate-90" />
                         <Folder className="size-3.5 shrink-0" />
                         <span className="truncate">{group.name}</span>
                       </summary>
-                      <div className="ml-4 space-y-0.5 border-l border-neutral-800 pl-2">
+                      <div className="ml-4 space-y-0.5 border-l border-border pl-2">
                         {group.sessions?.map((session) => (
                           <Link
                             activeProps={{
-                              className: 'bg-neutral-900 text-neutral-100',
+                              className: 'bg-accent text-accent-foreground',
                             }}
-                            className="flex min-w-0 items-center gap-2 rounded-md px-2.5 py-2 text-sm text-neutral-500 hover:bg-neutral-900 hover:text-neutral-200"
+                            className="flex min-w-0 items-center gap-2 rounded-md px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                             key={session.id}
                             params={{ sessionId: session.id }}
                             to="/sessions/$sessionId"
@@ -139,7 +139,7 @@ export function AppShell() {
                       </div>
                     </details>
                     <div className="absolute right-1.5 top-1 flex items-center gap-0.5">
-                      <span className="px-1 text-[10px] text-neutral-600">
+                      <span className="px-1 text-[10px] text-muted-foreground">
                         {group.sessions?.length}
                       </span>
                       <button
@@ -158,7 +158,7 @@ export function AppShell() {
             )}
           </div>
 
-          <div className="flex items-center justify-between border-t border-neutral-800/80 px-4 py-3">
+          <div className="flex items-center justify-between border-t border-border px-4 py-3">
             <ThemeToggle />
             <Link
               aria-label="Settings"
@@ -172,7 +172,7 @@ export function AppShell() {
 
         <main className="flex min-h-0 min-w-0 flex-col overflow-hidden">
           {!sidebarCollapsed && (
-            <header className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-800/80 px-4 md:hidden">
+            <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4 md:hidden">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold">Koda Studio</span>
               </div>

@@ -3,7 +3,7 @@ import { SidebarExpandButton } from '@/components/layout/sidebar-expand-button'
 
 export function SessionHeader({ session }: { session: Session }) {
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-neutral-800 px-4 sm:px-6">
+    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border px-4 sm:px-6">
       <SidebarExpandButton />
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-sm font-medium">
