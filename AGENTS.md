@@ -18,6 +18,7 @@ gen/koda/v1/         generated Protobuf and Connect bindings
 internal/server/     transport handlers and Proto/domain conversion
 internal/agent/      ADK agent construction, caching, prompts, Run context
 internal/provider/   provider registry, model catalogs, discovery
+internal/mcp/        process-wide MCP transports, connections, tool policy
 internal/store/      SQLite session metadata and ADK history integration
 internal/tools/      workspace-aware coding tools
 internal/permission/ session permission types and policy
@@ -50,6 +51,9 @@ their own domain types or ADK types.
 - Directory browsing is a service-scoped, read-only capability used before
   session creation. It may expose directory names and paths, but must never
   return file contents or mutate the filesystem.
+- MCP servers are process-scoped startup capabilities loaded from `koda.yaml`.
+  Their fixed startup catalog is exposed through the API and Studio; tools are
+  namespaced by server ID before being passed to providers.
 
 When a public contract, command, or user-visible behavior changes, update both
 READMEs in the same change.
@@ -96,6 +100,9 @@ READMEs in the same change.
   classification.
 - Build agents additionally receive file creation/writing, Hashline editing,
   and general `run_shell`.
+- MCP servers marked `read_only` are available to Plan and Build agents without
+  per-call approval. Other MCP tools are Build-only and require approval for
+  every call.
 - Disable user ripgrep configuration so tool behavior is determined by Koda's
   arguments.
 - Cancel the full process group for timed-out Build shell commands.

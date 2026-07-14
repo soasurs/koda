@@ -46,7 +46,7 @@ export const ApprovalCard = memo(function ApprovalCard({
             </div>
             <div className="space-y-2 px-3 py-2.5">
               {tool.detail ? (
-                <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs leading-5 text-neutral-400">
+                <pre className="overflow-x-auto whitespace-pre-wrap wrap-break-word font-mono text-xs leading-5 text-neutral-400">
                   {tool.detail}
                 </pre>
               ) : (

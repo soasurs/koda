@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -612,4 +615,159 @@ func callToolError(t *testing.T, candidate tool.Tool, input any) {
 	if !errors.As(err, &handledError) {
 		t.Fatalf("%s.Run() error = %v, want handled error", candidate.Definition().Name, err)
 	}
+}
+
+func newTestWebFetchTool(t *testing.T) tool.Tool {
+	t.Helper()
+	tools, err := NewReadOnly(Config{Workdir: t.TempDir()})
+	if err != nil {
+		t.Fatalf("NewReadOnly() error = %v", err)
+	}
+	return toolByName(t, tools, "web_fetch")
+}
+
+func TestValidateFetchURL(t *testing.T) {
+	tests := []struct {
+		name   string
+		rawURL string
+		ok     bool
+	}{
+		{name: "https url", rawURL: "https://example.com", ok: true},
+		{name: "http url", rawURL: "http://example.com/path?query=1", ok: true},
+		{name: "ftp scheme rejected", rawURL: "ftp://example.com/file"},
+		{name: "file scheme rejected", rawURL: "file:///etc/passwd"},
+		{name: "no host", rawURL: "https://"},
+		{name: "loopback ipv4", rawURL: "http://127.0.0.1:8080/api"},
+		{name: "loopback ipv6", rawURL: "http://[::1]:8080/api"},
+		{name: "private ipv4 10.x", rawURL: "http://10.0.0.1/api"},
+		{name: "private ipv4 172.16.x", rawURL: "http://172.16.0.1/api"},
+		{name: "private ipv4 192.168.x", rawURL: "http://192.168.1.1/api"},
+		{name: "link local", rawURL: "http://169.254.1.1/api"},
+		{name: "localhost", rawURL: "http://localhost:3000/api"},
+		{name: "localhost with uppercase", rawURL: "http://LOCALHOST/api"},
+		{name: "dot local", rawURL: "http://internal.local/api"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u, err := url.Parse(tt.rawURL)
+			if err != nil {
+				t.Fatalf("url.Parse() error = %v", err)
+			}
+			err = validateFetchURL(u, false)
+			if tt.ok && err != nil {
+				t.Fatalf("validateFetchURL() error = %v, want nil", err)
+			}
+			if !tt.ok && err == nil {
+				t.Fatal("validateFetchURL() error = nil, want error")
+			}
+		})
+	}
+}
+
+func TestWebFetchEmptyURL(t *testing.T) {
+	webFetch := newTestWebFetchTool(t)
+	callToolError(t, webFetch, webFetchInput{URL: ""})
+	callToolError(t, webFetch, webFetchInput{URL: "   "})
+}
+
+func TestWebFetchRestrictedURL(t *testing.T) {
+	webFetch := newTestWebFetchTool(t)
+	callToolError(t, webFetch, webFetchInput{URL: "http://127.0.0.1/api"})
+	callToolError(t, webFetch, webFetchInput{URL: "http://localhost/test"})
+	callToolError(t, webFetch, webFetchInput{URL: "file:///etc/passwd"})
+}
+
+func TestWebFetchSuccess(t *testing.T) {
+	testAllowLoopback = true
+	defer func() { testAllowLoopback = false }()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept") == "" {
+			t.Error("Accept header is missing")
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("hello world"))
+	}))
+	defer server.Close()
+
+	webFetch := newTestWebFetchTool(t)
+	var output webFetchOutput
+	runTool(t, webFetch, webFetchInput{URL: server.URL + "/api"}, &output)
+
+	if output.StatusCode != http.StatusOK {
+		t.Fatalf("status_code = %d, want %d", output.StatusCode, http.StatusOK)
+	}
+	if output.Content != "hello world" {
+		t.Fatalf("content = %q, want %q", output.Content, "hello world")
+	}
+	if output.URL != server.URL+"/api" {
+		t.Fatalf("url = %q, want %q", output.URL, server.URL+"/api")
+	}
+}
+
+func TestWebFetchMarkdownAcceptHeader(t *testing.T) {
+	testAllowLoopback = true
+	defer func() { testAllowLoopback = false }()
+	var acceptHeader string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		acceptHeader = r.Header.Get("Accept")
+		w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	webFetch := newTestWebFetchTool(t)
+	runTool(t, webFetch, webFetchInput{URL: server.URL}, &webFetchOutput{})
+
+	if !strings.HasPrefix(acceptHeader, "text/markdown") {
+		t.Fatalf("Accept header = %q, want text/markdown prefix", acceptHeader)
+	}
+}
+
+func TestWebFetchTruncation(t *testing.T) {
+	testAllowLoopback = true
+	defer func() { testAllowLoopback = false }()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(strings.Repeat("a", 1000)))
+	}))
+	defer server.Close()
+
+	webFetch := newTestWebFetchTool(t)
+	var output webFetchOutput
+	runTool(t, webFetch, webFetchInput{URL: server.URL, MaxChars: 10}, &output)
+
+	if output.Truncated != true {
+		t.Fatal("truncated = false, want true")
+	}
+	if len(output.Content) != 10 {
+		t.Fatalf("len(content) = %d, want 10", len(output.Content))
+	}
+}
+
+func TestWebFetchNoTruncation(t *testing.T) {
+	testAllowLoopback = true
+	defer func() { testAllowLoopback = false }()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("short"))
+	}))
+	defer server.Close()
+
+	webFetch := newTestWebFetchTool(t)
+	var output webFetchOutput
+	runTool(t, webFetch, webFetchInput{URL: server.URL}, &output)
+
+	if output.Truncated {
+		t.Fatal("truncated = true, want false")
+	}
+}
+
+func TestWebFetchRedirectToRestricted(t *testing.T) {
+	testAllowLoopback = true
+	defer func() { testAllowLoopback = false }()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://127.0.0.1/restricted", http.StatusFound)
+	}))
+	defer server.Close()
+
+	webFetch := newTestWebFetchTool(t)
+	callToolError(t, webFetch, webFetchInput{URL: server.URL + "/redirect"})
 }

@@ -48,6 +48,12 @@ const (
 	KodaServiceListSkillsProcedure = "/koda.v1.KodaService/ListSkills"
 	// KodaServiceGetSkillProcedure is the fully-qualified name of the KodaService's GetSkill RPC.
 	KodaServiceGetSkillProcedure = "/koda.v1.KodaService/GetSkill"
+	// KodaServiceListMCPServersProcedure is the fully-qualified name of the KodaService's
+	// ListMCPServers RPC.
+	KodaServiceListMCPServersProcedure = "/koda.v1.KodaService/ListMCPServers"
+	// KodaServiceGetMCPServerProcedure is the fully-qualified name of the KodaService's GetMCPServer
+	// RPC.
+	KodaServiceGetMCPServerProcedure = "/koda.v1.KodaService/GetMCPServer"
 	// KodaServiceCreateSessionProcedure is the fully-qualified name of the KodaService's CreateSession
 	// RPC.
 	KodaServiceCreateSessionProcedure = "/koda.v1.KodaService/CreateSession"
@@ -98,6 +104,10 @@ type KodaServiceClient interface {
 	ListSkills(context.Context, *v1.ListSkillsRequest) (*v1.ListSkillsResponse, error)
 	// GetSkill returns the complete loaded definition of one Agent Skill.
 	GetSkill(context.Context, *v1.GetSkillRequest) (*v1.GetSkillResponse, error)
+	// ListMCPServers returns MCP servers connected when Koda started.
+	ListMCPServers(context.Context, *v1.ListMCPServersRequest) (*v1.ListMCPServersResponse, error)
+	// GetMCPServer returns one connected MCP server and its tool catalog.
+	GetMCPServer(context.Context, *v1.GetMCPServerRequest) (*v1.GetMCPServerResponse, error)
 	// CreateSession creates a new coding session.
 	CreateSession(context.Context, *v1.CreateSessionRequest) (*v1.CreateSessionResponse, error)
 	// GetSession returns one coding session.
@@ -169,6 +179,18 @@ func NewKodaServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+KodaServiceGetSkillProcedure,
 			connect.WithSchema(kodaServiceMethods.ByName("GetSkill")),
+			connect.WithClientOptions(opts...),
+		),
+		listMCPServers: connect.NewClient[v1.ListMCPServersRequest, v1.ListMCPServersResponse](
+			httpClient,
+			baseURL+KodaServiceListMCPServersProcedure,
+			connect.WithSchema(kodaServiceMethods.ByName("ListMCPServers")),
+			connect.WithClientOptions(opts...),
+		),
+		getMCPServer: connect.NewClient[v1.GetMCPServerRequest, v1.GetMCPServerResponse](
+			httpClient,
+			baseURL+KodaServiceGetMCPServerProcedure,
+			connect.WithSchema(kodaServiceMethods.ByName("GetMCPServer")),
 			connect.WithClientOptions(opts...),
 		),
 		createSession: connect.NewClient[v1.CreateSessionRequest, v1.CreateSessionResponse](
@@ -254,6 +276,8 @@ type kodaServiceClient struct {
 	listDirectories       *connect.Client[v1.ListDirectoriesRequest, v1.ListDirectoriesResponse]
 	listSkills            *connect.Client[v1.ListSkillsRequest, v1.ListSkillsResponse]
 	getSkill              *connect.Client[v1.GetSkillRequest, v1.GetSkillResponse]
+	listMCPServers        *connect.Client[v1.ListMCPServersRequest, v1.ListMCPServersResponse]
+	getMCPServer          *connect.Client[v1.GetMCPServerRequest, v1.GetMCPServerResponse]
 	createSession         *connect.Client[v1.CreateSessionRequest, v1.CreateSessionResponse]
 	getSession            *connect.Client[v1.GetSessionRequest, v1.GetSessionResponse]
 	listSessions          *connect.Client[v1.ListSessionsRequest, v1.ListSessionsResponse]
@@ -312,6 +336,24 @@ func (c *kodaServiceClient) ListSkills(ctx context.Context, req *v1.ListSkillsRe
 // GetSkill calls koda.v1.KodaService.GetSkill.
 func (c *kodaServiceClient) GetSkill(ctx context.Context, req *v1.GetSkillRequest) (*v1.GetSkillResponse, error) {
 	response, err := c.getSkill.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// ListMCPServers calls koda.v1.KodaService.ListMCPServers.
+func (c *kodaServiceClient) ListMCPServers(ctx context.Context, req *v1.ListMCPServersRequest) (*v1.ListMCPServersResponse, error) {
+	response, err := c.listMCPServers.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// GetMCPServer calls koda.v1.KodaService.GetMCPServer.
+func (c *kodaServiceClient) GetMCPServer(ctx context.Context, req *v1.GetMCPServerRequest) (*v1.GetMCPServerResponse, error) {
+	response, err := c.getMCPServer.CallUnary(ctx, connect.NewRequest(req))
 	if response != nil {
 		return response.Msg, err
 	}
@@ -441,6 +483,10 @@ type KodaServiceHandler interface {
 	ListSkills(context.Context, *v1.ListSkillsRequest) (*v1.ListSkillsResponse, error)
 	// GetSkill returns the complete loaded definition of one Agent Skill.
 	GetSkill(context.Context, *v1.GetSkillRequest) (*v1.GetSkillResponse, error)
+	// ListMCPServers returns MCP servers connected when Koda started.
+	ListMCPServers(context.Context, *v1.ListMCPServersRequest) (*v1.ListMCPServersResponse, error)
+	// GetMCPServer returns one connected MCP server and its tool catalog.
+	GetMCPServer(context.Context, *v1.GetMCPServerRequest) (*v1.GetMCPServerResponse, error)
 	// CreateSession creates a new coding session.
 	CreateSession(context.Context, *v1.CreateSessionRequest) (*v1.CreateSessionResponse, error)
 	// GetSession returns one coding session.
@@ -508,6 +554,18 @@ func NewKodaServiceHandler(svc KodaServiceHandler, opts ...connect.HandlerOption
 		KodaServiceGetSkillProcedure,
 		svc.GetSkill,
 		connect.WithSchema(kodaServiceMethods.ByName("GetSkill")),
+		connect.WithHandlerOptions(opts...),
+	)
+	kodaServiceListMCPServersHandler := connect.NewUnaryHandlerSimple(
+		KodaServiceListMCPServersProcedure,
+		svc.ListMCPServers,
+		connect.WithSchema(kodaServiceMethods.ByName("ListMCPServers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	kodaServiceGetMCPServerHandler := connect.NewUnaryHandlerSimple(
+		KodaServiceGetMCPServerProcedure,
+		svc.GetMCPServer,
+		connect.WithSchema(kodaServiceMethods.ByName("GetMCPServer")),
 		connect.WithHandlerOptions(opts...),
 	)
 	kodaServiceCreateSessionHandler := connect.NewUnaryHandlerSimple(
@@ -596,6 +654,10 @@ func NewKodaServiceHandler(svc KodaServiceHandler, opts ...connect.HandlerOption
 			kodaServiceListSkillsHandler.ServeHTTP(w, r)
 		case KodaServiceGetSkillProcedure:
 			kodaServiceGetSkillHandler.ServeHTTP(w, r)
+		case KodaServiceListMCPServersProcedure:
+			kodaServiceListMCPServersHandler.ServeHTTP(w, r)
+		case KodaServiceGetMCPServerProcedure:
+			kodaServiceGetMCPServerHandler.ServeHTTP(w, r)
 		case KodaServiceCreateSessionProcedure:
 			kodaServiceCreateSessionHandler.ServeHTTP(w, r)
 		case KodaServiceGetSessionProcedure:
@@ -651,6 +713,14 @@ func (UnimplementedKodaServiceHandler) ListSkills(context.Context, *v1.ListSkill
 
 func (UnimplementedKodaServiceHandler) GetSkill(context.Context, *v1.GetSkillRequest) (*v1.GetSkillResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.GetSkill is not implemented"))
+}
+
+func (UnimplementedKodaServiceHandler) ListMCPServers(context.Context, *v1.ListMCPServersRequest) (*v1.ListMCPServersResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.ListMCPServers is not implemented"))
+}
+
+func (UnimplementedKodaServiceHandler) GetMCPServer(context.Context, *v1.GetMCPServerRequest) (*v1.GetMCPServerResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.GetMCPServer is not implemented"))
 }
 
 func (UnimplementedKodaServiceHandler) CreateSession(context.Context, *v1.CreateSessionRequest) (*v1.CreateSessionResponse, error) {

@@ -193,7 +193,7 @@ func TestIntegrationProviderRefreshPersistsWithoutLeakingCredential(t *testing.T
 		t.Fatalf("store.Open() error = %v", err)
 	}
 	defer sessionStore.Close()
-	handler, err := NewHandler(registry, catalog, sessionStore, nil, nil)
+	handler, err := NewHandler(registry, catalog, sessionStore, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
@@ -373,7 +373,7 @@ func startIntegrationService(t *testing.T, registryPath, databasePath, upstreamU
 	if err != nil {
 		t.Fatalf("store.Open() error = %v", err)
 	}
-	handler, err := NewHandler(registry, catalog, sessionStore, nil, nil)
+	handler, err := NewHandler(registry, catalog, sessionStore, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}

@@ -266,11 +266,15 @@ func (s service) readOnlyTools() ([]tool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
+	webFetch, err := s.newWebFetchTool()
+	if err != nil {
+		return nil, err
+	}
 	askQuestions, err := s.newAskQuestionsTool()
 	if err != nil {
 		return nil, err
 	}
-	return []tool.Tool{readFile, listDirectory, searchText, findFiles, askQuestions}, nil
+	return []tool.Tool{readFile, listDirectory, searchText, findFiles, webFetch, askQuestions}, nil
 }
 
 type toolCallContextKey struct{}

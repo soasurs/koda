@@ -54,6 +54,12 @@ func TestRunInteractionsPublishAndResolveApproval(t *testing.T) {
 	}
 }
 
+func TestApprovalKindToProtoIncludesMCP(t *testing.T) {
+	if got := approvalKindToProto(permission.KindMCP); got != v1.ToolApprovalKind_TOOL_APPROVAL_KIND_MCP {
+		t.Fatalf("approvalKindToProto(KindMCP) = %v", got)
+	}
+}
+
 func TestRunInteractionsTranslateRejectionAndQuestions(t *testing.T) {
 	_, _, handler := newTestService(t, staticDiscoverer{})
 	frames := make(chan *v1.RunResponse, 2)

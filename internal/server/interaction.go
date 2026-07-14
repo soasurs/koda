@@ -228,6 +228,8 @@ func approvalKindToProto(kind permission.Kind) v1.ToolApprovalKind {
 		return v1.ToolApprovalKind_TOOL_APPROVAL_KIND_FILE_WRITE
 	case permission.KindShell:
 		return v1.ToolApprovalKind_TOOL_APPROVAL_KIND_SHELL
+	case permission.KindMCP:
+		return v1.ToolApprovalKind_TOOL_APPROVAL_KIND_MCP
 	default:
 		return v1.ToolApprovalKind_TOOL_APPROVAL_KIND_UNSPECIFIED
 	}

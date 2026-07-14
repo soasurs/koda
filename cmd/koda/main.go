@@ -23,6 +23,7 @@ import (
 
 	kodaconfig "github.com/soasurs/koda/internal/config"
 	"github.com/soasurs/koda/internal/logging"
+	kodamcp "github.com/soasurs/koda/internal/mcp"
 	"github.com/soasurs/koda/internal/provider"
 	kodaserver "github.com/soasurs/koda/internal/server"
 	kodaskills "github.com/soasurs/koda/internal/skills"
@@ -42,6 +43,7 @@ type dependencies struct {
 	openRegistry func() (*provider.Registry, error)
 	openStore    func(context.Context) (*store.Store, error)
 	loadSkills   func(*slog.Logger) (*adkskill.Catalog, error)
+	openMCP      func(context.Context, kodaconfig.MCPConfig, *slog.Logger) (*kodamcp.Manager, error)
 	listen       func(network, address string) (net.Listener, error)
 	openBrowser  func(string) error
 }
@@ -51,6 +53,7 @@ var productionDependencies = dependencies{
 	openRegistry: provider.OpenDefault,
 	openStore:    store.OpenDefault,
 	loadSkills:   kodaskills.LoadDefault,
+	openMCP:      kodamcp.Open,
 	listen:       net.Listen,
 	openBrowser:  openBrowser,
 }
@@ -166,6 +169,18 @@ func runServer(ctx context.Context, config serveConfig, stdout, stderr io.Writer
 			skillCatalog = nil
 		}
 	}
+	var mcpManager *kodamcp.Manager
+	if dependencies.openMCP != nil {
+		mcpManager, err = dependencies.openMCP(ctx, fileConfig.MCP, logger)
+		if err != nil {
+			return fmt.Errorf("open MCP servers: %w", err)
+		}
+		defer func() {
+			if err := mcpManager.Close(); err != nil {
+				logger.WarnContext(ctx, "MCP shutdown failed", "error", err)
+			}
+		}()
+	}
 	sessionStore, err := dependencies.openStore(ctx)
 	if err != nil {
 		return fmt.Errorf("open session store: %w", err)
@@ -175,7 +190,7 @@ func runServer(ctx context.Context, config serveConfig, stdout, stderr io.Writer
 			logger.WarnContext(ctx, "session store close failed", "error", err)
 		}
 	}()
-	handler, err := kodaserver.NewHandler(registry, catalog, sessionStore, skillCatalog, logger)
+	handler, err := kodaserver.NewHandler(registry, catalog, sessionStore, skillCatalog, mcpManager, logger)
 	if err != nil {
 		return fmt.Errorf("create service handler: %w", err)
 	}
