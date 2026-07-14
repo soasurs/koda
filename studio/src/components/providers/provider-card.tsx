@@ -84,19 +84,19 @@ export function ProviderCard({
     <article
       className={`relative overflow-hidden rounded-lg border px-4 py-3.5 ${
         provider.enabled === false
-          ? 'border-neutral-800 bg-neutral-900/20 opacity-60'
+          ? 'border-border bg-muted/20 opacity-60'
           : provider.configured
             ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-950 dark:bg-emerald-950/10'
-            : 'border-neutral-800 bg-neutral-900/20'
+            : 'border-border bg-muted/20'
       }`}
     >
       <div
         className={`absolute inset-y-0 left-0 w-0.5 ${
           provider.enabled === false
-            ? 'bg-neutral-700'
+            ? 'bg-muted-foreground'
             : provider.configured
               ? 'bg-emerald-500'
-              : 'bg-neutral-700'
+              : 'bg-muted-foreground'
         }`}
       />
       <div className="flex items-center gap-1">
@@ -107,13 +107,13 @@ export function ProviderCard({
           type="button"
         >
           <ChevronDown
-            className={`size-3.5 shrink-0 text-neutral-600 transition-transform ${expanded ? '' : '-rotate-90'}`}
+            className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${expanded ? '' : '-rotate-90'}`}
           />
           <div
             className={`flex size-8 shrink-0 items-center justify-center rounded-md border ${
               provider.configured
                 ? 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-400'
-                : 'border-neutral-800 bg-neutral-900 text-neutral-600'
+                : 'border-border bg-muted text-muted-foreground'
             }`}
           >
             <Server className="size-3.5" />
@@ -123,7 +123,7 @@ export function ProviderCard({
               <h2 className="truncate text-sm font-medium">{provider.name}</h2>
               {provider.builtin && <span className="badge">Built in</span>}
             </div>
-            <p className="mt-0.5 truncate text-xs text-neutral-500">
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
               {providerTypeLabels[provider.type]}
               {provider.baseUrl ? ` · ${provider.baseUrl}` : ''}
               {' · '}
@@ -138,12 +138,12 @@ export function ProviderCard({
             className={`inline-flex items-center gap-1.5 text-xs font-medium ${
               provider.configured
                 ? 'text-emerald-700 dark:text-emerald-400'
-                : 'text-neutral-600'
+                : 'text-muted-foreground'
             }`}
           >
             <span
               className={`size-1.5 rounded-full ${
-                provider.configured ? 'bg-emerald-500' : 'bg-neutral-600'
+                provider.configured ? 'bg-emerald-500' : 'bg-muted-foreground'
               }`}
             />
             {provider.configured ? 'Ready' : 'Not configured'}
@@ -160,7 +160,7 @@ export function ProviderCard({
               }
               type="checkbox"
             />
-            <span className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-neutral-700 bg-neutral-800/60 transition-colors after:absolute after:start-[3px] after:size-4 after:rounded-full after:bg-neutral-500 after:transition-transform peer-checked:border-emerald-700 peer-checked:bg-emerald-900/60 peer-checked:after:translate-x-[15px] peer-checked:after:bg-emerald-400 peer-disabled:cursor-not-allowed peer-disabled:opacity-50" />
+            <span className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-border bg-muted transition-colors after:absolute after:inset-s-0.75 after:size-4 after:rounded-full after:bg-muted-foreground after:transition-transform peer-checked:border-emerald-700 peer-checked:bg-emerald-900/60 peer-checked:after:translate-x-3.75 peer-checked:after:bg-emerald-400 peer-disabled:cursor-not-allowed peer-disabled:opacity-50" />
           </label>
           <button
             aria-label={`Refresh ${provider.name} models`}
@@ -197,9 +197,9 @@ export function ProviderCard({
       </div>
 
       {expanded && (
-        <div className="ml-6 mt-3 border-t border-neutral-800/80 pt-3">
+        <div className="ml-6 mt-3 border-t border-border/80 pt-3">
           <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-xs font-medium text-neutral-400">Models</p>
+            <p className="text-xs font-medium text-muted-foreground">Models</p>
             <button
               className="button-secondary px-2 py-1 text-xs"
               disabled={modelsQuery.isPending || modelsQuery.isError}
@@ -212,34 +212,34 @@ export function ProviderCard({
           </div>
           {modelsQuery.isPending ? (
             <div className="flex h-16 items-center justify-center">
-              <LoaderCircle className="size-4 animate-spin text-neutral-600" />
+              <LoaderCircle className="size-4 animate-spin text-muted-foreground" />
             </div>
           ) : modelsQuery.isError ? (
             <p className="error-box">{errorMessage(modelsQuery.error)}</p>
           ) : modelsQuery.data.models.length === 0 ? (
-            <p className="py-4 text-center text-xs text-neutral-600">
+            <p className="py-4 text-center text-xs text-muted-foreground">
               No models available
             </p>
           ) : (
-            <div className="divide-y divide-neutral-800/70 rounded-md border border-neutral-800/80">
+            <div className="divide-y divide-border/70 rounded-md border border-border/80">
               {modelsQuery.data.models.map((model) => (
                 <div
                   className="flex items-center gap-3 px-3 py-2 text-xs"
                   key={model.id}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-neutral-300">
+                    <p className="truncate font-medium text-foreground">
                       {model.name || model.id}
                     </p>
                     {model.name && model.name !== model.id && (
-                      <p className="mt-0.5 truncate font-mono text-[11px] text-neutral-600">
+                      <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
                         {model.id}
                       </p>
                     )}
                   </div>
                   {deletingModelId === model.id ? (
                     <div className="flex shrink-0 items-center gap-1.5">
-                      <span className="text-[11px] text-neutral-500">
+                      <span className="text-[11px] text-muted-foreground">
                         Delete this model?
                       </span>
                       <button
@@ -257,7 +257,7 @@ export function ProviderCard({
                       </button>
                       <button
                         aria-label="Cancel delete"
-                        className="rounded p-0.5 text-neutral-500 hover:bg-neutral-900 hover:text-neutral-300"
+                        className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                         onClick={() => setDeletingModelId(null)}
                         type="button"
                       >
@@ -267,13 +267,13 @@ export function ProviderCard({
                   ) : (
                     <>
                       {model.reasoningEfforts.length > 0 && (
-                        <span className="text-[11px] text-neutral-600">
+                        <span className="text-[11px] text-muted-foreground">
                           Reasoning: {model.reasoningEfforts.join(', ')}
                         </span>
                       )}
                       <button
                         aria-label={`Edit ${model.id}`}
-                        className="shrink-0 rounded p-1 text-neutral-600 hover:bg-neutral-900 hover:text-neutral-300"
+                        className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                         onClick={() => setEditingModel(model)}
                         type="button"
                       >
@@ -281,7 +281,7 @@ export function ProviderCard({
                       </button>
                       <button
                         aria-label={`Delete ${model.id}`}
-                        className="shrink-0 rounded p-1 text-neutral-600 hover:bg-neutral-900 hover:text-red-400"
+                        className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-red-400"
                         onClick={() => setDeletingModelId(model.id)}
                         type="button"
                       >

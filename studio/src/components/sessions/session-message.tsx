@@ -19,11 +19,11 @@ export const ReasoningView = memo(function ReasoningView({
   if (!reasoning) return null
   return (
     <details
-      className="group/reasoning ml-9 text-xs leading-5 text-neutral-500"
+      className="group/reasoning ml-9 text-xs leading-5 text-muted-foreground"
       open={open}
     >
       <summary
-        className="flex w-fit cursor-pointer list-none items-center gap-1.5 font-medium text-neutral-600 hover:text-neutral-400"
+        className="flex w-fit cursor-pointer list-none items-center gap-1.5 font-medium text-muted-foreground hover:text-foreground"
         onClick={(event) => {
           event.preventDefault()
           setOpen((value) => !value)
@@ -32,17 +32,17 @@ export const ReasoningView = memo(function ReasoningView({
         <ChevronRight className="size-3 transition-transform group-open/reasoning:rotate-90" />
         {streaming ? 'Thinking' : 'Thought'}
         {streaming && (
-          <LoaderCircle className="size-3 animate-spin text-neutral-500" />
+          <LoaderCircle className="size-3 animate-spin text-muted-foreground" />
         )}
       </summary>
-      <div className="reasoning-markdown mt-1 min-w-0 border-l border-neutral-800 pl-3">
+      <div className="reasoning-markdown mt-1 min-w-0 border-l border-border pl-3">
         <Suspense
           fallback={<span className="whitespace-pre-wrap">{reasoning}</span>}
         >
           <MarkdownText text={reasoning} />
         </Suspense>
         {streaming && (
-          <span className="ml-1 inline-block h-3 w-1 animate-pulse bg-neutral-500 align-middle" />
+          <span className="ml-1 inline-block h-3 w-1 animate-pulse bg-muted-foreground align-middle" />
         )}
       </div>
     </details>
@@ -58,7 +58,7 @@ export const EventView = memo(function EventView({ event }: { event: Event }) {
   if (message.role === Role.USER) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-xl bg-neutral-100 px-4 py-2.5 text-sm leading-6 text-neutral-950">
+        <div className="max-w-[85%] rounded-xl bg-primary px-4 py-2.5 text-sm leading-6 text-primary-foreground">
           <Suspense
             fallback={<span className="whitespace-pre-wrap">{text}</span>}
           >
@@ -83,17 +83,17 @@ export const AssistantText = memo(function AssistantText({
 }) {
   return (
     <div className="flex gap-3">
-      <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-neutral-800 bg-neutral-900">
-        <Bot className="size-3.5 text-neutral-400" />
+      <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
+        <Bot className="size-3.5 text-muted-foreground" />
       </div>
-      <div className="markdown min-w-0 text-sm leading-6 text-neutral-300">
+      <div className="markdown min-w-0 text-sm leading-6 text-foreground">
         <Suspense
           fallback={<span className="whitespace-pre-wrap">{text}</span>}
         >
           <MarkdownText text={text} />
         </Suspense>
         {streaming && (
-          <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-neutral-500 align-middle" />
+          <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-muted-foreground align-middle" />
         )}
       </div>
     </div>

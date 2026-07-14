@@ -30,11 +30,11 @@ export const ToolGroup = memo(function ToolGroup({
 
   return (
     <details
-      className="group ml-9 rounded-lg border border-neutral-800 bg-neutral-900/30"
+      className="group ml-9 rounded-lg border border-border bg-muted/30"
       open={open}
     >
       <summary
-        className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-neutral-500 hover:text-neutral-200"
+        className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
         onClick={(event) => {
           event.preventDefault()
           setOpen((value) => !value)
@@ -46,7 +46,7 @@ export const ToolGroup = memo(function ToolGroup({
           ? `${toolCount} tool ${toolCount === 1 ? 'step' : 'steps'}`
           : 'Tools'}
       </summary>
-      <div className="divide-y divide-neutral-800 border-t border-neutral-800 px-3">
+      <div className="divide-y divide-border border-t border-border px-3">
         {message.toolCalls.map((toolCall) => (
           <ToolCallRow
             key={toolCall.id}
@@ -85,11 +85,11 @@ const ToolCallRow = memo(function ToolCallRow({
 
   const content = (
     <>
-      <Wrench className="size-3.5 shrink-0 text-neutral-500" />
-      <span className="shrink-0 font-medium text-neutral-300">{label}</span>
+      <Wrench className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="shrink-0 font-medium text-foreground">{label}</span>
       {detail && (
         <span
-          className="truncate font-mono text-[11px] text-neutral-600"
+          className="truncate font-mono text-[11px] text-muted-foreground"
           title={detail}
         >
           {detail}
@@ -101,7 +101,7 @@ const ToolCallRow = memo(function ToolCallRow({
             ? 'text-red-500'
             : response
               ? 'text-emerald-600'
-              : 'text-neutral-500'
+              : 'text-muted-foreground'
         }`}
       >
         {response ? (
@@ -116,7 +116,7 @@ const ToolCallRow = memo(function ToolCallRow({
         {status}
       </span>
       {expandable && (
-        <ChevronRight className="size-3.5 shrink-0 text-neutral-600 transition-transform group-open/tool:rotate-90" />
+        <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open/tool:rotate-90" />
       )}
     </>
   )
@@ -142,8 +142,8 @@ const ToolCallRow = memo(function ToolCallRow({
 
 function ShellOutputView({ output }: { output: ShellOutput }) {
   return (
-    <div className="mb-3 overflow-hidden rounded-md border border-neutral-800 bg-neutral-950 font-mono text-[11px]">
-      <div className="flex items-center justify-between border-b border-neutral-800 px-3 py-2 text-neutral-500">
+    <div className="mb-3 overflow-hidden rounded-md border border-border bg-background font-mono text-[11px]">
+      <div className="flex items-center justify-between border-b border-border px-3 py-2 text-muted-foreground">
         <span>Output</span>
         <span>
           Exit {output.exitCode}
@@ -153,7 +153,7 @@ function ShellOutputView({ output }: { output: ShellOutput }) {
       {output.stdout || output.stderr ? (
         <div className="max-h-72 overflow-auto p-3 leading-5">
           {output.stdout && (
-            <pre className="whitespace-pre-wrap text-neutral-400">
+            <pre className="whitespace-pre-wrap text-foreground">
               {output.stdout}
             </pre>
           )}
@@ -164,7 +164,7 @@ function ShellOutputView({ output }: { output: ShellOutput }) {
           )}
         </div>
       ) : (
-        <p className="px-3 py-2 text-neutral-600">No output</p>
+        <p className="px-3 py-2 text-muted-foreground">No output</p>
       )}
     </div>
   )
@@ -172,13 +172,13 @@ function ShellOutputView({ output }: { output: ShellOutput }) {
 
 export function FileChangesView({ changes }: { changes: FileChange[] }) {
   return (
-    <div className="mb-3 space-y-3 overflow-hidden rounded-md border border-neutral-800 bg-neutral-950">
+    <div className="mb-3 space-y-3 overflow-hidden rounded-md border border-border bg-background">
       {changes.map((change, changeIndex) => (
         <div key={`${change.path}-${changeIndex}`}>
-          <div className="flex items-center justify-between border-b border-neutral-800 px-3 py-2 font-mono text-[11px] text-neutral-400">
+          <div className="flex items-center justify-between border-b border-border px-3 py-2 font-mono text-[11px] text-muted-foreground">
             <span className="truncate">{change.path}</span>
             {change.truncated && (
-              <span className="shrink-0 text-neutral-600">Truncated</span>
+              <span className="shrink-0 text-muted-foreground">Truncated</span>
             )}
           </div>
           <div className="overflow-x-auto py-1 font-mono text-[11px] leading-5">

@@ -14,22 +14,22 @@ export function SettingsLayout({
   const itemClass = (selected: boolean) =>
     `flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition ${
       selected
-        ? 'bg-neutral-900 text-neutral-100'
-        : 'text-neutral-500 hover:bg-neutral-900/60 hover:text-neutral-200'
+        ? 'bg-accent text-accent-foreground'
+        : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
     }`
 
   return (
     <section className="mx-auto flex h-full w-full max-w-6xl flex-col px-5 pt-8 sm:px-8 sm:pt-10">
-      <div className="flex shrink-0 items-start gap-3 border-b border-neutral-800 pb-6">
+      <div className="flex shrink-0 items-start gap-3 border-b border-border pb-6">
         <SidebarExpandButton />
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-neutral-600">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Koda Studio
           </p>
           <h1 className="mt-2 text-xl font-semibold tracking-tight">
             Settings
           </h1>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-500">
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
             Inspect process-wide capabilities and configure your local Koda
             service.
           </p>

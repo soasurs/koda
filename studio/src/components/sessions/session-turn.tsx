@@ -70,7 +70,7 @@ export const SessionTurn = memo(function SessionTurn({
   const initialEditText = lastUserEvent ? eventText(lastUserEvent) : ''
 
   return (
-    <section className="space-y-6 border-b border-neutral-800/70 pb-8 last:border-b-0">
+    <section className="space-y-6 border-b border-border/70 pb-8 last:border-b-0">
       {isEditing ? (
         <InlineEditComposer
           initialText={initialEditText}
@@ -192,11 +192,11 @@ function InlineEditComposer({
   return (
     <div className="flex justify-end">
       <div className="w-full max-w-[85%] space-y-2">
-        <div className="rounded-xl border border-neutral-700 bg-neutral-900 shadow-xl focus-within:border-neutral-500">
+        <div className="rounded-xl border border-border bg-card shadow-xl focus-within:border-ring">
           <textarea
             ref={textareaRef}
             aria-label="Edit message"
-            className="max-h-48 min-h-20 w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 text-neutral-100 outline-none placeholder:text-neutral-600"
+            className="max-h-48 min-h-20 w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground"
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
               if (matchesSendShortcut(event, sendShortcut)) {
@@ -222,7 +222,7 @@ function InlineEditComposer({
             </button>
             <button
               aria-label="Send"
-              className="flex size-8 items-center justify-center rounded-md bg-neutral-200 text-neutral-950 hover:bg-neutral-300"
+              className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={!input.trim()}
               onClick={submit}
               title={`Send (${sendShortcutLabel})`}

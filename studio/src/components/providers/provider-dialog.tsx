@@ -131,7 +131,7 @@ export function ProviderDialog({
         <label className="field-label">
           API key
           <div className="relative">
-            <KeyRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-600" />
+            <KeyRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
               autoComplete="off"
               className="input pl-9"
@@ -155,7 +155,7 @@ export function ProviderDialog({
             onChange={(event) => setEnabled(event.target.checked)}
             type="checkbox"
           />
-          <span className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-neutral-700 bg-neutral-800/60 transition-colors after:absolute after:start-[3px] after:size-4 after:rounded-full after:bg-neutral-500 after:transition-transform peer-checked:border-emerald-700 peer-checked:bg-emerald-900/60 peer-checked:after:translate-x-[15px] peer-checked:after:bg-emerald-400" />
+          <span className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-border bg-muted transition-colors after:absolute after:start-[3px] after:size-4 after:rounded-full after:bg-muted-foreground after:transition-transform peer-checked:border-emerald-700 peer-checked:bg-emerald-900/60 peer-checked:after:translate-x-[15px] peer-checked:after:bg-emerald-400" />
           Enable this provider for agent generation
         </label>
 

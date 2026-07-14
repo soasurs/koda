@@ -104,14 +104,14 @@ export const SessionComposer = memo(function SessionComposer({
   }
 
   return (
-    <footer className="shrink-0 bg-linear-to-t from-neutral-950 via-neutral-950 to-transparent px-4 pb-4 pt-2 sm:px-6">
+    <footer className="shrink-0 bg-linear-to-t from-background via-background to-transparent px-4 pb-4 pt-2 sm:px-6">
       <div className="mx-auto max-w-4xl">
         {runError && <p className="error-box mb-3">{runError}</p>}
-        <div className="rounded-xl border border-neutral-700 bg-neutral-900 shadow-xl focus-within:border-neutral-500">
+        <div className="rounded-xl border border-border bg-card shadow-xl focus-within:border-ring">
           <textarea
             ref={inputRef}
             aria-label="Message"
-            className="max-h-48 min-h-20 w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 text-neutral-100 outline-none placeholder:text-neutral-600"
+            className="max-h-48 min-h-20 w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground"
             disabled={isRunning}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
@@ -132,10 +132,10 @@ export const SessionComposer = memo(function SessionComposer({
                 }
                 value={String(mode)}
               >
-                <SelectTrigger className="inline-flex h-auto w-auto items-center gap-1 whitespace-nowrap rounded-md border border-neutral-800 bg-neutral-950 py-1.5 pl-3 pr-7 text-xs font-medium text-neutral-300 hover:border-neutral-700 [&>svg]:hidden">
+                <SelectTrigger className="inline-flex h-auto w-auto items-center gap-1 whitespace-nowrap rounded-md border border-border bg-background py-1.5 pl-3 pr-7 text-xs font-medium text-foreground hover:border-border/80 [&>svg]:hidden">
                   <SelectValue />
                 </SelectTrigger>
-                <ChevronUp className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-neutral-600" />
+                <ChevronUp className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
                 <SelectContent side="top">
                   <SelectItem value={String(AgentMode.BUILD)}>
                     <span className="flex items-center gap-2">
@@ -161,17 +161,17 @@ export const SessionComposer = memo(function SessionComposer({
               {isRunning ? (
                 <button
                   aria-label="Stop"
-                  className="flex size-8 items-center justify-center rounded-md bg-neutral-100 text-neutral-950 hover:bg-neutral-200"
+                  className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={onStop}
                   type="button"
                 >
                   <CircleStop className="size-4" />
                 </button>
               ) : (
-                <div className="flex overflow-hidden rounded-md bg-neutral-200 text-neutral-950">
+                <div className="flex overflow-hidden rounded-md bg-primary text-primary-foreground">
                   <button
                     aria-label="Send"
-                    className="flex h-8 w-8 items-center justify-center bg-transparent hover:bg-neutral-300"
+                    className="flex h-8 w-8 items-center justify-center bg-transparent hover:bg-primary/90"
                     disabled={!input.trim()}
                     onClick={submit}
                     title={`Send (${sendShortcutLabel})`}
@@ -190,7 +190,7 @@ export const SessionComposer = memo(function SessionComposer({
                     <DropdownMenuTrigger asChild>
                       <button
                         aria-label="Choose send shortcut"
-                        className="flex h-8 w-5 items-center justify-center border-l border-neutral-400 bg-transparent text-neutral-600 hover:bg-neutral-300 hover:text-neutral-950"
+                        className="flex h-8 w-5 items-center justify-center border-l border-primary-foreground/30 bg-transparent text-primary-foreground/70 hover:bg-primary/90 hover:text-primary-foreground"
                         title={`Send shortcut: ${sendShortcutLabel}`}
                         type="button"
                       >
@@ -221,7 +221,7 @@ export const SessionComposer = memo(function SessionComposer({
             </div>
           </div>
         </div>
-        <p className="mt-2 text-center text-[11px] text-neutral-700">
+        <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Koda can make mistakes. Review commands and file changes.
         </p>
       </div>

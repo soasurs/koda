@@ -172,11 +172,11 @@ function SessionContent({ sessionId }: { sessionId: string }) {
 function EmptyConversation() {
   return (
     <div className="py-20 text-center">
-      <div className="mx-auto flex size-11 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900">
-        <Sparkles className="size-5 text-neutral-400" />
+      <div className="mx-auto flex size-11 items-center justify-center rounded-xl border border-border bg-muted">
+        <Sparkles className="size-5 text-muted-foreground" />
       </div>
       <h2 className="mt-4 text-sm font-medium">Ready to work</h2>
-      <p className="mt-2 text-sm text-neutral-600">
+      <p className="mt-2 text-sm text-muted-foreground">
         Ask Koda to inspect, plan, or change this workspace.
       </p>
     </div>
@@ -186,7 +186,7 @@ function EmptyConversation() {
 function CenteredLoader() {
   return (
     <div className="flex h-56 items-center justify-center">
-      <LoaderCircle className="size-5 animate-spin text-neutral-600" />
+      <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
     </div>
   )
 }

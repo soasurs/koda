@@ -20,7 +20,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const Icon = themeIcons[preference]
 
   return (
-    <label className="relative flex items-center gap-2 text-xs text-neutral-500">
+    <label className="relative flex items-center gap-2 text-xs text-muted-foreground">
       <Icon className="size-3.5 shrink-0" />
       {!compact && <span>Theme</span>}
       <Select
@@ -29,7 +29,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
       >
         <SelectTrigger
           aria-label="Theme"
-          className="h-auto border-none bg-transparent px-0 py-0 pr-4 text-xs text-neutral-500 hover:text-neutral-200 [&>svg]:size-3"
+          className="h-auto border-none bg-transparent px-0 py-0 pr-4 text-xs text-muted-foreground hover:text-foreground [&>svg]:size-3"
         >
           <SelectValue />
         </SelectTrigger>

@@ -117,7 +117,7 @@ export function SessionModelPicker({
       <button
         aria-expanded={open}
         aria-label="Session model settings"
-        className="flex h-8 max-w-56 items-center gap-1.5 rounded-md border border-neutral-800 bg-neutral-950 px-2.5 text-xs text-neutral-400 transition-colors hover:border-neutral-700 hover:text-neutral-200 disabled:opacity-40"
+        className="flex h-8 max-w-56 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs text-muted-foreground transition-colors hover:border-border/80 hover:text-foreground disabled:opacity-40"
         disabled={disabled}
         onClick={() => {
           if (!open) {
@@ -131,12 +131,14 @@ export function SessionModelPicker({
         type="button"
       >
         <span className="truncate">{displayModel}</span>
-        <span className="shrink-0 text-neutral-600">· {displayEffort}</span>
-        <ChevronUp className="size-3 shrink-0 text-neutral-600" />
+        <span className="shrink-0 text-muted-foreground">
+          · {displayEffort}
+        </span>
+        <ChevronUp className="size-3 shrink-0 text-muted-foreground" />
       </button>
 
       {open && (
-        <div className="absolute bottom-full right-0 z-20 mb-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-neutral-700 bg-neutral-950 p-4 shadow-2xl">
+        <div className="absolute bottom-full right-0 z-20 mb-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-border bg-popover p-4 shadow-2xl">
           <div className="space-y-3">
             <label className="field-label">
               Provider

@@ -36,26 +36,26 @@ export const ApprovalCard = memo(function ApprovalCard({
           <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
             Permission required
           </h3>
-          <p className="mt-1 text-sm leading-6 text-neutral-500">
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Koda wants to perform the following action.
           </p>
-          <div className="mt-3 overflow-hidden rounded-lg border border-amber-200/80 bg-white/60 dark:border-amber-900/60 dark:bg-neutral-950/50">
+          <div className="mt-3 overflow-hidden rounded-lg border border-amber-200/80 bg-white/60 dark:border-amber-900/60 dark:bg-background/50">
             <div className="flex items-center gap-2 border-b border-amber-200/70 px-3 py-2.5 text-sm dark:border-amber-900/50">
               <Wrench className="size-4 shrink-0 text-amber-600 dark:text-amber-500" />
-              <span className="font-medium text-neutral-200">{tool.label}</span>
+              <span className="font-medium text-foreground">{tool.label}</span>
             </div>
             <div className="space-y-2 px-3 py-2.5">
               {tool.detail ? (
-                <pre className="overflow-x-auto whitespace-pre-wrap wrap-break-word font-mono text-xs leading-5 text-neutral-400">
+                <pre className="overflow-x-auto whitespace-pre-wrap wrap-break-word font-mono text-xs leading-5 text-muted-foreground">
                   {tool.detail}
                 </pre>
               ) : (
-                <p className="text-xs leading-5 text-neutral-500">
+                <p className="text-xs leading-5 text-muted-foreground">
                   {approval.summary}
                 </p>
               )}
               {location && (
-                <p className="flex min-w-0 items-center gap-1.5 text-[11px] text-neutral-600">
+                <p className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
                   <Folder className="size-3 shrink-0" />
                   <span className="truncate" title={location}>
                     {location}
@@ -66,7 +66,7 @@ export const ApprovalCard = memo(function ApprovalCard({
           </div>
           {approval.fileChanges.length > 0 && (
             <details className="mt-3 text-xs">
-              <summary className="cursor-pointer text-neutral-500">
+              <summary className="cursor-pointer text-muted-foreground">
                 Review proposed changes
               </summary>
               <div className="mt-2">
@@ -150,10 +150,12 @@ export const QuestionCard = memo(function QuestionCard({
         <div className="min-w-0 flex-1 space-y-5">
           {prompt.questions.map((question) => (
             <fieldset key={question.id}>
-              <legend className="text-sm font-medium text-neutral-200">
+              <legend className="text-sm font-medium text-foreground">
                 {question.header}
               </legend>
-              <p className="mt-1 text-sm text-neutral-500">{question.prompt}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {question.prompt}
+              </p>
               <div className="mt-3 space-y-2">
                 {question.options.map((option) => {
                   const selected = answers[
@@ -161,7 +163,7 @@ export const QuestionCard = memo(function QuestionCard({
                   ]?.selectedOptionIds.includes(option.id)
                   return (
                     <label
-                      className="flex cursor-pointer gap-3 rounded-lg border border-neutral-800 p-3 hover:bg-neutral-900/70"
+                      className="flex cursor-pointer gap-3 rounded-lg border border-border p-3 hover:bg-accent"
                       key={option.id}
                     >
                       <input
@@ -191,10 +193,10 @@ export const QuestionCard = memo(function QuestionCard({
                         type={question.multiple ? 'checkbox' : 'radio'}
                       />
                       <span>
-                        <span className="block text-sm text-neutral-300">
+                        <span className="block text-sm text-foreground">
                           {option.label}
                         </span>
-                        <span className="mt-0.5 block text-xs text-neutral-600">
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
                           {option.description}
                         </span>
                       </span>

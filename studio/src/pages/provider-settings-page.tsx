@@ -30,7 +30,7 @@ export function ProviderSettingsPage() {
         <div className="flex items-start justify-between gap-5">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">Providers</h2>
-            <p className="mt-1 max-w-xl text-sm leading-6 text-neutral-500">
+            <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
               Configure credentials and compatible endpoints stored by your
               local Koda service.
             </p>
@@ -47,7 +47,7 @@ export function ProviderSettingsPage() {
 
         {providersQuery.isPending ? (
           <div className="flex h-56 items-center justify-center">
-            <LoaderCircle className="size-5 animate-spin text-neutral-600" />
+            <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : providersQuery.isError ? (
           <p className="error-box mt-6">{errorMessage(providersQuery.error)}</p>
