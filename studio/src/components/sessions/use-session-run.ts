@@ -164,6 +164,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
       setApprovals([])
       setQuestionPrompts([])
       abortRef.current = null
+      inputRef.current?.focus()
     }
   }
 

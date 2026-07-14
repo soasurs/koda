@@ -1,17 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  Check,
   ChevronDown,
   LoaderCircle,
+  Pencil,
   Plus,
   RefreshCw,
   Server,
   Trash2,
+  X,
 } from 'lucide-react'
 import { useState } from 'react'
 
 import { AddModelDialog } from '@/components/providers/add-model-dialog'
+import { EditModelDialog } from '@/components/providers/edit-model-dialog'
 import { providerTypeLabels } from '@/components/providers/provider-types'
-import type { Provider } from '@/gen/koda/v1/service_pb'
+import type { Model, Provider } from '@/gen/koda/v1/service_pb'
 import { kodaClient } from '@/lib/connect'
 import { errorMessage, kodaKeys } from '@/lib/koda'
 
@@ -27,6 +31,8 @@ export function ProviderCard({
   const queryClient = useQueryClient()
   const [expanded, setExpanded] = useState(false)
   const [showAddModel, setShowAddModel] = useState(false)
+  const [editingModel, setEditingModel] = useState<Model | null>(null)
+  const [deletingModelId, setDeletingModelId] = useState<string | null>(null)
   const modelsQuery = useQuery({
     queryKey: kodaKeys.models(provider.id),
     queryFn: () => kodaClient.listModels({ providerId: provider.id }),
@@ -48,6 +54,30 @@ export function ProviderCard({
       }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: kodaKeys.providers }),
+  })
+  const deleteModelMutation = useMutation({
+    mutationFn: () => {
+      const remaining = (modelsQuery.data?.models ?? []).filter(
+        (m) => m.id !== deletingModelId,
+      )
+      return kodaClient.saveProvider({
+        id: provider.id,
+        name: provider.name,
+        type: provider.type,
+        baseUrl: provider.baseUrl,
+        modelOverrides: remaining,
+        enabled: provider.enabled !== false,
+      })
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: kodaKeys.providers }),
+        queryClient.invalidateQueries({
+          queryKey: kodaKeys.models(provider.id),
+        }),
+      ])
+      setDeletingModelId(null)
+    },
   })
 
   return (
@@ -207,10 +237,57 @@ export function ProviderCard({
                       </p>
                     )}
                   </div>
-                  {model.reasoningEfforts.length > 0 && (
-                    <span className="text-[11px] text-neutral-600">
-                      Reasoning: {model.reasoningEfforts.join(', ')}
-                    </span>
+                  {deletingModelId === model.id ? (
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span className="text-[11px] text-neutral-500">
+                        Delete this model?
+                      </span>
+                      <button
+                        aria-label="Confirm delete"
+                        className="rounded p-0.5 text-red-400 hover:bg-red-950/50"
+                        disabled={deleteModelMutation.isPending}
+                        onClick={() => deleteModelMutation.mutate()}
+                        type="button"
+                      >
+                        {deleteModelMutation.isPending ? (
+                          <LoaderCircle className="size-3 animate-spin" />
+                        ) : (
+                          <Check className="size-3" />
+                        )}
+                      </button>
+                      <button
+                        aria-label="Cancel delete"
+                        className="rounded p-0.5 text-neutral-500 hover:bg-neutral-900 hover:text-neutral-300"
+                        onClick={() => setDeletingModelId(null)}
+                        type="button"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {model.reasoningEfforts.length > 0 && (
+                        <span className="text-[11px] text-neutral-600">
+                          Reasoning: {model.reasoningEfforts.join(', ')}
+                        </span>
+                      )}
+                      <button
+                        aria-label={`Edit ${model.id}`}
+                        className="shrink-0 rounded p-1 text-neutral-600 hover:bg-neutral-900 hover:text-neutral-300"
+                        onClick={() => setEditingModel(model)}
+                        type="button"
+                      >
+                        <Pencil className="size-3" />
+                      </button>
+                      <button
+                        aria-label={`Delete ${model.id}`}
+                        className="shrink-0 rounded p-1 text-neutral-600 hover:bg-neutral-900 hover:text-red-400"
+                        onClick={() => setDeletingModelId(model.id)}
+                        type="button"
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    </>
                   )}
                 </div>
               ))}
@@ -221,6 +298,11 @@ export function ProviderCard({
               {errorMessage(refreshMutation.error)}
             </p>
           )}
+          {deleteModelMutation.isError && (
+            <p className="mt-2 text-xs text-red-400">
+              {errorMessage(deleteModelMutation.error)}
+            </p>
+          )}
         </div>
       )}
 
@@ -228,6 +310,15 @@ export function ProviderCard({
         <AddModelDialog
           models={modelsQuery.data.models}
           onClose={() => setShowAddModel(false)}
+          provider={provider}
+        />
+      )}
+
+      {editingModel && modelsQuery.data && (
+        <EditModelDialog
+          model={editingModel}
+          models={modelsQuery.data.models}
+          onClose={() => setEditingModel(null)}
           provider={provider}
         />
       )}
