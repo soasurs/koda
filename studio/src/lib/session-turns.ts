@@ -92,12 +92,32 @@ const toolLabels: Record<string, string> = {
   write_file: 'Write file',
 }
 
-export function toolCallPresentation(toolCall: ToolCall) {
-  return toolPresentation(toolCall.name, toolCall.argumentsJson)
+const toolPastLabels: Record<string, string> = {
+  ask_questions: 'Asked questions',
+  create_file: 'Created file',
+  edit_file: 'Edited file',
+  find_files: 'Found files',
+  list_directory: 'Listed directory',
+  read_file: 'Read file',
+  run_shell: 'Ran command',
+  search_text: 'Searched text',
+  write_file: 'Wrote file',
 }
 
-export function toolPresentation(name: string, argumentsJson: string) {
+export function toolCallPresentation(
+  toolCall: ToolCall,
+  past = false,
+): { label: string; detail: string } {
+  return toolPresentation(toolCall.name, toolCall.argumentsJson, past)
+}
+
+export function toolPresentation(
+  name: string,
+  argumentsJson: string,
+  past = false,
+) {
   const label =
+    (past ? toolPastLabels[name] : toolLabels[name]) ??
     toolLabels[name] ??
     name
       .split(/[_-]+/)
