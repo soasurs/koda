@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/soasurs/adk/tool"
 
+	"github.com/soasurs/koda/internal/logging"
 	"github.com/soasurs/koda/internal/permission"
 )
 
@@ -303,7 +305,12 @@ func (s service) newEditFileTool() (tool.Tool, error) {
 }
 
 func (s service) editFile(ctx context.Context, input editFileInput) (editFileOutput, error) {
-	plan, err := s.planEdit(input)
+	s.logger.DebugContext(ctx, "edit_file called",
+		"path", input.Path,
+		"expected_revision", input.ExpectedRevision,
+		"edit_count", len(input.Edits),
+	)
+	plan, err := s.planEdit(ctx, input)
 	if err != nil {
 		return editFileOutput{}, handled(err)
 	}
@@ -313,11 +320,19 @@ func (s service) editFile(ctx context.Context, input editFileInput) (editFileOut
 	approvedPath := plan.path
 	// A confirmation can block for an arbitrary duration. Rebuilding the plan
 	// verifies both the revision and all anchors immediately before writing.
-	plan, err = s.planEdit(input)
+	plan, err = s.planEdit(ctx, input)
 	if err != nil {
+		s.logger.DebugContext(ctx, "edit_file re-plan failed after approval",
+			"path", input.Path,
+			"error", err,
+		)
 		return editFileOutput{}, handled(err)
 	}
 	if !sameTarget(approvedPath, plan.path) {
+		s.logger.DebugContext(ctx, "edit_file path changed after approval, re-authorizing",
+			"approved", approvedPath.display,
+			"current", plan.path.display,
+		)
 		if err := s.authorize(ctx, permission.KindFileWrite, plan.path.scope, absoluteTargets(plan.path), "edit "+plan.path.display, plan.changes); err != nil {
 			return editFileOutput{}, err
 		}
@@ -326,6 +341,10 @@ func (s service) editFile(ctx context.Context, input editFileInput) (editFileOut
 		return editFileOutput{}, handled(err)
 	}
 	anchors, _, _ := plan.after.anchoredLines(plan.changedStart, plan.changedEnd, defaultMaxChars)
+	s.logger.DebugContext(ctx, "edit_file written",
+		"path", plan.path.display,
+		"revision", plan.after.revision(),
+	)
 	return editFileOutput{
 		Path:        plan.path.display,
 		Revision:    plan.after.revision(),
@@ -350,7 +369,7 @@ type plannedEdit struct {
 	content   []string
 }
 
-func (s service) planEdit(input editFileInput) (editPlan, error) {
+func (s service) planEdit(ctx context.Context, input editFileInput) (editPlan, error) {
 	if strings.TrimSpace(input.ExpectedRevision) == "" {
 		return editPlan{}, errors.New("expected_revision must not be empty")
 	}
@@ -369,9 +388,14 @@ func (s service) planEdit(input editFileInput) (editPlan, error) {
 		return editPlan{}, err
 	}
 	if input.ExpectedRevision != before.revision() {
+		s.logger.DebugContext(ctx, "edit_file stale revision",
+			"path", path.display,
+			"expected", input.ExpectedRevision,
+			"actual", before.revision(),
+		)
 		return editPlan{}, errors.New("stale file revision; read the file again before editing it")
 	}
-	planned, err := validateEdits(before, input.Edits)
+	planned, err := validateEdits(before, input.Edits, s.logger, ctx)
 	if err != nil {
 		return editPlan{}, err
 	}
@@ -388,7 +412,8 @@ func (s service) planEdit(input editFileInput) (editPlan, error) {
 	}, nil
 }
 
-func validateEdits(file textFile, edits []editOperation) ([]plannedEdit, error) {
+func validateEdits(file textFile, edits []editOperation, logger *slog.Logger, ctx context.Context) ([]plannedEdit, error) {
+	logger = logging.OrDiscard(logger)
 	planned := make([]plannedEdit, 0, len(edits))
 	for _, edit := range edits {
 		operation := strings.ToLower(strings.TrimSpace(edit.Operation))
@@ -400,12 +425,22 @@ func validateEdits(file textFile, edits []editOperation) ([]plannedEdit, error) 
 			}
 			start, err := file.verifyAnchor(edit.Start)
 			if err != nil {
+				logger.DebugContext(ctx, "edit_file anchor verification failed",
+					"anchor", edit.Start,
+					"operation", operation,
+					"error", err,
+				)
 				return nil, err
 			}
 			end := start
 			if strings.TrimSpace(edit.End) != "" {
 				end, err = file.verifyAnchor(edit.End)
 				if err != nil {
+					logger.DebugContext(ctx, "edit_file anchor verification failed",
+						"anchor", edit.End,
+						"operation", operation,
+						"error", err,
+					)
 					return nil, err
 				}
 			}
@@ -422,6 +457,11 @@ func validateEdits(file textFile, edits []editOperation) ([]plannedEdit, error) 
 			}
 			anchor, err := file.verifyAnchor(edit.Anchor)
 			if err != nil {
+				logger.DebugContext(ctx, "edit_file anchor verification failed",
+					"anchor", edit.Anchor,
+					"operation", operation,
+					"error", err,
+				)
 				return nil, err
 			}
 			plannedEdit.start, plannedEdit.end = anchor, anchor
@@ -440,6 +480,12 @@ func validateEdits(file textFile, edits []editOperation) ([]plannedEdit, error) 
 	})
 	for index := 1; index < len(planned); index++ {
 		if planned[index].start <= planned[index-1].end {
+			logger.DebugContext(ctx, "edit_file overlapping edits",
+				"edit_a_start", planned[index-1].start,
+				"edit_a_end", planned[index-1].end,
+				"edit_b_start", planned[index].start,
+				"edit_b_end", planned[index].end,
+			)
 			return nil, errors.New("hashline edits must not overlap or target the same anchor")
 		}
 	}

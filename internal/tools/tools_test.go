@@ -437,11 +437,55 @@ func TestEditFileSupportsInsertDeleteAndRejectsOverlap(t *testing.T) {
 	if _, err := validateEdits(file, []editOperation{
 		{Operation: "delete", Start: first},
 		{Operation: "replace", Start: first, Content: "ONE"},
-	}); err == nil {
+	}, nil, t.Context()); err == nil {
 		t.Fatal("validateEdits(overlap) error = nil")
 	}
-	if _, err := validateEdits(file, []editOperation{{Operation: "unknown", Start: first}}); err == nil {
+	if _, err := validateEdits(file, []editOperation{{Operation: "unknown", Start: first}}, nil, t.Context()); err == nil {
 		t.Fatal("validateEdits(unknown) error = nil")
+	}
+}
+
+func TestHashlineFindBestMatchAndContentHash(t *testing.T) {
+	file := parseTextFile("alpha\nbeta\nalpha\ngamma\n")
+
+	anchor1, err := file.anchor(1)
+	if err != nil {
+		t.Fatalf("anchor(1) error = %v", err)
+	}
+	line, err := file.verifyAnchor(anchor1)
+	if err != nil {
+		t.Fatalf("verifyAnchor(exact) error = %v", err)
+	}
+	if line != 1 {
+		t.Fatalf("verifyAnchor(exact) = %d, want 1", line)
+	}
+
+	anchor3, err := file.anchor(3)
+	if err != nil {
+		t.Fatalf("anchor(3) error = %v", err)
+	}
+	line, err = file.verifyAnchor(anchor3)
+	if err != nil {
+		t.Fatalf("verifyAnchor(duplicate) error = %v", err)
+	}
+	if line != 3 {
+		t.Fatalf("verifyAnchor(duplicate) = %d, want 3", line)
+	}
+
+	edited := parseTextFile("// header\nalpha\nbeta\nalpha\ngamma\n")
+	line, err = edited.verifyAnchor(anchor1)
+	if err != nil {
+		t.Fatalf("verifyAnchor(shifted) error = %v", err)
+	}
+	if line != 2 {
+		t.Fatalf("verifyAnchor(shifted) = %d, want 2", line)
+	}
+
+	missing, _ := file.anchor(4)
+	truncated := parseTextFile("// header\nalpha\nbeta\nalpha\n")
+	_, err = truncated.verifyAnchor(missing)
+	if err == nil {
+		t.Fatal("verifyAnchor(truncated) error = nil, want stale anchor")
 	}
 }
 

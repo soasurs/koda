@@ -58,16 +58,13 @@ func (f textFile) anchor(line int) (string, error) {
 	if line < 1 || line > len(f.lines) {
 		return "", fmt.Errorf("line %d is out of range", line)
 	}
-	previous, next := "", ""
-	if line > 1 {
-		previous = strings.TrimSuffix(f.lines[line-2], "\r")
-	}
-	if line < len(f.lines) {
-		next = strings.TrimSuffix(f.lines[line], "\r")
-	}
-	current := strings.TrimSuffix(f.lines[line-1], "\r")
-	digest := sha256.Sum256([]byte(previous + "\x00" + current + "\x00" + next))
-	return strconv.Itoa(line) + ":" + base64.RawURLEncoding.EncodeToString(digest[:anchorHashBytes]), nil
+	return strconv.Itoa(line) + ":" + f.lineHash(line), nil
+}
+
+func (f textFile) lineHash(line int) string {
+	content := strings.TrimSuffix(f.lines[line-1], "\r")
+	digest := sha256.Sum256([]byte(content))
+	return base64.RawURLEncoding.EncodeToString(digest[:anchorHashBytes])
 }
 
 func (f textFile) anchoredLines(start, end int, maxChars int) ([]anchoredLine, bool, int) {
@@ -127,15 +124,43 @@ func (f textFile) verifyAnchor(value string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	actual, err := f.anchor(line)
+	matched, err := f.findBestMatch(line, hash)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("stale anchor %q: %w", value, err)
 	}
-	_, actualHash, _ := strings.Cut(actual, ":")
-	if hash != actualHash {
-		return 0, fmt.Errorf("stale anchor %q; current anchor is %q", value, actual)
+	return matched, nil
+}
+
+func (f textFile) findBestMatch(lineHint int, targetHash string) (int, error) {
+	var matches []int
+	for i := range f.lines {
+		if f.lineHash(i+1) == targetHash {
+			matches = append(matches, i)
+		}
 	}
-	return line, nil
+	if len(matches) == 0 {
+		return 0, fmt.Errorf("hash %q not found in file", targetHash)
+	}
+	if len(matches) == 1 {
+		return matches[0] + 1, nil
+	}
+	best := matches[0]
+	bestDist := abs(matches[0] - lineHint + 1)
+	for _, m := range matches[1:] {
+		dist := abs(m - lineHint + 1)
+		if dist < bestDist {
+			best = m
+			bestDist = dist
+		}
+	}
+	return best + 1, nil
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func splitEditContent(content string) []string {
