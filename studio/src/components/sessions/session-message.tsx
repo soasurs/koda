@@ -59,11 +59,7 @@ export const EventView = memo(function EventView({ event }: { event: Event }) {
     return (
       <div className="flex justify-end">
         <div className="max-w-[85%] rounded-xl bg-primary px-4 py-2.5 text-sm leading-6 text-primary-foreground">
-          <Suspense
-            fallback={<span className="whitespace-pre-wrap">{text}</span>}
-          >
-            <MarkdownText text={text} />
-          </Suspense>
+          <span className="whitespace-pre-wrap">{text}</span>
         </div>
       </div>
     )
