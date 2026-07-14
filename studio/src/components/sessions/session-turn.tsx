@@ -136,10 +136,7 @@ export const SessionTurn = memo(function SessionTurn({
   )
 }, areTurnPropsEqual)
 
-function areTurnPropsEqual(
-  prev: TurnProps,
-  next: TurnProps,
-): boolean {
+function areTurnPropsEqual(prev: TurnProps, next: TurnProps): boolean {
   return (
     prev.turn.id === next.turn.id &&
     prev.turn.events.length === next.turn.events.length &&

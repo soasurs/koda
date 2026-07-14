@@ -29,8 +29,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
   })
   const eventsQuery = useQuery({
     queryKey: kodaKeys.events(sessionId),
-    queryFn: async () =>
-      (await kodaClient.listEvents({ sessionId })).events,
+    queryFn: async () => (await kodaClient.listEvents({ sessionId })).events,
   })
   const sessionRun = useSessionRun(sessionId, eventsQuery.data ?? [])
   const [editingTurnId, setEditingTurnId] = useState('')

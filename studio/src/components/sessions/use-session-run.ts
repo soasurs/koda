@@ -242,12 +242,9 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
   useEffect(() => {
     runRef.current = run
   })
-  const stableRun = useCallback(
-    (input: string): void => {
-      runRef.current(input)
-    },
-    [],
-  )
+  const stableRun = useCallback((input: string): void => {
+    runRef.current(input)
+  }, [])
 
   return {
     approvals,
