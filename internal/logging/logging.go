@@ -6,14 +6,18 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
 type requestIDContextKey struct{}
 
 // New constructs a text logger writing diagnostic output to output. An empty
-// level uses info.
-func New(output io.Writer, level string) (*slog.Logger, error) {
+// level uses info. When logFile is non-empty, output is also written to the
+// file. The path supports a leading ~/ for the user home directory. Relative
+// paths are resolved relative to ~/.koda/.
+func New(output io.Writer, level string, logFile string) (*slog.Logger, error) {
 	if output == nil {
 		return nil, fmt.Errorf("logging: output must not be nil")
 	}
@@ -21,7 +25,44 @@ func New(output io.Writer, level string) (*slog.Logger, error) {
 	if err != nil {
 		return nil, err
 	}
+	if logFile != "" {
+		resolved, err := resolveLogPath(logFile)
+		if err != nil {
+			return nil, fmt.Errorf("logging: resolve log file path: %w", err)
+		}
+		file, err := openLogFile(resolved)
+		if err != nil {
+			return nil, fmt.Errorf("logging: open log file: %w", err)
+		}
+		output = io.MultiWriter(output, file)
+	}
 	return slog.New(slog.NewTextHandler(output, &slog.HandlerOptions{Level: parsed})), nil
+}
+
+func resolveLogPath(path string) (string, error) {
+	if strings.HasPrefix(path, "~"+string(filepath.Separator)) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("find home directory: %w", err)
+		}
+		return filepath.Join(home, path[2:]), nil
+	}
+	if filepath.IsAbs(path) {
+		return path, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("find home directory: %w", err)
+	}
+	return filepath.Join(home, ".koda", path), nil
+}
+
+func openLogFile(path string) (io.WriteCloser, error) {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
+	}
+	return os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 }
 
 // ParseLevel parses a supported Koda log level. An empty value uses info.

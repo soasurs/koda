@@ -29,7 +29,9 @@ type ServerConfig struct {
 
 // LogConfig configures process diagnostic logging.
 type LogConfig struct {
-	Level string `yaml:"level,omitempty"`
+	Level  string `yaml:"level,omitempty"`
+	Path   string `yaml:"path,omitempty"`
+	Output string `yaml:"output,omitempty"`
 }
 
 // DefaultPath returns the default Koda configuration path.
@@ -85,10 +87,17 @@ func Load(path string) (Config, error) {
 	}
 	result.Server.Address = strings.TrimSpace(result.Server.Address)
 	result.Log.Level = strings.ToLower(strings.TrimSpace(result.Log.Level))
+	result.Log.Path = strings.TrimSpace(result.Log.Path)
+	result.Log.Output = strings.ToLower(strings.TrimSpace(result.Log.Output))
 	switch result.Log.Level {
 	case "", "debug", "info", "warn", "error":
 	default:
 		return Config{}, fmt.Errorf("config: unsupported log level %q", result.Log.Level)
+	}
+	switch result.Log.Output {
+	case "", "all", "console", "file":
+	default:
+		return Config{}, fmt.Errorf("config: unsupported log output %q", result.Log.Output)
 	}
 	return result, nil
 }

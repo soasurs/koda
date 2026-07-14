@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -144,7 +145,8 @@ func runServer(ctx context.Context, config serveConfig, stdout, stderr io.Writer
 			return err
 		}
 	}
-	logger, err := logging.New(stderr, fileConfig.Log.Level)
+	logWriter, logFile := resolveLogOutput(stderr, fileConfig.Log)
+	logger, err := logging.New(logWriter, fileConfig.Log.Level, logFile)
 	if err != nil {
 		return err
 	}
@@ -312,6 +314,28 @@ func listenForServe(config serveConfig, listen func(network, address string) (ne
 		return nil, false, fmt.Errorf("listen on an available loopback port: %w", fallbackErr)
 	}
 	return listener, true, nil
+}
+
+func resolveLogOutput(stderr io.Writer, cfg kodaconfig.LogConfig) (io.Writer, string) {
+	switch cfg.Output {
+	case "console", "":
+		return stderr, ""
+	case "file":
+		return io.Discard, defaultLogPath(cfg.Path)
+	default:
+		return stderr, defaultLogPath(cfg.Path)
+	}
+}
+
+func defaultLogPath(path string) string {
+	if path != "" {
+		return path
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".koda", "koda.log")
 }
 
 func loopbackAddress(address string) bool {
