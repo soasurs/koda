@@ -46,6 +46,14 @@ type Config struct {
 	Logger *slog.Logger
 	// Skills contains process-level Agent Skills available to every agent.
 	Skills *adkskill.Catalog
+	// MCP contains process-wide MCP tools and their mode/approval policy.
+	MCP MCPToolCatalog
+}
+
+// MCPToolCatalog constructs mode-appropriate MCP tool slices.
+type MCPToolCatalog interface {
+	BuildTools(tools.Authorizer) []tool.Tool
+	PlanTools() []tool.Tool
 }
 
 // Factory creates ADK runners and caches immutable model, prompt, and tool
@@ -58,6 +66,8 @@ type Factory struct {
 
 	skillInstruction string
 	skillTools       []tool.Tool
+	mcpTools         []tool.Tool
+	mcpPlanTools     []tool.Tool
 
 	mu    sync.Mutex
 	cache map[cacheKey]*runner.Runner
@@ -92,6 +102,21 @@ func New(config Config) (*Factory, error) {
 	if config.Sessions == nil {
 		return nil, errors.New("agent: session service must not be nil")
 	}
+	var mcpTools, mcpPlanTools []tool.Tool
+	if config.MCP != nil {
+		mcpTools = config.MCP.BuildTools(runtimeAuthorizer{})
+		mcpPlanTools = config.MCP.PlanTools()
+	}
+	for index, value := range mcpTools {
+		if value == nil {
+			return nil, fmt.Errorf("agent: MCP tool %d must not be nil", index)
+		}
+	}
+	for index, value := range mcpPlanTools {
+		if value == nil {
+			return nil, fmt.Errorf("agent: MCP Plan tool %d must not be nil", index)
+		}
+	}
 	var skillInstruction string
 	var skillTools []tool.Tool
 	if config.Skills != nil && len(config.Skills.Skills()) > 0 {
@@ -117,6 +142,8 @@ func New(config Config) (*Factory, error) {
 		logger:           logging.OrDiscard(config.Logger),
 		skillInstruction: skillInstruction,
 		skillTools:       skillTools,
+		mcpTools:         append([]tool.Tool(nil), mcpTools...),
+		mcpPlanTools:     append([]tool.Tool(nil), mcpPlanTools...),
 		cache:            make(map[cacheKey]*runner.Runner),
 		newModel:         newProviderModel,
 	}, nil
@@ -173,7 +200,14 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 		Questioner:  runtimeQuestioner{},
 		Logger:      f.logger,
 	}
-	values, err := toolsForMode(mode, toolConfig, f.skillTools)
+	mcpTools := f.mcpTools
+	if mode == ModePlan {
+		mcpTools = f.mcpPlanTools
+	}
+	additional := make([]tool.Tool, 0, len(f.skillTools)+len(mcpTools))
+	additional = append(additional, f.skillTools...)
+	additional = append(additional, mcpTools...)
+	values, err := toolsForMode(mode, toolConfig, additional)
 	if err != nil {
 		return nil, fmt.Errorf("agent: construct tools: %w", err)
 	}

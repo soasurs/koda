@@ -2,8 +2,8 @@
 
 `koda` 是一个本地 coding agent 服务，使用 Go、Protocol Buffers、Connect RPC 和
 [`github.com/soasurs/adk`](https://github.com/soasurs/adk) 构建。它为客户端提供
-流式 agent turn、workspace 工具、操作审批、结构化提问、Provider 配置和持久化对话
-历史等运行时能力。
+流式 agent turn、workspace 与 MCP 工具、操作审批、结构化提问、Provider 配置和
+持久化对话历史等运行时能力。
 
 [English](README.md)
 
@@ -47,7 +47,7 @@ go run ./cmd/koda serve --addr 127.0.0.1:8787
 
 服务只接受 loopback 地址，并且不会打开浏览器。Koda 还会从
 `~/.koda/koda.yaml` 读取进程级配置；命令行参数优先于配置文件。配置文件可选，可配置
-服务地址和诊断日志级别：
+服务地址、诊断日志和进程级 MCP server：
 
 ```yaml
 version: 1
@@ -55,6 +55,22 @@ server:
   address: 127.0.0.1:8080
 log:
   level: info
+mcp:
+  servers:
+    - id: exa
+      name: Exa
+      transport: http
+      url: https://mcp.exa.ai/mcp
+      read_only: true
+      headers:
+        x-api-key: ${EXA_API_KEY}
+    - id: local-search
+      name: Local search
+      transport: stdio
+      command: npx
+      args: [-y, example-mcp-server]
+      env:
+        SEARCH_TOKEN: ${SEARCH_TOKEN}
 ```
 
 `--addr` 会覆盖 `server.address`。两者都未设置时，Koda 会尝试默认地址；如果
@@ -62,6 +78,22 @@ log:
 `warn` 和 `error`，默认为 `info`。所有级别的日志都是诊断信息并写入 stderr，监听
 地址仍写入 stdout。DEBUG 日志包含操作耗时、工具名称等安全的 ADK 运行时元数据，
 但不会记录 prompt、工具参数、命令输出、文件内容或凭据。
+
+Koda 在启动时连接一次 MCP server，并将发现的工具提供给所有 Build agent；显式配置
+`read_only: true` 的 server 会自动执行，也会提供给 Plan agent；其它 MCP 工具只在
+Build 模式中提供，并且每次调用都需要审批。HTTP 配置使用 MCP Streamable HTTP；
+远程 endpoint 必须使用 HTTPS，loopback server
+可以使用明文 HTTP。stdio 配置会直接启动 `command` 而不经过 shell，并可设置 `args`、
+`env` 和 `workdir`。Header、参数和环境变量值支持标准 `$NAME` 或 `${NAME}` 展开；
+引用的变量不存在时启动失败。配置的 server 无法连接，或返回无效、冲突的工具 catalog
+时，Koda 同样会启动失败，而不是静默丢失能力。模型看到的工具名采用
+`mcp__<server-id>__<tool-name>`，工具结果进入模型上下文前会受到大小限制。修改 MCP
+配置后需要重启 Koda。客户端可通过 `ListMCPServers` 和 `GetMCPServer` 查看启动时的
+连接与工具快照；Studio 的 Settings > MCP 展示相同信息。API 不会返回 HTTP header
+或 stdio 环境变量值。
+
+只有在 server 暴露的全部工具都无副作用时才能设置 `read_only: true`。stdio 配置是以
+Koda 用户权限启动的受信任本地进程；工具调用审批不会对 server 进程本身进行沙箱隔离。
 
 ## Provider 与本地数据
 
@@ -88,8 +120,9 @@ Koda 将状态保存在 `~/.koda`：
 ```
 
 Provider 配置保持独立，因为 Koda 会通过 API 更新它们，而 `koda.yaml` 是仅在启动时
-读取的用户配置。Provider/Model 选择、reasoning effort、workspace 和权限仍作为
-Session 配置保存在数据库中。Provider 文件仅允许当前用户访问。模型列表只读取本地
+读取的用户配置，其中包括进程级 MCP server。Provider/Model 选择、reasoning
+effort、workspace 和权限仍作为 Session 配置保存在数据库中。Provider 文件仅允许
+当前用户访问。模型列表只读取本地
 状态；只有客户端显式调用 `RefreshModels` 时才会访问网络。Provider 连接发生变化后，
 之前发现的模型 snapshot 会失效。
 

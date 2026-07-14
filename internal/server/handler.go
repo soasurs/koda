@@ -11,6 +11,7 @@ import (
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
 	"github.com/soasurs/koda/internal/agent"
 	"github.com/soasurs/koda/internal/logging"
+	kodamcp "github.com/soasurs/koda/internal/mcp"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
 )
@@ -26,6 +27,7 @@ type Handler struct {
 	questions    *QuestionBroker
 	agentFactory *agent.Factory
 	skills       *adkskill.Catalog
+	mcp          MCPCatalog
 	logger       *slog.Logger
 
 	newSessionID      func() (string, error)
@@ -33,9 +35,16 @@ type Handler struct {
 	titleGenerator    func(context.Context, store.Session, model.Content) (string, error)
 }
 
+// MCPCatalog exposes the process-wide MCP tools and display metadata needed by
+// the service without coupling handler tests to live MCP connections.
+type MCPCatalog interface {
+	agent.MCPToolCatalog
+	Servers() []kodamcp.Server
+}
+
 // NewHandler constructs a Handler backed by provider and skill catalogs and a
 // session store.
-func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionStore *store.Store, skillCatalog *adkskill.Catalog, logger *slog.Logger) (*Handler, error) {
+func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionStore *store.Store, skillCatalog *adkskill.Catalog, mcpCatalog MCPCatalog, logger *slog.Logger) (*Handler, error) {
 	if registry == nil {
 		return nil, fmt.Errorf("server: provider registry must not be nil")
 	}
@@ -55,6 +64,7 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 		Sessions: sessionStore.ADKSessionService(),
 		Logger:   logger,
 		Skills:   skillCatalog,
+		MCP:      mcpCatalog,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("server: construct agent factory: %w", err)
@@ -67,6 +77,7 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 		questions:      NewQuestionBroker(),
 		agentFactory:   agentFactory,
 		skills:         skillCatalog,
+		mcp:            mcpCatalog,
 		logger:         logger,
 		newSessionID:   newSessionID,
 		titleGenerator: agentFactory.GenerateTitle,

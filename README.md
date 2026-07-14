@@ -3,8 +3,8 @@
 `koda` is a local coding-agent service built with Go, Protocol Buffers,
 Connect RPC, and [`github.com/soasurs/adk`](https://github.com/soasurs/adk).
 It provides the runtime and API for clients that need streamed agent turns,
-workspace tools, approvals, questions, provider configuration, and durable
-conversation history.
+workspace and MCP tools, approvals, questions, provider configuration, and
+durable conversation history.
 
 [中文说明](README_zh-CN.md)
 
@@ -49,8 +49,8 @@ go run ./cmd/koda serve --addr 127.0.0.1:8787
 
 The server accepts loopback addresses only and never opens a browser. Koda also
 reads process-level settings from `~/.koda/koda.yaml`; command-line options take
-precedence over the file. The file is optional and can configure the server
-address and diagnostic log level:
+precedence over the file. The file is optional and can configure the server,
+diagnostic logging, and process-wide MCP servers:
 
 ```yaml
 version: 1
@@ -58,6 +58,22 @@ server:
   address: 127.0.0.1:8080
 log:
   level: info
+mcp:
+  servers:
+    - id: exa
+      name: Exa
+      transport: http
+      url: https://mcp.exa.ai/mcp
+      read_only: true
+      headers:
+        x-api-key: ${EXA_API_KEY}
+    - id: local-search
+      name: Local search
+      transport: stdio
+      command: npx
+      args: [-y, example-mcp-server]
+      env:
+        SEARCH_TOKEN: ${SEARCH_TOKEN}
 ```
 
 `--addr` overrides `server.address`. When neither is set, Koda tries the default
@@ -67,6 +83,28 @@ every level are diagnostic output written to stderr, while the listening URL
 remains on stdout. Debug logging includes safe ADK runtime metadata such as
 operation durations and tool names, but not prompts, tool arguments, command
 output, file contents, or credentials.
+
+MCP servers are connected once at startup and their discovered tools are
+available to every Build agent. Servers explicitly configured with
+`read_only: true` execute automatically and are also available to Plan agents;
+other MCP tools require per-call approval in Build mode. HTTP entries use MCP
+streamable HTTP; remote endpoints must use HTTPS, while plaintext HTTP is
+accepted for loopback servers. Stdio entries launch `command` directly without
+a shell and may also set `args`, `env`, and `workdir`. Header, argument, and
+environment values use standard `$NAME` or `${NAME}` expansion; startup fails
+when a referenced variable is missing. Koda also fails startup when a
+configured server cannot connect or returns an invalid or conflicting tool
+catalog, rather than silently dropping the capability. Model-visible tool names use
+`mcp__<server-id>__<tool-name>`, and results are limited before entering model
+context. Restart Koda after changing MCP configuration. Clients can inspect the
+connected startup snapshot through `ListMCPServers` and `GetMCPServer`; Studio
+shows the same server and tool details under Settings > MCP. Headers and stdio
+environment values are never returned by these APIs.
+
+Only set `read_only: true` when every tool exposed by that server is
+side-effect-free. A stdio entry is a trusted local process launched with the
+Koda user's permissions; tool-call approval does not sandbox the server process
+itself.
 
 ## Providers and local data
 
@@ -94,8 +132,9 @@ Koda keeps its state under `~/.koda`:
 ```
 
 Provider definitions remain separate because Koda updates them through its API,
-while `koda.yaml` is startup-only user configuration. Provider/model selection,
-reasoning effort, workspace, and permissions remain session-scoped in the
+while `koda.yaml` is startup-only user configuration, including process-wide
+MCP servers. Provider/model selection, reasoning effort, workspace, and
+permissions remain session-scoped in the
 database. The provider file is private to the current user. Model listing is
 local-only; network discovery occurs only when a client explicitly calls
 `RefreshModels`. Changing a provider connection invalidates its previously

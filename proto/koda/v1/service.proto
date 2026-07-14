@@ -20,6 +20,11 @@ service KodaService {
   // GetSkill returns the complete loaded definition of one Agent Skill.
   rpc GetSkill(GetSkillRequest) returns (GetSkillResponse);
 
+  // ListMCPServers returns MCP servers connected when Koda started.
+  rpc ListMCPServers(ListMCPServersRequest) returns (ListMCPServersResponse);
+  // GetMCPServer returns one connected MCP server and its tool catalog.
+  rpc GetMCPServer(GetMCPServerRequest) returns (GetMCPServerResponse);
+
   // CreateSession creates a new coding session.
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
   // GetSession returns one coding session.
@@ -127,12 +132,20 @@ enum ShellAccess {
   SHELL_ACCESS_UNRESTRICTED = 2;
 }
 
+// MCPTransport identifies how Koda connects to an MCP server.
+enum MCPTransport {
+  MCP_TRANSPORT_UNSPECIFIED = 0;
+  MCP_TRANSPORT_HTTP = 1;
+  MCP_TRANSPORT_STDIO = 2;
+}
+
 // ToolApprovalKind identifies the capability requested by a pending approval.
 enum ToolApprovalKind {
   TOOL_APPROVAL_KIND_UNSPECIFIED = 0;
   TOOL_APPROVAL_KIND_FILE_READ = 1;
   TOOL_APPROVAL_KIND_FILE_WRITE = 2;
   TOOL_APPROVAL_KIND_SHELL = 3;
+  TOOL_APPROVAL_KIND_MCP = 4;
 }
 
 // ToolApprovalScope identifies the widest affected location of a request.
@@ -661,6 +674,55 @@ message GetSkillRequest {
 // GetSkillResponse returns one complete loaded Agent Skill definition.
 message GetSkillResponse {
   Skill skill = 1;
+}
+
+// MCPServerSummary identifies one process-wide MCP server connected at startup.
+message MCPServerSummary {
+  string id = 1;
+  string name = 2;
+  MCPTransport transport = 3;
+  string target = 4;
+  int32 tool_count = 5;
+  // read_only allows automatic calls and exposes this server in Plan mode.
+  bool read_only = 6;
+}
+
+// MCPTool describes one MCP tool exposed according to its server policy.
+message MCPTool {
+  // name is the namespaced name visible to models.
+  string name = 1;
+  // original_name is the name declared by the MCP server.
+  string original_name = 2;
+  string description = 3;
+}
+
+// MCPServer contains one connected server and its discovered tool catalog.
+message MCPServer {
+  string id = 1;
+  string name = 2;
+  MCPTransport transport = 3;
+  string target = 4;
+  repeated MCPTool tools = 5;
+  // read_only allows automatic calls and exposes this server in Plan mode.
+  bool read_only = 6;
+}
+
+// ListMCPServersRequest requests every connected process-wide MCP server.
+message ListMCPServersRequest {}
+
+// ListMCPServersResponse returns connected MCP servers sorted by ID.
+message ListMCPServersResponse {
+  repeated MCPServerSummary servers = 1;
+}
+
+// GetMCPServerRequest identifies one connected MCP server.
+message GetMCPServerRequest {
+  string id = 1;
+}
+
+// GetMCPServerResponse returns one connected MCP server and its tools.
+message GetMCPServerResponse {
+  MCPServer server = 1;
 }
 
 // SaveProviderRequest creates or replaces a provider. An omitted API key is preserved.

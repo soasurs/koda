@@ -1,0 +1,187 @@
+import { useQuery } from '@tanstack/react-query'
+import { ChevronRight, LoaderCircle, Network, PackageOpen } from 'lucide-react'
+import { useState } from 'react'
+
+import { SettingsLayout } from '@/components/settings/settings-layout'
+import { Modal } from '@/components/ui/modal'
+import { MCPTransport, type MCPServer } from '@/gen/koda/v1/service_pb'
+import {
+  errorMessage,
+  getMCPServer,
+  kodaKeys,
+  listMCPServers,
+} from '@/lib/koda'
+
+export function MCPSettingsPage() {
+  const [selectedID, setSelectedID] = useState<string>()
+  const serversQuery = useQuery({
+    queryKey: kodaKeys.mcpServers,
+    queryFn: listMCPServers,
+  })
+  const serverQuery = useQuery({
+    queryKey: kodaKeys.mcpServer(selectedID ?? ''),
+    queryFn: () => getMCPServer(selectedID ?? ''),
+    enabled: Boolean(selectedID),
+  })
+  const selectedSummary = serversQuery.data?.find(
+    (server) => server.id === selectedID,
+  )
+
+  return (
+    <SettingsLayout active="mcp">
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">MCP servers</h2>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-neutral-500">
+          Inspect the process-wide MCP servers loaded from ~/.koda/koda.yaml.
+          Restart Koda to apply configuration changes.
+        </p>
+      </div>
+
+      {serversQuery.isPending ? (
+        <div className="flex h-56 items-center justify-center">
+          <LoaderCircle className="size-5 animate-spin text-neutral-600" />
+        </div>
+      ) : serversQuery.isError ? (
+        <p className="error-box mt-6">{errorMessage(serversQuery.error)}</p>
+      ) : serversQuery.data.length === 0 ? (
+        <div className="mt-6 rounded-lg border border-dashed border-neutral-800 px-6 py-12 text-center">
+          <PackageOpen className="mx-auto size-6 text-neutral-600" />
+          <p className="mt-3 text-sm font-medium text-neutral-300">
+            No MCP servers configured
+          </p>
+          <p className="mt-1 text-sm text-neutral-600">
+            Add mcp.servers entries to ~/.koda/koda.yaml and restart Koda.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          {serversQuery.data.map((server) => (
+            <button
+              aria-label={`Open ${server.name}`}
+              className="group flex min-h-28 items-start gap-3 rounded-lg border border-neutral-800 bg-neutral-950 p-4 text-left transition hover:border-neutral-700 hover:bg-neutral-900/60"
+              key={server.id}
+              onClick={() => setSelectedID(server.id)}
+              type="button"
+            >
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-neutral-900 text-neutral-500 group-hover:text-neutral-300">
+                <Network className="size-4" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-neutral-200">
+                  {server.name}
+                </span>
+                <span className="mt-1 block truncate text-xs text-neutral-600">
+                  {transportLabel(server.transport)} · {server.toolCount}{' '}
+                  {server.toolCount === 1 ? 'tool' : 'tools'} ·{' '}
+                  {server.readOnly ? 'Plan + Build' : 'Build with approval'}
+                </span>
+                <span className="mt-1 block truncate text-xs text-neutral-700">
+                  {server.target}
+                </span>
+              </span>
+              <ChevronRight
+                className="mt-1 size-4 shrink-0 text-neutral-700 group-hover:text-neutral-400"
+                aria-hidden="true"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {selectedID && (
+        <Modal
+          description={selectedSummary?.target}
+          onClose={() => setSelectedID(undefined)}
+          title={selectedSummary?.name ?? selectedID}
+          wide
+        >
+          <div className="min-h-40 p-5 sm:p-6">
+            {serverQuery.isPending ? (
+              <div className="flex min-h-40 items-center justify-center">
+                <LoaderCircle className="size-5 animate-spin text-neutral-600" />
+              </div>
+            ) : serverQuery.isError ? (
+              <p className="error-box">{errorMessage(serverQuery.error)}</p>
+            ) : serverQuery.data ? (
+              <MCPServerDetails server={serverQuery.data} />
+            ) : null}
+          </div>
+        </Modal>
+      )}
+    </SettingsLayout>
+  )
+}
+
+function MCPServerDetails({ server }: { server: MCPServer }) {
+  return (
+    <article className="min-w-0">
+      <dl className="grid gap-3 border-b border-neutral-800 pb-5 text-sm sm:grid-cols-2">
+        <Detail label="ID" value={server.id} />
+        <Detail label="Transport" value={transportLabel(server.transport)} />
+        <Detail
+          label="Agent modes"
+          value={server.readOnly ? 'Plan and Build' : 'Build with approval'}
+        />
+        <div className="sm:col-span-2">
+          <Detail label="Target" value={server.target} />
+        </div>
+      </dl>
+
+      <section className="mt-6">
+        <h4 className="text-xs font-medium uppercase tracking-wider text-neutral-600">
+          Tools
+        </h4>
+        {server.tools.length === 0 ? (
+          <p className="mt-3 text-sm text-neutral-600">
+            This server exposed no tools at startup.
+          </p>
+        ) : (
+          <div className="mt-3 grid gap-3">
+            {server.tools.map((tool) => (
+              <div
+                className="rounded-lg border border-neutral-800 bg-neutral-950 p-4"
+                key={tool.name}
+              >
+                <code className="break-all text-xs text-neutral-300">
+                  {tool.name}
+                </code>
+                {tool.originalName !== tool.name && (
+                  <p className="mt-1 text-xs text-neutral-700">
+                    MCP name: {tool.originalName}
+                  </p>
+                )}
+                {tool.description && (
+                  <p className="mt-2 text-sm leading-5 text-neutral-500">
+                    {tool.description}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </article>
+  )
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-medium uppercase tracking-wider text-neutral-600">
+        {label}
+      </dt>
+      <dd className="mt-1 wrap-break-word text-neutral-300">{value}</dd>
+    </div>
+  )
+}
+
+function transportLabel(transport: MCPTransport): string {
+  switch (transport) {
+    case MCPTransport.MCP_TRANSPORT_HTTP:
+      return 'HTTP'
+    case MCPTransport.MCP_TRANSPORT_STDIO:
+      return 'stdio'
+    default:
+      return 'Unknown'
+  }
+}

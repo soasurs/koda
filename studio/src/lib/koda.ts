@@ -1,4 +1,6 @@
 import type {
+  MCPServer,
+  MCPServerSummary,
   Provider,
   Session,
   Skill,
@@ -14,6 +16,8 @@ export const kodaKeys = {
   models: (providerId: string) => ['models', providerId] as const,
   skills: ['skills'] as const,
   skill: (name: string) => ['skill', name] as const,
+  mcpServers: ['mcp-servers'] as const,
+  mcpServer: (id: string) => ['mcp-server', id] as const,
 }
 
 export async function listSessions(): Promise<Session[]> {
@@ -37,6 +41,19 @@ export async function getSkill(name: string): Promise<Skill> {
     throw new Error(`Koda returned no definition for skill ${name}`)
   }
   return response.skill
+}
+
+export async function listMCPServers(): Promise<MCPServerSummary[]> {
+  const response = await kodaClient.listMCPServers({})
+  return response.servers
+}
+
+export async function getMCPServer(id: string): Promise<MCPServer> {
+  const response = await kodaClient.getMCPServer({ id })
+  if (!response.server) {
+    throw new Error(`Koda returned no definition for MCP server ${id}`)
+  }
+  return response.server
 }
 
 export function replaceSession(

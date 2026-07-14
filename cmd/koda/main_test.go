@@ -19,6 +19,7 @@ import (
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
 	kodaconfig "github.com/soasurs/koda/internal/config"
+	kodamcp "github.com/soasurs/koda/internal/mcp"
 	"github.com/soasurs/koda/internal/provider"
 	kodaserver "github.com/soasurs/koda/internal/server"
 	"github.com/soasurs/koda/internal/store"
@@ -89,6 +90,7 @@ func TestRunStartsAndStopsLocalAPIServer(t *testing.T) {
 	defer cancel()
 	directory := t.TempDir()
 	loadSkillsCalls := 0
+	openMCPCalls := 0
 	dependencies := dependencies{
 		openRegistry: func() (*provider.Registry, error) {
 			return provider.Open(filepath.Join(directory, "providers.json"))
@@ -99,6 +101,10 @@ func TestRunStartsAndStopsLocalAPIServer(t *testing.T) {
 		loadSkills: func(*slog.Logger) (*adkskill.Catalog, error) {
 			loadSkillsCalls++
 			return adkskill.NewCatalog()
+		},
+		openMCP: func(ctx context.Context, config kodaconfig.MCPConfig, logger *slog.Logger) (*kodamcp.Manager, error) {
+			openMCPCalls++
+			return kodamcp.Open(ctx, config, logger)
 		},
 		listen: net.Listen,
 	}
@@ -126,6 +132,9 @@ func TestRunStartsAndStopsLocalAPIServer(t *testing.T) {
 	}
 	if loadSkillsCalls != 1 {
 		t.Fatalf("loadSkills calls = %d, want 1", loadSkillsCalls)
+	}
+	if openMCPCalls != 1 {
+		t.Fatalf("openMCP calls = %d, want 1", openMCPCalls)
 	}
 }
 

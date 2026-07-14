@@ -1,4 +1,4 @@
-// Package permission defines session-scoped filesystem and shell capabilities.
+// Package permission defines tool capability and approval classifications.
 package permission
 
 import "fmt"
@@ -98,6 +98,8 @@ const (
 	KindFileWrite Kind = "file_write"
 	// KindShell identifies arbitrary process execution.
 	KindShell Kind = "shell"
+	// KindMCP identifies a call to an MCP tool that is not declared read-only.
+	KindMCP Kind = "mcp"
 )
 
 // RequiresApproval reports whether a request of kind at scope must wait for

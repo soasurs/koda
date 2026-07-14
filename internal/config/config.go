@@ -20,6 +20,7 @@ type Config struct {
 	Version int          `yaml:"version"`
 	Server  ServerConfig `yaml:"server,omitempty"`
 	Log     LogConfig    `yaml:"log,omitempty"`
+	MCP     MCPConfig    `yaml:"mcp,omitempty"`
 }
 
 // ServerConfig configures the local API server.
@@ -32,6 +33,25 @@ type LogConfig struct {
 	Level  string `yaml:"level,omitempty"`
 	Path   string `yaml:"path,omitempty"`
 	Output string `yaml:"output,omitempty"`
+}
+
+// MCPConfig configures process-wide MCP servers loaded when Koda starts.
+type MCPConfig struct {
+	Servers []MCPServerConfig `yaml:"servers,omitempty"`
+}
+
+// MCPServerConfig configures one streamable HTTP or stdio MCP server.
+type MCPServerConfig struct {
+	ID        string            `yaml:"id"`
+	Name      string            `yaml:"name,omitempty"`
+	Transport string            `yaml:"transport"`
+	URL       string            `yaml:"url,omitempty"`
+	Headers   map[string]string `yaml:"headers,omitempty"`
+	Command   string            `yaml:"command,omitempty"`
+	Args      []string          `yaml:"args,omitempty"`
+	Env       map[string]string `yaml:"env,omitempty"`
+	Workdir   string            `yaml:"workdir,omitempty"`
+	ReadOnly  bool              `yaml:"read_only,omitempty"`
 }
 
 // DefaultPath returns the default Koda configuration path.
@@ -89,6 +109,15 @@ func Load(path string) (Config, error) {
 	result.Log.Level = strings.ToLower(strings.TrimSpace(result.Log.Level))
 	result.Log.Path = strings.TrimSpace(result.Log.Path)
 	result.Log.Output = strings.ToLower(strings.TrimSpace(result.Log.Output))
+	for index := range result.MCP.Servers {
+		server := &result.MCP.Servers[index]
+		server.ID = strings.TrimSpace(server.ID)
+		server.Name = strings.TrimSpace(server.Name)
+		server.Transport = strings.ToLower(strings.TrimSpace(server.Transport))
+		server.URL = strings.TrimSpace(server.URL)
+		server.Command = strings.TrimSpace(server.Command)
+		server.Workdir = strings.TrimSpace(server.Workdir)
+	}
 	switch result.Log.Level {
 	case "", "debug", "info", "warn", "error":
 	default:

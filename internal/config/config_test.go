@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -61,9 +62,25 @@ func TestLoadLogOutput(t *testing.T) {
 	}
 }
 
+func TestLoadMCPServers(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "koda.yaml")
+	content := "version: 1\nmcp:\n  servers:\n    - id: ' exa '\n      name: ' Exa Search '\n      transport: ' HTTP '\n      url: ' https://mcp.exa.ai/mcp '\n      read_only: true\n      headers:\n        x-api-key: '${EXA_API_KEY}'\n    - id: local\n      transport: stdio\n      command: ' node '\n      args: [server.js]\n"
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if len(got.MCP.Servers) != 2 || got.MCP.Servers[0].ID != "exa" || got.MCP.Servers[0].Transport != "http" || !got.MCP.Servers[0].ReadOnly ||
+		got.MCP.Servers[1].Command != "node" || got.MCP.Servers[1].Args[0] != "server.js" {
+		t.Fatalf("Load().MCP = %+v", got.MCP)
+	}
+}
+
 func TestLoadMissingFileReturnsEmptyConfig(t *testing.T) {
 	got, err := Load(filepath.Join(t.TempDir(), "missing.yaml"))
-	if err != nil || got != (Config{}) {
+	if err != nil || !reflect.DeepEqual(got, Config{}) {
 		t.Fatalf("Load(missing) = %+v, %v", got, err)
 	}
 }
