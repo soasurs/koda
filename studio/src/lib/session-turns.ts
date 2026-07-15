@@ -89,6 +89,7 @@ const toolLabels: Record<string, string> = {
   read_file: 'Read file',
   run_shell: 'Run command',
   search_text: 'Search text',
+  web_fetch: 'Web fetch',
   write_file: 'Write file',
 }
 
@@ -101,6 +102,7 @@ const toolPastLabels: Record<string, string> = {
   read_file: 'Read file',
   run_shell: 'Ran command',
   search_text: 'Searched text',
+  web_fetch: 'Fetched web page',
   write_file: 'Wrote file',
 }
 
@@ -129,7 +131,12 @@ export function toolPresentation(
   try {
     const input = JSON.parse(argumentsJson) as Record<string, unknown>
     const value =
-      input.path ?? input.command ?? input.pattern ?? input.query ?? input.globs
+      input.path ??
+      input.url ??
+      input.command ??
+      input.pattern ??
+      input.query ??
+      input.globs
     if (Array.isArray(value)) detail = value.join(', ')
     else if (typeof value === 'string') detail = value
   } catch {

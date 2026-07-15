@@ -126,6 +126,22 @@ describe('session turn helpers', () => {
     expect(
       toolCallPresentation(
         create(ToolCallSchema, {
+          name: 'web_fetch',
+          argumentsJson: JSON.stringify({
+            url: 'https://example.com/docs',
+            maxChars: 200,
+          }),
+        }),
+        true,
+      ),
+    ).toEqual({
+      label: 'Fetched web page',
+      detail: 'https://example.com/docs',
+    })
+
+    expect(
+      toolCallPresentation(
+        create(ToolCallSchema, {
           name: 'custom_tool',
           argumentsJson: '{}',
         }),
