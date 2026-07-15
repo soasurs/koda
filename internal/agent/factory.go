@@ -216,6 +216,7 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 		Description:         modeDescription(mode),
 		Model:               llm,
 		Tools:               values,
+		BeforeLLMCalls:      []llmagent.BeforeLLMCall{compactionHistoryHook},
 		Instruction:         instruction,
 		InstructionProvider: instructionProvider,
 		GenerateConfig:      generateConfigFor(value.Type, reasoningEffort),
@@ -240,6 +241,28 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 	}
 	f.evictSupersededLocked(key)
 	f.cache[key] = result
+	return result, nil
+}
+
+// Compactor returns a compactor using the session's selected provider and
+// model. Compactors are short-lived and are not added to the interactive
+// Runner cache.
+func (f *Factory) Compactor(ctx context.Context, session store.Session) (*Compactor, error) {
+	if err := validateSession(session); err != nil {
+		return nil, err
+	}
+	value, _, err := f.resolveProviderAndModel(ctx, session)
+	if err != nil {
+		return nil, err
+	}
+	llm, err := f.newModel(ctx, value, session.ModelID, "")
+	if err != nil {
+		return nil, err
+	}
+	result, err := NewCompactor(llm)
+	if err != nil {
+		return nil, fmt.Errorf("agent: construct compactor: %w", err)
+	}
 	return result, nil
 }
 
