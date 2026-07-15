@@ -39,6 +39,7 @@ Rules:
 - `segment_summary` covers only the new source events and is suitable for a later rebase.
 - `state_snapshot` is a complete, standalone working state for continuing the session.
 - Preserve user goals, constraints, decisions, completed work, current progress, failures, unresolved questions, relevant files and symbols, and exact commands or errors when important.
+- When source events say a Turn failed or was interrupted, preserve that terminal status and its remaining work in both summaries. Do not infer that the Turn or its objective completed merely because its safe prefix contains successful messages or tool results.
 - Distinguish facts from hypotheses. Do not invent details.
 - Omit obsolete chatter and bulky raw tool output while retaining conclusions and identifiers needed to resume work.
 - Do not include Markdown fences or text outside the JSON object in your response.

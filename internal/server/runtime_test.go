@@ -12,6 +12,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/soasurs/adk/model"
+	adkrunner "github.com/soasurs/adk/runner"
 	sessionevent "github.com/soasurs/adk/session/event"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
@@ -220,6 +221,15 @@ func TestRunCompactsAcknowledgedHistoryAndInjectsSnapshot(t *testing.T) {
 	}
 	handler.contextWindowTokens = 1_000
 	handler.compaction = policy
+	projectorCalls := 0
+	handler.projector = adkrunner.ProjectorFunc(func(_ context.Context, input adkrunner.ProjectionInput) ([]model.Event, error) {
+		projectorCalls++
+		result := make([]model.Event, len(input.Events))
+		for index, event := range input.Events {
+			result[index] = event.ToModel()
+		}
+		return result, nil
+	})
 	compactor := &fakeSessionCompactor{result: testServerCompactionResult("first two turns", "working state")}
 	expectedSegment, expectedSnapshot, err := agent.EncodeCompactionResult(compactor.result)
 	if err != nil {
@@ -257,7 +267,7 @@ func TestRunCompactsAcknowledgedHistoryAndInjectsSnapshot(t *testing.T) {
 	if err := stream.Err(); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if compactor.calls != 1 || len(compactor.request.Events) != 4 || compactor.request.Rebase ||
+	if projectorCalls != 1 || compactor.calls != 1 || len(compactor.request.Events) != 4 || compactor.request.Rebase ||
 		compactor.request.ModelID != "gpt-5.6" || compactor.request.MaxTokens != 100 {
 		t.Fatalf("compactor calls = %d, request = %+v", compactor.calls, compactor.request)
 	}

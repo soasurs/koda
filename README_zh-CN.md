@@ -14,7 +14,7 @@
 - 带 workspace-aware 工具的 Build 和 Plan 模式；
 - Session 级 Provider、Model、reasoning、workspace 和权限设置；
 - Run 期间的操作审批和结构化提问；
-- 支持撤销与 context compaction 的 SQLite 持久化对话历史；
+- 支持失败/中断 Turn 状态、撤销、重试与 context compaction 的 SQLite 持久化对话历史；
 - 内置 Anthropic、OpenAI、Gemini 和 DeepSeek adapter；
 - 进程级 Agent Skills 和 MCP server；
 - 内嵌 React Studio，以及供其它本地客户端使用的 Protobuf/Connect API。

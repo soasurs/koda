@@ -11,8 +11,8 @@ import (
 const estimatedImageTokens int64 = 1_024
 
 // CompactionSelectorConfig controls how much recent history remains verbatim.
-// Both limits apply to complete turns; the newest turn is always retained even
-// when it alone exceeds RetainTokens.
+// Both limits apply to whole Turn event groups; the newest Turn is always
+// retained even when it alone exceeds RetainTokens.
 type CompactionSelectorConfig struct {
 	RetainTurns  int
 	RetainTokens int64
@@ -37,9 +37,9 @@ type eventTurn struct {
 	tokens int64
 }
 
-// SelectCompaction selects the oldest complete turns for compaction while
-// preserving a bounded recent tail. It never splits a turn, so tool calls and
-// their responses remain together.
+// SelectCompaction selects the oldest whole Turns for compaction while
+// preserving a bounded recent tail. It never splits a Turn, so durable facts
+// keep their original boundary before projection.
 func SelectCompaction(events []model.Event, config CompactionSelectorConfig) (CompactionSelection, error) {
 	if config.RetainTurns <= 0 {
 		return CompactionSelection{}, errors.New("agent: compaction retain turns must be positive")

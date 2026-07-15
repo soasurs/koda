@@ -157,16 +157,12 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
       await invalidateSession()
       setLiveEvents([])
     } catch (error) {
-      if (abortController.signal.aborted) {
-        setOptimisticUserEvent(null)
-        setLiveEvents([])
-        setPartialReasoning('')
-        setPartialText('')
-        await queryClient.invalidateQueries({
-          queryKey: kodaKeys.events(sessionId),
-        })
-      } else {
-        setOptimisticUserEvent(null)
+      setOptimisticUserEvent(null)
+      setLiveEvents([])
+      setPartialReasoning('')
+      setPartialText('')
+      await invalidateSession()
+      if (!abortController.signal.aborted) {
         setRunError(errorMessage(error))
       }
     } finally {

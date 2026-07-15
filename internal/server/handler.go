@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/soasurs/adk/model"
+	"github.com/soasurs/adk/runner"
 	adkskill "github.com/soasurs/adk/skill"
 	kodav1connect "github.com/soasurs/koda/gen/koda/v1/kodav1connect"
 	"github.com/soasurs/koda/internal/agent"
@@ -32,6 +33,7 @@ type Handler struct {
 	logger              *slog.Logger
 	contextWindowTokens int64
 	compaction          compactionPolicy
+	projector           runner.Projector
 
 	newSessionID      func() (string, error)
 	turnRunnerFactory turnRunnerFactory
@@ -103,13 +105,15 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 		return nil, err
 	}
 	logger = logging.OrDiscard(logger)
+	projector := runner.NewDefaultProjector()
 	agentFactory, err := agent.New(agent.Config{
-		Registry: registry,
-		Catalog:  catalog,
-		Sessions: sessionStore.ADKSessionService(),
-		Logger:   logger,
-		Skills:   skillCatalog,
-		MCP:      mcpCatalog,
+		Registry:  registry,
+		Catalog:   catalog,
+		Sessions:  sessionStore.ADKSessionService(),
+		Logger:    logger,
+		Skills:    skillCatalog,
+		MCP:       mcpCatalog,
+		Projector: projector,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("server: construct agent factory: %w", err)
@@ -126,6 +130,7 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 		logger:              logger,
 		contextWindowTokens: options.contextWindowTokens,
 		compaction:          compaction,
+		projector:           projector,
 		newSessionID:        newSessionID,
 		titleGenerator:      agentFactory.GenerateTitle,
 	}, nil

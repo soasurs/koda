@@ -64,7 +64,7 @@ Server 会在传输边界把预期的取消、deadline、配置和容量条件�
 修改以下不变量时需要增加聚焦回归测试：
 
 - per-session 串行化和等待期间取消；
-- runtime、metadata 或 completion-frame 失败后的回滚；
+- runtime 或 transport 失败后的持久化 failed/interrupted Turn 恢复；
 - 同轮并发工具的 frame publication；
 - 过期 Provider revision 和 compaction generation 的拒绝；
 - symlink 和 future-path scope 分类；
@@ -87,7 +87,7 @@ Server 会在传输边界把预期的取消、deadline、配置和容量条件�
   模型可见输出，准确描述审批，并在修改前重新校验状态。
 - 新增 Run frame 时，需要定义它是瞬态还是持久化状态，与其它 frame 串行发布，明确取消
   行为，并避免把 Event 复制成另一个对话事实来源。
-- 新增持久化历史变换时，需要一起设计展示历史、模型投影、undo、rollback、并发、
+- 新增持久化历史变换时，需要一起设计展示历史、模型投影、undo、持久化状态、并发、
   migration 和失败恢复。只有一个 summary 字段并不是完整的持久化设计。
 
 ## 可能的演进方向

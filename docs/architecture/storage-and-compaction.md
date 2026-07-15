@@ -30,16 +30,15 @@ calls through the ADK session service.
 
 The same boundary serializes:
 
-- full Runs, including completion acknowledgment;
+- full Runs, including durable Turn finalization and completion acknowledgment;
 - session settings and metadata updates;
 - history mutation and undo;
 - session deletion;
 - context compaction commit and failure accounting.
 
 This is stronger than locking individual SQL statements. It prevents a model
-Run from using settings that change halfway through, keeps undo from racing a
-new turn, and lets rollback restore both history and metadata before another
-operation observes them.
+Run from using settings that change halfway through and keeps undo, lazy crash
+recovery, and compaction from racing a new turn.
 
 ## History views
 
@@ -131,6 +130,10 @@ of segment summaries.
 
 ## Model context projection
 
+Compaction selects and commits boundaries from raw durable event IDs, but sends
+the selected prefix through the same ADK Turn projector used by Runner. Failed
+and interrupted output is therefore summarized with the same safety rules.
+
 Before each model call, an agent hook removes compacted active-history input
 and inserts the decoded current snapshot before the remaining active tail. The
 snapshot is request-only synthetic history. It does not enter ADK events, so it
@@ -143,7 +146,7 @@ longer active.
 
 ## Undo and compaction boundaries
 
-Undo is limited to the server-reported latest complete turn that can be removed
+Undo is limited to the server-reported latest visible user turn that can be removed
 without invalidating durable compaction state. The request carries the expected
 turn ID. If history advanced or the boundary changed, the operation fails
 instead of deleting newer history selected by a stale client.

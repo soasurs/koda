@@ -1,12 +1,25 @@
-import type { Event, Input, ToolCall } from '@/gen/koda/v1/service_pb'
+import type {
+  Event,
+  Input,
+  ToolCall,
+  Turn as DurableTurn,
+} from '@/gen/koda/v1/service_pb'
 import { Role } from '@/gen/koda/v1/service_pb'
 
-export type Turn = { id: string; events: Event[] }
+export type Turn = { id: string; events: Event[]; metadata?: DurableTurn }
 export type TurnActivity = { assistant: Event; tools: Event[] }
 
-export function groupEventsByTurn(events: Event[]): Turn[] {
-  const turns: Turn[] = []
+export function groupEventsByTurn(
+  events: Event[],
+  durableTurns: DurableTurn[] = [],
+): Turn[] {
+  const turns: Turn[] = durableTurns.map((metadata) => ({
+    id: metadata.id,
+    events: [],
+    metadata,
+  }))
   const turnIndexes = new Map<string, number>()
+  durableTurns.forEach((turn, index) => turnIndexes.set(turn.id, index))
   for (const event of events) {
     const turnId = event.turnId || `event-${event.id}`
     let index = turnIndexes.get(turnId)

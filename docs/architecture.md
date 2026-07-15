@@ -40,6 +40,8 @@ The design follows several rules:
 - immutable agent structure may be cached, while Run-specific state is passed
   through context;
 - partial output and frontend interactions are transient;
+- complete events and terminal Turn status remain durable after failure or
+  interruption;
 - a successful Run is acknowledged only after history and session metadata are
   consistent;
 - file and process capabilities default to the least permissive valid policy;
@@ -51,8 +53,8 @@ The design follows several rules:
 - [System structure](architecture/system-structure.md) covers process startup,
   package ownership, dependency direction, and lifecycle scopes.
 - [Run lifecycle](architecture/run-lifecycle.md) follows a turn from request
-  validation through streaming, interactions, commit, acknowledgment, and
-  rollback.
+  validation through streaming, interactions, durable finalization, and
+  acknowledgment.
 - [Agents and tools](architecture/agents-and-tools.md) covers runner caching,
   layered instructions, modes, path classification, approvals, and questions.
 - [Storage and context compaction](architecture/storage-and-compaction.md)
@@ -71,7 +73,7 @@ The design follows several rules:
 |---|---|
 | Session | Durable runtime configuration and history ownership boundary. |
 | Run | One streamed execution requested by a client. |
-| Turn | The complete user, assistant, and tool interaction committed by a successful Run. |
+| Turn | One durable Run execution, including completed, failed, and interrupted outcomes. |
 | Event | An ADK history record; complete events are durable and partial events are transient. |
 | Frame | One `RunResponse` payload observed by a client. |
 | Compaction generation | An immutable summary and working-state snapshot for an archived history prefix. |

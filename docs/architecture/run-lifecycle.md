@@ -17,7 +17,7 @@ can round-trip the request.
 The handler then acquires the session Run lock with the request context. The
 same lock is shared with ADK history operations and is reentrant through the
 locked context. It remains held until the completion frame has been accepted or
-the turn has been rolled back. Runs for different sessions may proceed
+the turn has been finalized. Runs for different sessions may proceed
 concurrently; operations for one session are serialized.
 
 ## Execution sequence
@@ -112,28 +112,25 @@ This ordering gives the completion frame a strong meaning:
 The client may display partial events or a temporary title optimistically, but
 must use `RunCompleted` as the commit boundary.
 
-## Failure and rollback
+## Failure and durable Turn status
 
 ADK may have committed complete events before a later provider call, stream
-send, or metadata update fails. Failed, canceled, abandoned, or unacknowledged
-turns must not remain in active history.
-
-When a turn ID exists and terminal completion cannot be acknowledged, the
-server uses a cancellation-independent cleanup context to remove the turn and
-restore the pre-Run session snapshot. Cleanup occurs before releasing the Run
-lock, so another operation cannot observe a partially rolled-back session.
+send, or metadata update fails. Complete events remain durable. ADK finalizes
+the Turn as `failed` or `interrupted`, and its projector supplies only a safe
+prefix plus an ephemeral status notice to later model context. History reads
+lazily mark running Turns left by an earlier process as `interrupted/abandoned`.
 
 | Failure | Result |
 |---|---|
 | cancellation while waiting for the lock | no session change |
 | compaction failure below the reserve boundary | record failure and continue |
 | compaction failure at the hard boundary | return `RESOURCE_EXHAUSTED` |
-| provider or runtime failure | return a mapped Connect error; incomplete turn is not active |
+| provider or runtime failure | return a mapped Connect error and retain a failed Turn |
 | approval rejection | handled tool result; the Run may continue |
-| stream send failure | cancel the Run and roll back committed turn data |
-| missing terminal event or turn ID | internal error and rollback when possible |
+| stream send failure | cancel the Run and retain an interrupted Turn |
+| missing terminal event | the agent wrapper fails and finalizes the Turn as failed |
 | title generation failure | log and complete with the previous title |
-| metadata commit or `RunCompleted` failure | restore history and session metadata |
+| metadata commit or `RunCompleted` failure | return an error without rewriting completed Turn facts |
 
 ## History mutation outside Run
 

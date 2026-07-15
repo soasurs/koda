@@ -25,6 +25,7 @@ import type {
   CompactionStatus,
 } from '@/gen/koda/v1/service_pb'
 import { CompactionProgressStage } from '@/gen/koda/v1/service_pb'
+import { TurnStatus } from '@/gen/koda/v1/service_pb'
 import { errorMessage, kodaKeys } from '@/lib/koda'
 import { groupEventsByTurn } from '@/lib/session-turns'
 
@@ -46,8 +47,8 @@ function SessionContent({ sessionId }: { sessionId: string }) {
   const sessionRun = useSessionRun(sessionId, history?.events ?? [])
   const [editingTurnId, setEditingTurnId] = useState('')
   const turns = useMemo(
-    () => groupEventsByTurn(sessionRun.events),
-    [sessionRun.events],
+    () => groupEventsByTurn(sessionRun.events, history?.turns),
+    [history?.turns, sessionRun.events],
   )
   const compactionBoundaryIndex = useMemo(() => {
     const count = Number(history?.compaction?.compactedEventCount ?? 0n)
@@ -138,9 +139,16 @@ function SessionContent({ sessionId }: { sessionId: string }) {
                       setEditingTurnId('')
                       void sessionRun.editLastTurn(turn.id ?? '', text)
                     }}
-                    onRetry={() =>
+                    onRetry={(input) => {
+                      if (
+                        turn.metadata?.status === TurnStatus.FAILED ||
+                        turn.metadata?.status === TurnStatus.INTERRUPTED
+                      ) {
+                        void sessionRun.runStable(input)
+                        return
+                      }
                       void sessionRun.rewindLastTurn(turn.id, true)
-                    }
+                    }}
                     turn={turn}
                   />
                   {index === compactionBoundaryIndex && history?.compaction && (

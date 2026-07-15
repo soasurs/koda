@@ -15,7 +15,8 @@ an embedded local web interface.
 - Build and Plan modes with workspace-aware tools;
 - per-session provider, model, reasoning, workspace, and permission settings;
 - explicit approvals and structured questions during a Run;
-- durable SQLite conversation history with undo and context compaction;
+- durable SQLite conversation history with failed/interrupted Turn status,
+  undo, replay, and context compaction;
 - built-in Anthropic, OpenAI, Gemini, and DeepSeek adapters;
 - process-level Agent Skills and MCP servers;
 - an embedded React Studio and a Protobuf/Connect API for other local clients.

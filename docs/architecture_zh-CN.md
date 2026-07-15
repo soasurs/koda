@@ -34,6 +34,7 @@ flowchart LR
 - 生成的 Protobuf 类型停留在 server 边界；
 - 可以缓存不可变的 Agent 结构，但 Run 特有状态必须通过 context 传递；
 - partial output 和前端交互都是瞬态状态；
+- complete event 与终态 Turn status 在失败或中断后仍会持久化；
 - 只有历史和 Session metadata 一致后，成功 Run 才能被确认；
 - 文件和进程能力默认采用权限最小的有效策略；
 - 启动时加载的进程能力与 Session、Run 配置相互独立。
@@ -43,7 +44,7 @@ flowchart LR
 - [系统结构](architecture/system-structure_zh-CN.md)：进程启动、包职责、依赖方向和
   生命周期范围。
 - [Run 生命周期](architecture/run-lifecycle_zh-CN.md)：从请求校验到流式输出、交互、
-  提交、确认和回滚的完整 turn。
+  持久化终结和确认的完整 turn。
 - [Agent 与工具](architecture/agents-and-tools_zh-CN.md)：Runner 缓存、分层指令、模式、
   路径分类、审批和提问。
 - [存储与 Context Compaction](architecture/storage-and-compaction_zh-CN.md)：SQLite

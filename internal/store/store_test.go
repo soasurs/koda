@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/soasurs/adk/model"
+	adksession "github.com/soasurs/adk/session"
 	"github.com/soasurs/adk/session/event"
 
 	"github.com/soasurs/koda/internal/permission"
@@ -536,11 +537,11 @@ func TestRunLockerHonorsContextAndSeparatesSessions(t *testing.T) {
 	otherUnlock()
 }
 
-func TestLockRunContextIsReentrantAndRollbackTurnRestoresSession(t *testing.T) {
+func TestLockRunContextIsReentrant(t *testing.T) {
 	store := openTestStore(t)
 	createdAt := time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC)
 	store.now = func() time.Time { return createdAt }
-	created, err := store.CreateSession(t.Context(), CreateSessionParams{
+	_, err := store.CreateSession(t.Context(), CreateSessionParams{
 		ID: "session-1", Workdir: "/workspace", ProviderID: "openai", ModelID: "gpt-5",
 	})
 	if err != nil {
@@ -556,37 +557,55 @@ func TestLockRunContextIsReentrantAndRollbackTurnRestoresSession(t *testing.T) {
 		t.Fatalf("LockRun(reentrant) error = %v", err)
 	}
 	nestedUnlock()
-	adkSession, err := store.EnsureADKSession(lockedCtx, "session-1")
+}
+
+func TestListHistoryRecoversAndFiltersDurableTurns(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateSession(t.Context(), CreateSessionParams{
+		ID: "session-1", Workdir: "/workspace", ProviderID: "openai", ModelID: "gpt-5",
+	}); err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+	sess, err := store.EnsureADKSession(t.Context(), "session-1")
 	if err != nil {
 		t.Fatalf("EnsureADKSession() error = %v", err)
 	}
-	if err := adkSession.CreateEvent(lockedCtx, &event.Event{
-		EventID: 1, TurnID: "turn-1", Role: string(model.RoleUser), Content: "hello",
-		CreatedAt: createdAt.UnixMilli(), UpdatedAt: createdAt.UnixMilli(),
+	turns := sess.(adksession.TurnStore)
+	if err := turns.BeginTurn(t.Context(), adksession.Turn{ID: "turn-running", Status: adksession.TurnRunning, StartedAt: 1}); err != nil {
+		t.Fatalf("BeginTurn(running) error = %v", err)
+	}
+	if err := sess.CreateEvent(t.Context(), &event.Event{
+		EventID: 1, TurnID: "turn-running", Role: string(model.RoleUser), Content: "hello", CreatedAt: 1, UpdatedAt: 1,
 	}); err != nil {
 		t.Fatalf("CreateEvent() error = %v", err)
 	}
-	store.now = func() time.Time { return createdAt.Add(time.Hour) }
-	title := "Generated title"
-	if _, err := store.UpdateSession(lockedCtx, "session-1", UpdateSessionParams{Title: &title}); err != nil {
-		t.Fatalf("UpdateSession() error = %v", err)
+	if err := turns.BeginTurn(t.Context(), adksession.Turn{ID: "turn-empty", Status: adksession.TurnRunning, StartedAt: 2}); err != nil {
+		t.Fatalf("BeginTurn(empty) error = %v", err)
 	}
-	if err := store.RollbackTurn(lockedCtx, "session-1", "turn-1", created); err != nil {
-		t.Fatalf("RollbackTurn() error = %v", err)
+	if err := turns.FinalizeTurn(t.Context(), "turn-empty", adksession.TurnOutcome{
+		Status: adksession.TurnFailed, Reason: adksession.TurnReasonAgentError,
+		Failure: &adksession.TurnFailure{Code: "agent_error", Stage: adksession.TurnFailureStageAgent},
+	}); err != nil {
+		t.Fatalf("FinalizeTurn(empty) error = %v", err)
 	}
-	listed, err := store.ListEvents(lockedCtx, "session-1")
+
+	history, err := store.ListHistory(t.Context(), "session-1")
 	if err != nil {
-		t.Fatalf("ListEvents() error = %v", err)
+		t.Fatalf("ListHistory() error = %v", err)
 	}
-	if len(listed) != 0 {
-		t.Fatalf("ListEvents() = %+v; want empty", listed)
+	if len(history.Turns) != 2 || history.Turns[0].Status != adksession.TurnInterrupted ||
+		history.Turns[0].Reason != adksession.TurnReasonAbandoned || history.Turns[1].Status != adksession.TurnFailed {
+		t.Fatalf("ListHistory().Turns = %+v", history.Turns)
 	}
-	got, err := store.GetSession(lockedCtx, "session-1")
+	if _, err := store.UndoLastMessage(t.Context(), "session-1", "turn-running"); err != nil {
+		t.Fatalf("UndoLastMessage() error = %v", err)
+	}
+	history, err = store.ListHistory(t.Context(), "session-1")
 	if err != nil {
-		t.Fatalf("GetSession() error = %v", err)
+		t.Fatalf("ListHistory(after undo) error = %v", err)
 	}
-	if got.Title != created.Title || !got.UpdatedAt.Equal(created.UpdatedAt) {
-		t.Fatalf("session after rollback = %+v, want title %q and UpdatedAt %v", got, created.Title, created.UpdatedAt)
+	if len(history.Turns) != 1 || history.Turns[0].ID != "turn-empty" {
+		t.Fatalf("ListHistory(after undo).Turns = %+v, want only empty failed turn", history.Turns)
 	}
 }
 

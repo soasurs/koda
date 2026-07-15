@@ -85,6 +85,35 @@ enum FinishReason {
   FINISH_REASON_CONTENT_FILTER = 4;
 }
 
+// TurnStatus describes the durable lifecycle state of one Run.
+enum TurnStatus {
+  TURN_STATUS_UNSPECIFIED = 0;
+  TURN_STATUS_RUNNING = 1;
+  TURN_STATUS_COMPLETED = 2;
+  TURN_STATUS_INTERRUPTED = 3;
+  TURN_STATUS_FAILED = 4;
+}
+
+// TurnReason is a stable explanation for a terminal Turn state.
+enum TurnReason {
+  TURN_REASON_UNSPECIFIED = 0;
+  TURN_REASON_CANCELED = 1;
+  TURN_REASON_DEADLINE_EXCEEDED = 2;
+  TURN_REASON_CONSUMER_STOPPED = 3;
+  TURN_REASON_AGENT_ERROR = 4;
+  TURN_REASON_ABANDONED = 5;
+}
+
+// TurnFailureStage identifies where a safe, structured failure occurred.
+enum TurnFailureStage {
+  TURN_FAILURE_STAGE_UNSPECIFIED = 0;
+  TURN_FAILURE_STAGE_AGENT = 1;
+  TURN_FAILURE_STAGE_PROVIDER = 2;
+  TURN_FAILURE_STAGE_TOOL = 3;
+  TURN_FAILURE_STAGE_PERSISTENCE = 4;
+  TURN_FAILURE_STAGE_CONSUMER = 5;
+}
+
 // ProviderType selects the adapter used to communicate with a provider.
 enum ProviderType {
   PROVIDER_TYPE_UNSPECIFIED = 0;
@@ -498,6 +527,23 @@ message Event {
   int64 updated_at = 10;
 }
 
+// Turn contains durable execution status associated with Events by turn_id.
+message Turn {
+  string id = 1;
+  TurnStatus status = 2;
+  TurnReason reason = 3;
+  TurnFailure failure = 4;
+  int64 started_at = 5;
+  int64 finished_at = 6;
+}
+
+// TurnFailure contains safe structured failure information for display.
+message TurnFailure {
+  string code = 1;
+  string message = 2;
+  TurnFailureStage stage = 3;
+}
+
 // Message is the provider-neutral content carried by an event.
 message Message {
   Role role = 1;
@@ -617,6 +663,8 @@ message ListEventsResponse {
   // undoable_turn_id is the only turn UndoLastMessage may currently remove.
   // It is empty when no active user turn remains after the compaction boundary.
   string undoable_turn_id = 3;
+  // turns describes durable Run outcomes in timeline order.
+  repeated Turn turns = 4;
 }
 
 // CompactionStatus describes the current boundary between compacted history

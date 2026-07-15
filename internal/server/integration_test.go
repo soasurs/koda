@@ -143,7 +143,7 @@ func TestIntegrationQuestionAndMultimodalUndo(t *testing.T) {
 	}
 }
 
-func TestIntegrationCanceledApprovalLeavesNoHistory(t *testing.T) {
+func TestIntegrationCanceledApprovalPreservesInterruptedTurn(t *testing.T) {
 	upstream := newOpenAIStub(t, []openAIReply{{toolName: "create_file", toolArguments: `{"path":"never.txt","content":"no"}`}})
 	defer upstream.Close()
 	client, sessionStore, stop := startIntegrationService(t, filepath.Join(t.TempDir(), "providers.json"), filepath.Join(t.TempDir(), "koda.db"), upstream.URL)
@@ -167,7 +167,15 @@ func TestIntegrationCanceledApprovalLeavesNoHistory(t *testing.T) {
 	if code := connect.CodeOf(stream.Err()); code != connect.CodeCanceled {
 		t.Fatalf("Run() code = %v, error = %v", code, stream.Err())
 	}
-	eventually(t, func() bool { return len(listIntegrationEvents(t, client, session.GetId())) == 0 })
+	eventually(t, func() bool {
+		history, listErr := client.ListEvents(t.Context(), v1.ListEventsRequest_builder{SessionId: new(session.GetId())}.Build())
+		if listErr != nil || len(history.GetEvents()) != 2 || len(history.GetTurns()) != 1 {
+			return false
+		}
+		turn := history.GetTurns()[0]
+		return turn.GetStatus() == v1.TurnStatus_TURN_STATUS_INTERRUPTED &&
+			turn.GetReason() == v1.TurnReason_TURN_REASON_CANCELED
+	})
 }
 
 func TestIntegrationProviderRefreshPersistsWithoutLeakingCredential(t *testing.T) {

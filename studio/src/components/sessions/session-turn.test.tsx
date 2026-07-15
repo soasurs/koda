@@ -3,7 +3,15 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { SessionTurn } from '@/components/sessions/session-turn'
-import { EventSchema, Role, ToolCallSchema } from '@/gen/koda/v1/service_pb'
+import {
+  EventSchema,
+  Role,
+  ToolCallSchema,
+  TurnFailureSchema,
+  TurnFailureStage,
+  TurnSchema,
+  TurnStatus,
+} from '@/gen/koda/v1/service_pb'
 
 vi.mock('@/components/markdown-text', () => ({
   default: ({ text }: { text: string }) => <span>{text}</span>,
@@ -78,5 +86,40 @@ describe('SessionTurn', () => {
     )
     expect(earlierActivity).toContainElement(screen.getByText('1 tool step'))
     expect(screen.getByText('The change is complete.')).not.toBeNull()
+  })
+
+  it('displays structured failure status', () => {
+    const turn = {
+      id: 'turn-1',
+      events: [],
+      metadata: create(TurnSchema, {
+        id: 'turn-1',
+        status: TurnStatus.FAILED,
+        failure: create(TurnFailureSchema, {
+          code: 'provider_unavailable',
+          message: 'Provider is temporarily unavailable',
+          stage: TurnFailureStage.PROVIDER,
+        }),
+      }),
+    }
+
+    render(
+      <SessionTurn
+        canRevise={false}
+        isEditing={false}
+        isRewinding={false}
+        isRunning={false}
+        onEditCancel={vi.fn()}
+        onEditStart={vi.fn()}
+        onEditSubmit={vi.fn()}
+        onRetry={vi.fn()}
+        turn={turn}
+      />,
+    )
+
+    expect(screen.getByText('Turn failed')).toBeInTheDocument()
+    expect(
+      screen.getByText('Provider is temporarily unavailable'),
+    ).toBeInTheDocument()
   })
 })
