@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
@@ -13,6 +14,65 @@ import (
 
 	"github.com/soasurs/koda/internal/permission"
 )
+
+func TestOpenMigratesVersionTwoStore(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "koda.db")
+	db, err := sql.Open("sqlite3", sqliteDSN(path))
+	if err != nil {
+		t.Fatalf("open version two database: %v", err)
+	}
+	if _, err := db.Exec(`CREATE TABLE koda_schema_migrations (version INTEGER PRIMARY KEY)`); err != nil {
+		t.Fatalf("create migration table: %v", err)
+	}
+	for version := 1; version <= 2; version++ {
+		for _, statement := range migrationSQL(version) {
+			if _, err := db.Exec(statement); err != nil {
+				t.Fatalf("apply old migration v%d: %v", version, err)
+			}
+		}
+		if _, err := db.Exec(`INSERT INTO koda_schema_migrations (version) VALUES ($1)`, version); err != nil {
+			t.Fatalf("record old migration v%d: %v", version, err)
+		}
+	}
+	if _, err := db.Exec(`
+		INSERT INTO koda_sessions (
+			id, workdir, provider_id, model_id, file_access, shell_access,
+			created_at, updated_at
+		) VALUES ('session-1', '/workspace', 'openai', 'gpt-5',
+			'workspace_write', 'approval_required', 1, 1)
+	`); err != nil {
+		t.Fatalf("insert old session: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close version two database: %v", err)
+	}
+
+	store, err := Open(t.Context(), path)
+	if err != nil {
+		t.Fatalf("Open(version two) error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("Close() error = %v", err)
+		}
+	})
+	got, err := store.GetSession(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("GetSession(migrated) error = %v", err)
+	}
+	if got.CompactionGeneration != 0 || got.CurrentCompactionID != 0 {
+		t.Fatalf("GetSession(migrated) = %+v", got)
+	}
+	var applied int
+	if err := store.db.GetContext(t.Context(), &applied, `
+		SELECT COUNT(*) FROM koda_schema_migrations WHERE version = 3
+	`); err != nil {
+		t.Fatalf("find migration v3: %v", err)
+	}
+	if applied != 1 {
+		t.Fatalf("migration v3 count = %d, want 1", applied)
+	}
+}
 
 func TestOpenInitializesSchemasAndSecuresDatabase(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "state", "koda.db")
@@ -31,6 +91,7 @@ func TestOpenInitializesSchemasAndSecuresDatabase(t *testing.T) {
 		"adk_events",
 		"adk_schema_migrations",
 		"koda_sessions",
+		"koda_session_compactions",
 		"koda_schema_migrations",
 	} {
 		var count int

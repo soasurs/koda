@@ -9,14 +9,18 @@ import (
 
 func TestLoad(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "koda.yaml")
-	if err := os.WriteFile(path, []byte("version: 1\nserver:\n  address: ' 127.0.0.1:8787 '\nlog:\n  level: ' WARN '\ncontext:\n  window_tokens: 128000\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("version: 1\nserver:\n  address: ' 127.0.0.1:8787 '\nlog:\n  level: ' WARN '\ncontext:\n  window_tokens: 128000\ncompaction:\n  enabled: false\n  trigger_percent: 75\n  reserve_tokens: 24000\n  summary_max_tokens: 6000\n  retain_turns: 3\n  retain_tokens: 10000\n  verify: false\n  rebase_interval: 4\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	got, err := Load(path)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if got.Version != 1 || got.Server.Address != "127.0.0.1:8787" || got.Log.Level != "warn" || got.Context.EffectiveWindowTokens() != 128_000 {
+	if got.Version != 1 || got.Server.Address != "127.0.0.1:8787" || got.Log.Level != "warn" || got.Context.EffectiveWindowTokens() != 128_000 ||
+		got.Compaction.EffectiveEnabled() || got.Compaction.EffectiveTriggerPercent() != 75 ||
+		got.Compaction.EffectiveReserveTokens() != 24_000 || got.Compaction.EffectiveSummaryMaxTokens() != 6_000 ||
+		got.Compaction.EffectiveRetainTurns() != 3 || got.Compaction.EffectiveRetainTokens() != 10_000 ||
+		got.Compaction.EffectiveVerify() || got.Compaction.EffectiveRebaseInterval() != 4 {
 		t.Fatalf("Load() = %+v", got)
 	}
 }
@@ -24,6 +28,18 @@ func TestLoad(t *testing.T) {
 func TestContextConfigEffectiveWindowTokens(t *testing.T) {
 	if got := (ContextConfig{}).EffectiveWindowTokens(); got != DefaultContextWindowTokens {
 		t.Fatalf("EffectiveWindowTokens() = %d, want %d", got, DefaultContextWindowTokens)
+	}
+}
+
+func TestCompactionConfigDefaults(t *testing.T) {
+	got := CompactionConfig{}
+	if !got.EffectiveEnabled() || got.EffectiveTriggerPercent() != DefaultCompactionTriggerPercent ||
+		got.EffectiveReserveTokens() != DefaultCompactionReserveTokens ||
+		got.EffectiveSummaryMaxTokens() != DefaultCompactionSummaryMaxTokens ||
+		got.EffectiveRetainTurns() != DefaultCompactionRetainTurns ||
+		got.EffectiveRetainTokens() != DefaultCompactionRetainTokens || !got.EffectiveVerify() ||
+		got.EffectiveRebaseInterval() != DefaultCompactionRebaseInterval {
+		t.Fatalf("CompactionConfig defaults = %+v", got)
 	}
 }
 
@@ -102,6 +118,13 @@ func TestLoadRejectsInvalidConfiguration(t *testing.T) {
 		{name: "invalid log level", content: "version: 1\nlog:\n  level: verbose\n"},
 		{name: "invalid log output", content: "version: 1\nlog:\n  output: stdout\n"},
 		{name: "negative context window", content: "version: 1\ncontext:\n  window_tokens: -1\n"},
+		{name: "negative compaction trigger", content: "version: 1\ncompaction:\n  trigger_percent: -1\n"},
+		{name: "large compaction trigger", content: "version: 1\ncompaction:\n  trigger_percent: 101\n"},
+		{name: "negative compaction reserve", content: "version: 1\ncompaction:\n  reserve_tokens: -1\n"},
+		{name: "negative compaction summary", content: "version: 1\ncompaction:\n  summary_max_tokens: -1\n"},
+		{name: "negative compaction turns", content: "version: 1\ncompaction:\n  retain_turns: -1\n"},
+		{name: "negative compaction tokens", content: "version: 1\ncompaction:\n  retain_tokens: -1\n"},
+		{name: "negative compaction rebase", content: "version: 1\ncompaction:\n  rebase_interval: -1\n"},
 		{name: "multiple documents", content: "version: 1\n---\nversion: 1\n"},
 	}
 	for _, test := range tests {

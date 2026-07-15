@@ -4,20 +4,21 @@ package store
 // fixed during Store initialization, so it is assembled once rather than at
 // each call site. Runtime values are always passed as SQL parameters.
 type queries struct {
-	createSession    string
-	getSession       string
-	countSessions    string
-	listSessions     string
-	updateSession    string
-	touchSession     string
-	restoreSession   string
-	deleteSession    string
-	deleteADKSession string
-	deleteEvents     string
-	sessionExists    string
-	listEvents       string
-	latestUserEvent  string
-	deleteTurnEvents string
+	createSession     string
+	getSession        string
+	countSessions     string
+	listSessions      string
+	updateSession     string
+	touchSession      string
+	restoreSession    string
+	deleteSession     string
+	deleteADKSession  string
+	deleteEvents      string
+	sessionExists     string
+	listEvents        string
+	latestUserEvent   string
+	deleteTurnEvents  string
+	deleteCompactions string
 }
 
 func newQueries(adkTablePrefix string) queries {
@@ -58,6 +59,10 @@ func newQueries(adkTablePrefix string) queries {
 			s.created_at,
 			s.updated_at,
 			s.archived_at,
+			s.current_compaction_id,
+			s.compaction_generation,
+			s.last_compaction_attempt_usage,
+			s.consecutive_compaction_failures,
 			COALESCE((
 				SELECT usage.prompt_tokens + usage.completion_tokens
 				FROM ` + adkEventsTable + ` AS usage
@@ -65,6 +70,7 @@ func newQueries(adkTablePrefix string) queries {
 					AND (usage.prompt_tokens > 0 OR usage.completion_tokens > 0)
 					AND usage.deleted_at = 0
 					AND usage.archived_at = 0
+					AND usage.event_id > s.context_usage_min_event_id
 				ORDER BY usage.created_at DESC, usage.event_id DESC
 				LIMIT 1
 			), 0) AS context_tokens,
@@ -86,7 +92,12 @@ func newQueries(adkTablePrefix string) queries {
 		s.shell_access,
 		s.created_at,
 		s.updated_at,
-		s.archived_at
+		s.archived_at,
+		s.current_compaction_id,
+		s.compaction_generation,
+		s.last_compaction_attempt_usage,
+		s.consecutive_compaction_failures,
+		s.context_usage_min_event_id
 	`
 
 	return queries{
@@ -182,6 +193,11 @@ func newQueries(adkTablePrefix string) queries {
 				AND turn_id = $3
 				AND deleted_at = 0
 				AND archived_at = 0
+		`,
+		deleteCompactions: `
+			UPDATE koda_session_compactions
+			SET deleted_at = $1
+			WHERE session_id = $2 AND deleted_at = 0
 		`,
 	}
 }
