@@ -81,7 +81,8 @@ go run ./cmd/koda serve
 generate，再运行 Go 检查。
 
 推送 `v*` tag 会触发 release workflow：构建 Studio、测试并打包原生 macOS
-amd64 和 arm64 binary、生成 checksums，并创建 draft GitHub Release。
+amd64 和 arm64 binary、生成 checksums，并创建 draft GitHub Release；annotated
+tag 的正文会添加在自动生成的 release notes 前面。
 
 ## License
 

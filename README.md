@@ -87,7 +87,8 @@ with Buf before running the Go checks.
 
 Pushing a `v*` tag runs the release workflow, which builds Studio, tests and
 packages native macOS amd64 and arm64 binaries, generates checksums, and creates
-a draft GitHub Release.
+a draft GitHub Release with the annotated tag body prepended to the automatically
+generated release notes.
 
 ## License
 
