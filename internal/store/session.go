@@ -36,6 +36,8 @@ type Session struct {
 	UpdatedAt       time.Time
 	ArchivedAt      time.Time
 	EventCount      int64
+	ContextTokens   int64
+	ContextMeasured bool
 }
 
 // CreateSessionParams contains the initial configuration for a coding session.
@@ -85,6 +87,7 @@ type sessionRow struct {
 	UpdatedAt       int64  `db:"updated_at"`
 	ArchivedAt      int64  `db:"archived_at"`
 	EventCount      int64  `db:"event_count"`
+	ContextTokens   int64  `db:"context_tokens"`
 }
 
 // CreateSession creates Koda session metadata. Its ADK history ledger is
@@ -428,6 +431,8 @@ func sessionFromRow(row sessionRow) Session {
 		CreatedAt:       time.UnixMilli(row.CreatedAt).UTC(),
 		UpdatedAt:       time.UnixMilli(row.UpdatedAt).UTC(),
 		EventCount:      row.EventCount,
+		ContextTokens:   row.ContextTokens,
+		ContextMeasured: row.ContextTokens > 0,
 	}
 	if row.ArchivedAt > 0 {
 		session.ArchivedAt = time.UnixMilli(row.ArchivedAt).UTC()

@@ -272,6 +272,61 @@ func TestSessionEventCountIncludesOnlyActiveADKEvents(t *testing.T) {
 	}
 }
 
+func TestSessionContextTokensUseLatestMeasuredEvent(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateSession(t.Context(), CreateSessionParams{
+		ID: "session-1", Workdir: "/workspace", ProviderID: "openai", ModelID: "gpt-5",
+	}); err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+	adkSession, err := store.EnsureADKSession(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("EnsureADKSession() error = %v", err)
+	}
+	createdAt := time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC)
+	for _, value := range []struct {
+		id               int64
+		promptTokens     int64
+		completionTokens int64
+	}{
+		{id: 1, promptTokens: 120_000, completionTokens: 5_000},
+		{id: 2, promptTokens: 90_000, completionTokens: 7_000},
+		{id: 3},
+	} {
+		if err := adkSession.CreateEvent(t.Context(), &event.Event{
+			EventID:          value.id,
+			TurnID:           "turn-1",
+			Role:             string(model.RoleAssistant),
+			Content:          "answer",
+			PromptTokens:     value.promptTokens,
+			CompletionTokens: value.completionTokens,
+			CreatedAt:        createdAt.Add(time.Duration(value.id) * time.Millisecond).UnixMilli(),
+			UpdatedAt:        createdAt.Add(time.Duration(value.id) * time.Millisecond).UnixMilli(),
+		}); err != nil {
+			t.Fatalf("CreateEvent(%d) error = %v", value.id, err)
+		}
+	}
+
+	got, err := store.GetSession(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("GetSession() error = %v", err)
+	}
+	if !got.ContextMeasured || got.ContextTokens != 97_000 {
+		t.Fatalf("GetSession() context = %d, measured %t; want 97000, true", got.ContextTokens, got.ContextMeasured)
+	}
+
+	if err := adkSession.DeleteEvent(t.Context(), 2); err != nil {
+		t.Fatalf("DeleteEvent() error = %v", err)
+	}
+	got, err = store.GetSession(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("GetSession(after delete) error = %v", err)
+	}
+	if !got.ContextMeasured || got.ContextTokens != 125_000 {
+		t.Fatalf("GetSession(after delete) context = %d, measured %t; want 125000, true", got.ContextTokens, got.ContextMeasured)
+	}
+}
+
 func TestListEventsAndUndoLastMessage(t *testing.T) {
 	store := openTestStore(t)
 	createdAt := time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC)

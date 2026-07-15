@@ -58,6 +58,16 @@ func newQueries(adkTablePrefix string) queries {
 			s.created_at,
 			s.updated_at,
 			s.archived_at,
+			COALESCE((
+				SELECT usage.prompt_tokens + usage.completion_tokens
+				FROM ` + adkEventsTable + ` AS usage
+				WHERE usage.session_id = s.id
+					AND (usage.prompt_tokens > 0 OR usage.completion_tokens > 0)
+					AND usage.deleted_at = 0
+					AND usage.archived_at = 0
+				ORDER BY usage.created_at DESC, usage.event_id DESC
+				LIMIT 1
+			), 0) AS context_tokens,
 			COUNT(e.event_id) AS event_count
 		FROM koda_sessions AS s
 		LEFT JOIN ` + adkEventsTable + ` AS e

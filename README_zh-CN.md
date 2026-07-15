@@ -49,7 +49,7 @@ go run ./cmd/koda serve --addr 127.0.0.1:8787
 
 服务只接受 loopback 地址，并且不会打开浏览器。Koda 还会从
 `~/.koda/koda.yaml` 读取进程级配置；命令行参数优先于配置文件。配置文件可选，可配置
-服务地址、诊断日志和进程级 MCP server：
+服务地址、全局 context window 预算、诊断日志和进程级 MCP server：
 
 ```yaml
 version: 1
@@ -57,6 +57,8 @@ server:
   address: 127.0.0.1:8080
 log:
   level: info
+context:
+  window_tokens: 256000
 mcp:
   servers:
     - id: exa
@@ -80,6 +82,10 @@ mcp:
 `warn` 和 `error`，默认为 `info`。所有级别的日志都是诊断信息并写入 stderr，监听
 地址仍写入 stdout。DEBUG 日志包含操作耗时、工具名称等安全的 ADK 运行时元数据，
 但不会记录 prompt、工具参数、命令输出、文件内容或凭据。
+
+`context.window_tokens` 是所有模型共享的 context window 预算，默认为 256,000。
+Studio 会将 provider 最近一次返回的 prompt 和 completion token usage 相加，展示 session
+已使用、剩余和百分比；provider 尚未返回 token usage 时，使用量显示为不可用。
 
 Koda 在启动时连接一次 MCP server，并将发现的工具提供给所有 Build agent；显式配置
 `read_only: true` 的 server 会自动执行，也会提供给 Plan agent；其它 MCP 工具只在

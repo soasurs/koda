@@ -184,7 +184,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	completed := v1.RunResponse{}
 	completed.SetCompleted(v1.RunCompleted_builder{
 		TurnId:  new(turnID),
-		Session: sessionToProto(committedSession),
+		Session: h.sessionToProto(committedSession),
 	}.Build())
 	if err := publisher.Publish(&completed); err != nil {
 		mapped := h.runtimeFailure(runCtx, "publish run completion", err,

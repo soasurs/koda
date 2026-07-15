@@ -52,7 +52,8 @@ go run ./cmd/koda serve --addr 127.0.0.1:8787
 The server accepts loopback addresses only and never opens a browser. Koda also
 reads process-level settings from `~/.koda/koda.yaml`; command-line options take
 precedence over the file. The file is optional and can configure the server,
-diagnostic logging, and process-wide MCP servers:
+the process-wide context window budget, diagnostic logging, and process-wide
+MCP servers:
 
 ```yaml
 version: 1
@@ -60,6 +61,8 @@ server:
   address: 127.0.0.1:8080
 log:
   level: info
+context:
+  window_tokens: 256000
 mcp:
   servers:
     - id: exa
@@ -85,6 +88,11 @@ every level are diagnostic output written to stderr, while the listening URL
 remains on stdout. Debug logging includes safe ADK runtime metadata such as
 operation durations and tool names, but not prompts, tool arguments, command
 output, file contents, or credentials.
+
+`context.window_tokens` is the shared context budget reported for every model
+and defaults to 256,000. Studio adds the latest provider-reported prompt and
+completion token usage to show used, remaining, and percentage values for each
+session. Usage remains unavailable until a provider reports token accounting.
 
 MCP servers are connected once at startup and their discovered tools are
 available to every Build agent. Servers explicitly configured with

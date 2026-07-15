@@ -12,15 +12,22 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const currentVersion = 1
+const (
+	currentVersion = 1
+
+	// DefaultContextWindowTokens is the process-wide context budget used when
+	// koda.yaml does not override it.
+	DefaultContextWindowTokens int64 = 256_000
+)
 
 // Config contains process-level settings loaded when Koda starts. Session and
 // provider configuration have separate durable stores.
 type Config struct {
-	Version int          `yaml:"version"`
-	Server  ServerConfig `yaml:"server,omitempty"`
-	Log     LogConfig    `yaml:"log,omitempty"`
-	MCP     MCPConfig    `yaml:"mcp,omitempty"`
+	Version int           `yaml:"version"`
+	Server  ServerConfig  `yaml:"server,omitempty"`
+	Log     LogConfig     `yaml:"log,omitempty"`
+	Context ContextConfig `yaml:"context,omitempty"`
+	MCP     MCPConfig     `yaml:"mcp,omitempty"`
 }
 
 // ServerConfig configures the local API server.
@@ -33,6 +40,20 @@ type LogConfig struct {
 	Level  string `yaml:"level,omitempty"`
 	Path   string `yaml:"path,omitempty"`
 	Output string `yaml:"output,omitempty"`
+}
+
+// ContextConfig configures the process-wide model context budget.
+type ContextConfig struct {
+	WindowTokens int64 `yaml:"window_tokens,omitempty"`
+}
+
+// EffectiveWindowTokens returns the configured context budget or the built-in
+// default when no override is present.
+func (c ContextConfig) EffectiveWindowTokens() int64 {
+	if c.WindowTokens == 0 {
+		return DefaultContextWindowTokens
+	}
+	return c.WindowTokens
 }
 
 // MCPConfig configures process-wide MCP servers loaded when Koda starts.
@@ -127,6 +148,9 @@ func Load(path string) (Config, error) {
 	case "", "all", "console", "file":
 	default:
 		return Config{}, fmt.Errorf("config: unsupported log output %q", result.Log.Output)
+	}
+	if result.Context.WindowTokens < 0 {
+		return Config{}, errors.New("config: context window tokens must not be negative")
 	}
 	return result, nil
 }

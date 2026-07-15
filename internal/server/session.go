@@ -61,7 +61,7 @@ func (h *Handler) CreateSession(ctx context.Context, request *v1.CreateSessionRe
 		slog.String("file_access", string(session.FileAccess)),
 		slog.String("shell_access", string(session.ShellAccess)),
 	)
-	return v1.CreateSessionResponse_builder{Session: sessionToProto(session)}.Build(), nil
+	return v1.CreateSessionResponse_builder{Session: h.sessionToProto(session)}.Build(), nil
 }
 
 // GetSession returns one session by ID.
@@ -77,7 +77,7 @@ func (h *Handler) GetSession(ctx context.Context, request *v1.GetSessionRequest)
 	if err != nil {
 		return nil, h.sessionFailure(ctx, "get session", err, slog.String("session_id", id))
 	}
-	return v1.GetSessionResponse_builder{Session: sessionToProto(session)}.Build(), nil
+	return v1.GetSessionResponse_builder{Session: h.sessionToProto(session)}.Build(), nil
 }
 
 // ListSessions returns a page of sessions ordered by last update time.
@@ -100,7 +100,7 @@ func (h *Handler) ListSessions(ctx context.Context, request *v1.ListSessionsRequ
 		return nil, h.sessionFailure(ctx, "list sessions", err)
 	}
 	return v1.ListSessionsResponse_builder{
-		Sessions: sessionsToProto(sessions),
+		Sessions: h.sessionsToProto(sessions),
 		Total:    new(total),
 	}.Build(), nil
 }
@@ -150,7 +150,7 @@ func (h *Handler) UpdateSession(ctx context.Context, request *v1.UpdateSessionRe
 		slog.String("session_id", id),
 		slog.Any("changed_fields", changedSessionFields(request)),
 	)
-	return v1.UpdateSessionResponse_builder{Session: sessionToProto(session)}.Build(), nil
+	return v1.UpdateSessionResponse_builder{Session: h.sessionToProto(session)}.Build(), nil
 }
 
 // DeleteSession deletes one session and hides its ADK history.
@@ -339,7 +339,7 @@ func sessionIDFromRequest(id string) (string, error) {
 	return id, nil
 }
 
-func sessionToProto(session store.Session) *v1.Session {
+func (h *Handler) sessionToProto(session store.Session) *v1.Session {
 	var archivedAt int64
 	if !session.ArchivedAt.IsZero() {
 		archivedAt = session.ArchivedAt.UnixMilli()
@@ -357,13 +357,18 @@ func sessionToProto(session store.Session) *v1.Session {
 		UpdatedAt:       new(session.UpdatedAt.UnixMilli()),
 		EventCount:      new(session.EventCount),
 		ArchivedAt:      new(archivedAt),
+		ContextUsage: v1.ContextUsage_builder{
+			UsedTokens:   new(session.ContextTokens),
+			WindowTokens: new(h.contextWindowTokens),
+			Measured:     new(session.ContextMeasured),
+		}.Build(),
 	}.Build()
 }
 
-func sessionsToProto(sessions []store.Session) []*v1.Session {
+func (h *Handler) sessionsToProto(sessions []store.Session) []*v1.Session {
 	result := make([]*v1.Session, len(sessions))
 	for i, session := range sessions {
-		result[i] = sessionToProto(session)
+		result[i] = h.sessionToProto(session)
 	}
 	return result
 }

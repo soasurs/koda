@@ -190,7 +190,15 @@ func runServer(ctx context.Context, config serveConfig, stdout, stderr io.Writer
 			logger.WarnContext(ctx, "session store close failed", "error", err)
 		}
 	}()
-	handler, err := kodaserver.NewHandler(registry, catalog, sessionStore, skillCatalog, mcpManager, logger)
+	handler, err := kodaserver.NewHandler(
+		registry,
+		catalog,
+		sessionStore,
+		skillCatalog,
+		mcpManager,
+		logger,
+		kodaserver.WithContextWindowTokens(fileConfig.Context.EffectiveWindowTokens()),
+	)
 	if err != nil {
 		return fmt.Errorf("create service handler: %w", err)
 	}
