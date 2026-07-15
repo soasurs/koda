@@ -128,6 +128,36 @@ func TestStoreSessionLifecycle(t *testing.T) {
 		t.Fatalf("UpdateSession().UpdatedAt = %v, want after %v", updated.UpdatedAt, created.UpdatedAt)
 	}
 
+	now = now.Add(time.Minute)
+	archived := true
+	archivedSession, err := store.UpdateSession(t.Context(), "session-b", UpdateSessionParams{Archived: &archived})
+	if err != nil {
+		t.Fatalf("UpdateSession(archive) error = %v", err)
+	}
+	if archivedSession.ArchivedAt.IsZero() {
+		t.Fatalf("UpdateSession(archive).ArchivedAt is zero")
+	}
+	if _, total, err := store.ListSessions(t.Context(), ListSessionsParams{}); err != nil || total != 1 {
+		t.Fatalf("ListSessions(active after archive) total = %d, error = %v; want 1, nil", total, err)
+	}
+	archivedSessions, archivedTotal, err := store.ListSessions(t.Context(), ListSessionsParams{Archived: true})
+	if err != nil {
+		t.Fatalf("ListSessions(archived) error = %v", err)
+	}
+	if archivedTotal != 1 || len(archivedSessions) != 1 || archivedSessions[0].ID != "session-b" {
+		t.Fatalf("ListSessions(archived) = %+v, total %d; want session-b only", archivedSessions, archivedTotal)
+	}
+
+	now = now.Add(time.Minute)
+	archived = false
+	restored, err := store.UpdateSession(t.Context(), "session-b", UpdateSessionParams{Archived: &archived})
+	if err != nil {
+		t.Fatalf("UpdateSession(restore) error = %v", err)
+	}
+	if !restored.ArchivedAt.IsZero() {
+		t.Fatalf("UpdateSession(restore).ArchivedAt = %v, want zero", restored.ArchivedAt)
+	}
+
 	sessions, total, err = store.ListSessions(t.Context(), ListSessionsParams{Limit: 1})
 	if err != nil {
 		t.Fatalf("ListSessions(updated) error = %v", err)

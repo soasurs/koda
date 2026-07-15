@@ -88,6 +88,37 @@ func TestSessionHandlers(t *testing.T) {
 		t.Fatalf("ListSessions() = %+v", listed)
 	}
 
+	archived, err := client.UpdateSession(t.Context(), v1.UpdateSessionRequest_builder{
+		SessionId: new("session-1"),
+		Archived:  new(true),
+	}.Build())
+	if err != nil {
+		t.Fatalf("UpdateSession(archive) error = %v", err)
+	}
+	if archived.GetSession().GetArchivedAt() == 0 {
+		t.Fatalf("UpdateSession(archive) = %+v, want archived timestamp", archived.GetSession())
+	}
+	listed, err = client.ListSessions(t.Context(), v1.ListSessionsRequest_builder{}.Build())
+	if err != nil {
+		t.Fatalf("ListSessions(active after archive) error = %v", err)
+	}
+	if listed.GetTotal() != 0 || len(listed.GetSessions()) != 0 {
+		t.Fatalf("ListSessions(active after archive) = %+v, want empty", listed)
+	}
+	listed, err = client.ListSessions(t.Context(), v1.ListSessionsRequest_builder{Archived: new(true)}.Build())
+	if err != nil {
+		t.Fatalf("ListSessions(archived) error = %v", err)
+	}
+	if listed.GetTotal() != 1 || len(listed.GetSessions()) != 1 || listed.GetSessions()[0].GetId() != "session-1" {
+		t.Fatalf("ListSessions(archived) = %+v", listed)
+	}
+	if _, err := client.UpdateSession(t.Context(), v1.UpdateSessionRequest_builder{
+		SessionId: new("session-1"),
+		Archived:  new(false),
+	}.Build()); err != nil {
+		t.Fatalf("UpdateSession(restore) error = %v", err)
+	}
+
 	if _, err := client.DeleteSession(t.Context(), v1.DeleteSessionRequest_builder{SessionId: new("session-1")}.Build()); err != nil {
 		t.Fatalf("DeleteSession() error = %v", err)
 	}

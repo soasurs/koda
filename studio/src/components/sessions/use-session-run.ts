@@ -63,6 +63,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
         sessionId,
         turnId: `pending-${sessionId}`,
         author: 'user',
+        createdAt: BigInt(Date.now()),
         message: { role: Role.USER, text },
       }),
     )
@@ -94,6 +95,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
                       sessionId: current.sessionId,
                       turnId: event.turnId,
                       author: current.author,
+                      createdAt: current.createdAt,
                       message: current.message,
                     })
                   : current,

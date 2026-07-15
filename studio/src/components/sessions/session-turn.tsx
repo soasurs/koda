@@ -1,4 +1,12 @@
-import { Copy, LoaderCircle, Pencil, RotateCcw, Send, X } from 'lucide-react'
+import {
+  ChevronRight,
+  Copy,
+  LoaderCircle,
+  Pencil,
+  RotateCcw,
+  Send,
+  X,
+} from 'lucide-react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -38,6 +46,7 @@ function matchesSendShortcut(
 export const SessionTurn = memo(function SessionTurn({
   canRevise,
   isEditing,
+  isRunning,
   isRewinding,
   onEditCancel,
   onEditStart,
@@ -47,6 +56,7 @@ export const SessionTurn = memo(function SessionTurn({
 }: {
   canRevise: boolean
   isEditing: boolean
+  isRunning: boolean
   isRewinding: boolean
   onEditCancel: () => void
   onEditStart: () => void
@@ -58,6 +68,8 @@ export const SessionTurn = memo(function SessionTurn({
     (event) => event.message?.role === Role.USER,
   )
   const activities = groupTurnActivities(turn.events)
+  const earlierActivities = activities.slice(0, -1)
+  const finalActivity = activities.at(-1)
   const lastAssistantEvent = [...turn.events]
     .reverse()
     .find(
@@ -100,20 +112,21 @@ export const SessionTurn = memo(function SessionTurn({
           </Button>
         </div>
       )}
-      {activities.map((activity, index) => (
-        <div
-          className="space-y-3"
-          key={activity.assistant.id || `${turn.id}-activity-${index}`}
-        >
-          <ReasoningView reasoning={activity.assistant.message?.reasoning} />
-          <EventView event={activity.assistant} />
-          <ToolGroup
-            assistant={activity.assistant}
-            key={`${activity.assistant.id}-${activity.tools.length}`}
-            toolEvents={activity.tools}
+      {isRunning ? (
+        activities.map((activity, index) => (
+          <ActivityView
+            activity={activity}
+            key={activity.assistant.id || `${turn.id}-activity-${index}`}
           />
-        </div>
-      ))}
+        ))
+      ) : (
+        <>
+          {earlierActivities.length > 0 && (
+            <EarlierActivityDetails activities={earlierActivities} />
+          )}
+          {finalActivity && <ActivityView activity={finalActivity} />}
+        </>
+      )}
       {canRevise && !isEditing && (
         <div className="-mt-3 ml-9 flex items-center gap-1">
           <CopyButton text={lastAssistantText} />
@@ -145,6 +158,7 @@ function areTurnPropsEqual(prev: TurnProps, next: TurnProps): boolean {
       next.turn.events[next.turn.events.length - 1] &&
     prev.canRevise === next.canRevise &&
     prev.isEditing === next.isEditing &&
+    prev.isRunning === next.isRunning &&
     prev.isRewinding === next.isRewinding
   )
 }
@@ -152,12 +166,48 @@ function areTurnPropsEqual(prev: TurnProps, next: TurnProps): boolean {
 type TurnProps = {
   canRevise: boolean
   isEditing: boolean
+  isRunning: boolean
   isRewinding: boolean
   onEditCancel: () => void
   onEditStart: () => void
   onEditSubmit: (text: string) => void
   onRetry: () => void
   turn: Turn
+}
+
+type TurnActivity = ReturnType<typeof groupTurnActivities>[number]
+
+function ActivityView({ activity }: { activity: TurnActivity }) {
+  return (
+    <div className="space-y-3">
+      <ReasoningView reasoning={activity.assistant.message?.reasoning} />
+      <EventView event={activity.assistant} />
+      <ToolGroup assistant={activity.assistant} toolEvents={activity.tools} />
+    </div>
+  )
+}
+
+function EarlierActivityDetails({
+  activities,
+}: {
+  activities: TurnActivity[]
+}) {
+  return (
+    <details className="group/earlier-activity">
+      <summary className="ml-9 flex w-fit cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+        <ChevronRight className="size-3 transition-transform group-open/earlier-activity:rotate-90" />
+        Earlier activity
+      </summary>
+      <div className="mt-4 space-y-4">
+        {activities.map((activity, index) => (
+          <ActivityView
+            activity={activity}
+            key={activity.assistant.id || `earlier-activity-${index}`}
+          />
+        ))}
+      </div>
+    </details>
+  )
 }
 
 function InlineEditComposer({

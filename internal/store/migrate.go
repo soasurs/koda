@@ -9,7 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const currentSchemaVersion = 1
+const currentSchemaVersion = 2
 
 func initSchema(ctx context.Context, db *sqlx.DB) error {
 	if _, err := db.ExecContext(ctx, `
@@ -84,6 +84,17 @@ func migrationSQL(version int) []string {
 			`
 				CREATE INDEX idx_koda_sessions_active_updated
 				ON koda_sessions (deleted_at, updated_at DESC, id ASC)
+			`,
+		}
+	case 2:
+		return []string{
+			`
+				ALTER TABLE koda_sessions
+				ADD COLUMN archived_at BIGINT NOT NULL DEFAULT 0
+			`,
+			`
+				CREATE INDEX idx_koda_sessions_state_updated
+				ON koda_sessions (deleted_at, archived_at, updated_at DESC, id ASC)
 			`,
 		}
 	default:

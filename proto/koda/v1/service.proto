@@ -377,6 +377,9 @@ message Session {
   int64 event_count = 10;
   // shell_access determines whether arbitrary shell commands need approval.
   ShellAccess shell_access = 11;
+  // archived_at is the archive timestamp in Unix milliseconds, or zero while
+  // the session is active.
+  int64 archived_at = 12;
 }
 
 // CreateSessionRequest creates a session with an initial execution configuration.
@@ -415,6 +418,9 @@ message ListSessionsRequest {
   int32 limit = 1;
   // offset is a zero-based offset into the updated-at-descending result set.
   int64 offset = 2;
+  // archived selects archived sessions when true. Omitted or false selects
+  // active sessions.
+  bool archived = 3 [features.field_presence = EXPLICIT];
 }
 
 // ListSessionsResponse contains one page and the unpaginated total.
@@ -438,6 +444,8 @@ message UpdateSessionRequest {
   FileAccess file_access = 7 [features.field_presence = EXPLICIT];
   // shell_access changes whether arbitrary shell commands need approval.
   ShellAccess shell_access = 8 [features.field_presence = EXPLICIT];
+  // archived moves the session out of or back into the active session list.
+  bool archived = 9 [features.field_presence = EXPLICIT];
 }
 
 // UpdateSessionResponse returns the updated session.

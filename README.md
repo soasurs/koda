@@ -177,6 +177,14 @@ The stream emits four frame kinds:
 Sessions select their own provider, model, reasoning effort, workspace, and
 permission policy. Runs for the same session are serialized. If a turn cannot
 be acknowledged with `RunCompleted`, its committed history is rolled back.
+Archiving a session removes it from the default active-session listing without
+removing its configuration or conversation history. Clients can request the
+archived listing separately and restore a session through `UpdateSession`.
+Studio exposes session renaming and archiving from each sidebar item's context
+menu. Conversation messages show localized timestamps, using the browser's
+timezone. Studio groups the intermediate tool activity in each turn, keeps it
+visible while the run is active, then folds every earlier agent/tool message
+behind the final agent response without changing the expanded content.
 When a session still has an empty title, its first Run concurrently asks the
 selected model for a concise title from the initial user input. The title is
 stored and returned in `RunCompleted.session`; title-generation failure does

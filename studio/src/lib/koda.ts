@@ -9,7 +9,8 @@ import type {
 import { kodaClient } from '@/lib/connect'
 
 export const kodaKeys = {
-  sessions: ['sessions'] as const,
+  sessions: ['sessions', 'active'] as const,
+  archivedSessions: ['sessions', 'archived'] as const,
   session: (sessionId: string) => ['session', sessionId] as const,
   events: (sessionId: string) => ['events', sessionId] as const,
   providers: ['providers'] as const,
@@ -20,8 +21,8 @@ export const kodaKeys = {
   mcpServer: (id: string) => ['mcp-server', id] as const,
 }
 
-export async function listSessions(): Promise<Session[]> {
-  const response = await kodaClient.listSessions({ limit: 200 })
+export async function listSessions(archived = false): Promise<Session[]> {
+  const response = await kodaClient.listSessions({ limit: 200, archived })
   return response.sessions
 }
 

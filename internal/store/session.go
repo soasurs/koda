@@ -34,6 +34,7 @@ type Session struct {
 	ShellAccess     permission.ShellAccess
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	ArchivedAt      time.Time
 	EventCount      int64
 }
 
@@ -60,13 +61,15 @@ type UpdateSessionParams struct {
 	ReasoningEffort *string
 	FileAccess      *permission.FileAccess
 	ShellAccess     *permission.ShellAccess
+	Archived        *bool
 }
 
 // ListSessionsParams selects one page of Koda sessions. Results are ordered
 // by updated time descending, then session ID ascending.
 type ListSessionsParams struct {
-	Limit  int
-	Offset int64
+	Limit    int
+	Offset   int64
+	Archived bool
 }
 
 type sessionRow struct {
@@ -80,6 +83,7 @@ type sessionRow struct {
 	ShellAccess     string `db:"shell_access"`
 	CreatedAt       int64  `db:"created_at"`
 	UpdatedAt       int64  `db:"updated_at"`
+	ArchivedAt      int64  `db:"archived_at"`
 	EventCount      int64  `db:"event_count"`
 }
 
@@ -146,12 +150,12 @@ func (s *Store) ListSessions(ctx context.Context, params ListSessionsParams) ([]
 	}
 
 	var total int64
-	if err := s.db.GetContext(ctx, &total, s.queries.countSessions); err != nil {
+	if err := s.db.GetContext(ctx, &total, s.queries.countSessions, params.Archived); err != nil {
 		return nil, 0, fmt.Errorf("store: count sessions: %w", err)
 	}
 
 	rows := make([]sessionRow, 0)
-	err = s.db.SelectContext(ctx, &rows, s.queries.listSessions, params.Limit, params.Offset)
+	err = s.db.SelectContext(ctx, &rows, s.queries.listSessions, params.Archived, params.Limit, params.Offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("store: list sessions: %w", err)
 	}
@@ -187,6 +191,17 @@ func (s *Store) UpdateSession(ctx context.Context, id string, params UpdateSessi
 		return Session{}, err
 	}
 	updated.UpdatedAt = s.now().UTC()
+	if params.Archived != nil {
+		if *params.Archived {
+			updated.ArchivedAt = updated.UpdatedAt
+		} else {
+			updated.ArchivedAt = time.Time{}
+		}
+	}
+	var archivedAt int64
+	if !updated.ArchivedAt.IsZero() {
+		archivedAt = updated.ArchivedAt.UnixMilli()
+	}
 	_, err = s.db.ExecContext(ctx, s.queries.updateSession,
 		updated.Title,
 		updated.Workdir,
@@ -195,6 +210,7 @@ func (s *Store) UpdateSession(ctx context.Context, id string, params UpdateSessi
 		updated.ReasoningEffort,
 		updated.FileAccess,
 		updated.ShellAccess,
+		archivedAt,
 		updated.UpdatedAt.UnixMilli(),
 		id,
 	)
@@ -355,7 +371,8 @@ func (p UpdateSessionParams) empty() bool {
 		p.ModelID == nil &&
 		p.ReasoningEffort == nil &&
 		p.FileAccess == nil &&
-		p.ShellAccess == nil
+		p.ShellAccess == nil &&
+		p.Archived == nil
 }
 
 func applyUpdate(current Session, params UpdateSessionParams) (Session, error) {
@@ -399,7 +416,7 @@ func applyUpdate(current Session, params UpdateSessionParams) (Session, error) {
 }
 
 func sessionFromRow(row sessionRow) Session {
-	return Session{
+	session := Session{
 		ID:              row.ID,
 		Title:           row.Title,
 		Workdir:         row.Workdir,
@@ -412,4 +429,8 @@ func sessionFromRow(row sessionRow) Session {
 		UpdatedAt:       time.UnixMilli(row.UpdatedAt).UTC(),
 		EventCount:      row.EventCount,
 	}
+	if row.ArchivedAt > 0 {
+		session.ArchivedAt = time.UnixMilli(row.ArchivedAt).UTC()
+	}
+	return session
 }

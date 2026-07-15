@@ -4,9 +4,11 @@ Koda Studio is the local web interface included in the Koda monorepo.
 
 The first local-first UI includes provider configuration, workspace browsing,
 session management, persisted conversation history, streamed Build and Plan
-runs, project-grouped sessions, Markdown responses, collapsible turn details,
+runs, project-grouped sessions, Markdown responses, completed turns that fold
+earlier agent activity behind the final response, localized message timestamps,
 last-turn editing and retry, tool approvals, structured question prompts, and
-system-aware light and dark themes.
+system-aware light and dark themes. Sessions can be renamed or archived from
+their sidebar context menu and restored from Settings > Sessions.
 
 ## Development
 

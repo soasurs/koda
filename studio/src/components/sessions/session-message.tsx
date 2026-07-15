@@ -58,8 +58,11 @@ export const EventView = memo(function EventView({ event }: { event: Event }) {
   if (message.role === Role.USER) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-xl bg-primary px-4 py-2.5 text-sm leading-6 text-primary-foreground">
-          <span className="whitespace-pre-wrap">{text}</span>
+        <div className="max-w-[85%]">
+          <div className="rounded-xl bg-primary px-4 py-2.5 text-sm leading-6 text-primary-foreground">
+            <span className="whitespace-pre-wrap">{text}</span>
+          </div>
+          <EventTime className="mt-1 text-right" timestamp={event.createdAt} />
         </div>
       </div>
     )
@@ -67,31 +70,79 @@ export const EventView = memo(function EventView({ event }: { event: Event }) {
 
   if (message.role === Role.TOOL) return null
 
-  return text && <AssistantText text={text} />
+  return text && <AssistantText text={text} timestamp={event.createdAt} />
 })
 
 export const AssistantText = memo(function AssistantText({
   text,
   streaming = false,
+  timestamp = 0n,
 }: {
   text: string
   streaming?: boolean
+  timestamp?: bigint
 }) {
   return (
     <div className="flex gap-3">
       <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
         <Bot className="size-3.5 text-muted-foreground" />
       </div>
-      <div className="markdown min-w-0 text-sm leading-6 text-foreground">
-        <Suspense
-          fallback={<span className="whitespace-pre-wrap">{text}</span>}
-        >
-          <MarkdownText text={text} />
-        </Suspense>
-        {streaming && (
-          <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-muted-foreground align-middle" />
-        )}
+      <div className="min-w-0">
+        <div className="markdown text-sm leading-6 text-foreground">
+          <Suspense
+            fallback={<span className="whitespace-pre-wrap">{text}</span>}
+          >
+            <MarkdownText text={text} />
+          </Suspense>
+          {streaming && (
+            <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-muted-foreground align-middle" />
+          )}
+        </div>
+        {!streaming && <EventTime className="mt-1" timestamp={timestamp} />}
       </div>
     </div>
   )
 })
+
+function EventTime({
+  className = '',
+  timestamp,
+}: {
+  className?: string
+  timestamp: bigint
+}) {
+  if (timestamp <= 0n) return null
+
+  const date = new Date(Number(timestamp))
+  const now = new Date()
+  const sameYear = date.getFullYear() === now.getFullYear()
+  const sameDay =
+    sameYear &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  const label = new Intl.DateTimeFormat(undefined, {
+    ...(sameDay
+      ? {}
+      : {
+          month: 'numeric',
+          day: 'numeric',
+          ...(sameYear ? {} : { year: 'numeric' }),
+        }),
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+  const title = new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'full',
+    timeStyle: 'medium',
+  }).format(date)
+
+  return (
+    <time
+      className={`text-[11px] leading-4 text-muted-foreground ${className}`}
+      dateTime={date.toISOString()}
+      title={title}
+    >
+      {label}
+    </time>
+  )
+}
