@@ -243,7 +243,7 @@ func Load(path string) (Config, error) {
 		return Config{}, errors.New("config: context window tokens must not be negative")
 	}
 	if result.Compaction.TriggerPercent < 0 || result.Compaction.TriggerPercent > 100 {
-		return Config{}, errors.New("config: compaction trigger percent must be between 1 and 100")
+		return Config{}, errors.New("config: compaction trigger percent must be between 0 and 100; 0 uses the default")
 	}
 	if result.Compaction.ReserveTokens < 0 {
 		return Config{}, errors.New("config: compaction reserve tokens must not be negative")

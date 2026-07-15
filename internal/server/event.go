@@ -127,7 +127,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 			Content:    currentCompaction.StateSnapshot,
 		})
 		if err != nil {
-			return h.internalFailure(lockedCtx, "prepare compacted history", errors.New("prepare compacted history"), err, slog.String("session_id", id))
+			return h.internalFailure(runCtx, "prepare compacted history", errors.New("prepare compacted history"), err, slog.String("session_id", id))
 		}
 	}
 	titleResult := h.startTitleGeneration(runCtx, session, input)
