@@ -437,8 +437,11 @@ func TestListEventsAndUndoLastMessage(t *testing.T) {
 	if len(listed) != 4 || listed[0].ID != 1 || listed[1].ID != 2 || listed[2].ID != 3 || listed[3].ID != 4 {
 		t.Fatalf("ListEvents() = %+v; want all 4 events", listed)
 	}
+	if _, err := store.UndoLastMessage(t.Context(), "session-1", "turn-1"); !errors.Is(err, ErrUndoConflict) {
+		t.Fatalf("UndoLastMessage(stale turn) error = %v, want ErrUndoConflict", err)
+	}
 
-	undone, err := store.UndoLastMessage(t.Context(), "session-1")
+	undone, err := store.UndoLastMessage(t.Context(), "session-1", "turn-2")
 	if err != nil {
 		t.Fatalf("UndoLastMessage() error = %v", err)
 	}
@@ -462,10 +465,10 @@ func TestListEventsAndUndoLastMessage(t *testing.T) {
 		t.Fatalf("GetSession(after undo) = %+v", updated)
 	}
 
-	if _, err := store.UndoLastMessage(t.Context(), "session-1"); err != nil {
+	if _, err := store.UndoLastMessage(t.Context(), "session-1", ""); err != nil {
 		t.Fatalf("UndoLastMessage(second) error = %v", err)
 	}
-	undone, err = store.UndoLastMessage(t.Context(), "session-1")
+	undone, err = store.UndoLastMessage(t.Context(), "session-1", "")
 	if err != nil {
 		t.Fatalf("UndoLastMessage(empty) error = %v", err)
 	}
@@ -491,7 +494,7 @@ func TestEventHistoryValidationAndEmptyLedger(t *testing.T) {
 	if _, err := store.ListEvents(t.Context(), "missing"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("ListEvents(missing) error = %v, want ErrNotFound", err)
 	}
-	if _, err := store.UndoLastMessage(t.Context(), "missing"); !errors.Is(err, ErrNotFound) {
+	if _, err := store.UndoLastMessage(t.Context(), "missing", ""); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("UndoLastMessage(missing) error = %v, want ErrNotFound", err)
 	}
 }

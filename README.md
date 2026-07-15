@@ -113,6 +113,11 @@ snapshot does not become an ordinary conversation event. `verify` performs a
 second model pass, and every `rebase_interval` generations Koda rebuilds the
 snapshot from a bounded checkpoint plus the subsequent immutable segment
 summaries to limit recursive drift without unbounded rebase input growth.
+Studio continues to show the complete non-deleted conversation after
+compaction and places a generation marker between the display-only compacted
+prefix and the active event tail. Edit and retry are offered only for the
+server-reported undoable turn; undo requests include that expected turn so a
+stale client cannot remove newer history across the compaction boundary.
 
 Below the reserve boundary, a failed compaction is recorded and the Run may
 continue; Koda retries after measured usage increases. At the reserve boundary,

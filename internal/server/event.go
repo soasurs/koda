@@ -297,7 +297,8 @@ func terminalEvent(event model.Event) bool {
 	}
 }
 
-// ListEvents returns all active, complete events in conversation order.
+// ListEvents returns complete visible history and its compaction and undo
+// boundaries in one snapshot.
 func (h *Handler) ListEvents(ctx context.Context, request *v1.ListEventsRequest) (*v1.ListEventsResponse, error) {
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("list events request must not be nil"))
@@ -306,19 +307,31 @@ func (h *Handler) ListEvents(ctx context.Context, request *v1.ListEventsRequest)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	events, err := h.store.ListEvents(ctx, id)
+	history, err := h.store.ListHistory(ctx, id)
 	if err != nil {
 		return nil, h.sessionFailure(ctx, "list events", err, slog.String("session_id", id))
 	}
-	converted, err := eventsToProto(events)
+	converted, err := eventsToProto(history.Events)
 	if err != nil {
 		return nil, h.internalFailure(ctx, "convert stored events", errors.New("convert stored events"), err,
 			slog.String("session_id", id),
 		)
 	}
-	return v1.ListEventsResponse_builder{
-		Events: converted,
-	}.Build(), nil
+	response := v1.ListEventsResponse_builder{
+		Events:         converted,
+		UndoableTurnId: new(history.UndoableTurnID),
+	}.Build()
+	if current := history.CurrentCompaction; current != nil {
+		response.SetCompaction(v1.CompactionStatus_builder{
+			Generation:           new(current.Generation),
+			CompactedEventCount:  new(history.CompactedEventCount),
+			SourceTokens:         new(current.SourceTokens),
+			EstimatedTokensAfter: new(current.EstimatedTokensAfter),
+			ModelId:              new(current.ModelID),
+			CreatedAt:            new(current.CreatedAt.UnixMilli()),
+		}.Build())
+	}
+	return response, nil
 }
 
 // UndoLastMessage deletes the most recent active user turn and returns its
@@ -331,7 +344,7 @@ func (h *Handler) UndoLastMessage(ctx context.Context, request *v1.UndoLastMessa
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	result, err := h.store.UndoLastMessage(ctx, id)
+	result, err := h.store.UndoLastMessage(ctx, id, request.GetExpectedTurnId())
 	if err != nil {
 		return nil, h.sessionFailure(ctx, "undo last message", err, slog.String("session_id", id))
 	}

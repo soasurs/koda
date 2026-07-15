@@ -46,6 +46,8 @@ func sessionError(err error) error {
 		return connect.NewError(connect.CodeDeadlineExceeded, err)
 	case errors.Is(err, store.ErrNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
+	case errors.Is(err, store.ErrUndoConflict):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
 	default:
 		return connect.NewError(connect.CodeInternal, errors.New("session operation failed"))
 	}

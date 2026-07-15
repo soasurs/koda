@@ -11,6 +11,12 @@ import (
 	sessionevent "github.com/soasurs/adk/session/event"
 )
 
+var (
+	// ErrUndoConflict indicates that the latest undoable turn changed after a
+	// client loaded the conversation history.
+	ErrUndoConflict = errors.New("undo turn conflict")
+)
+
 // RollbackTurn removes a turn that the ADK Runner completed but the Run RPC
 // could not acknowledge. previous restores the session title and ordering
 // timestamp when completion metadata had already been updated.
@@ -61,6 +67,55 @@ type UndoLastMessageResult struct {
 	Input             model.Content
 }
 
+// ConversationHistory contains every non-deleted event, including the
+// compacted prefix retained for display, and the current mutation boundary.
+type ConversationHistory struct {
+	Events              []model.Event
+	CompactedEventCount int64
+	CurrentCompaction   *Compaction
+	UndoableTurnID      string
+}
+
+// ListHistory returns complete visible history and its current compaction and
+// undo boundaries. It waits for any active turn so the snapshot is consistent.
+func (s *Store) ListHistory(ctx context.Context, id string) (ConversationHistory, error) {
+	if err := ctx.Err(); err != nil {
+		return ConversationHistory{}, err
+	}
+	id, err := normalizeSessionID(id)
+	if err != nil {
+		return ConversationHistory{}, err
+	}
+	unlock, err := s.LockRun(ctx, id)
+	if err != nil {
+		return ConversationHistory{}, err
+	}
+	defer unlock()
+	if _, err := s.GetSession(ctx, id); err != nil {
+		return ConversationHistory{}, err
+	}
+
+	persisted := make([]sessionevent.Event, 0)
+	if err := s.db.SelectContext(ctx, &persisted, s.queries.listHistoryEvents, id); err != nil {
+		return ConversationHistory{}, fmt.Errorf("store: list history for %q: %w", id, err)
+	}
+	history := ConversationHistory{Events: make([]model.Event, len(persisted))}
+	for index := range persisted {
+		history.Events[index] = persisted[index].ToModel()
+		if persisted[index].ArchivedAt > 0 {
+			history.CompactedEventCount++
+		} else if persisted[index].Role == string(model.RoleUser) {
+			history.UndoableTurnID = persisted[index].TurnID
+		}
+	}
+	current, err := s.getCurrentCompaction(ctx, id)
+	if err != nil {
+		return ConversationHistory{}, err
+	}
+	history.CurrentCompaction = current
+	return history, nil
+}
+
 // ListEvents returns all active ADK events in conversation order.
 // It waits for any active turn so callers never observe an incomplete ledger.
 func (s *Store) ListEvents(ctx context.Context, id string) ([]model.Event, error) {
@@ -93,7 +148,7 @@ func (s *Store) ListEvents(ctx context.Context, id string) ([]model.Event, error
 
 // UndoLastMessage deletes the most recent active user turn. It returns an
 // empty result when the session has no active user message.
-func (s *Store) UndoLastMessage(ctx context.Context, id string) (UndoLastMessageResult, error) {
+func (s *Store) UndoLastMessage(ctx context.Context, id, expectedTurnID string) (UndoLastMessageResult, error) {
 	if err := ctx.Err(); err != nil {
 		return UndoLastMessageResult{}, err
 	}
@@ -119,6 +174,9 @@ func (s *Store) UndoLastMessage(ctx context.Context, id string) (UndoLastMessage
 	userEvent := new(sessionevent.Event)
 	err = tx.GetContext(ctx, userEvent, s.queries.latestUserEvent, id, string(model.RoleUser))
 	if errors.Is(err, sql.ErrNoRows) {
+		if strings.TrimSpace(expectedTurnID) != "" {
+			return UndoLastMessageResult{}, fmt.Errorf("store: expected undo turn %q, but no active user turn remains: %w", strings.TrimSpace(expectedTurnID), ErrUndoConflict)
+		}
 		return UndoLastMessageResult{}, nil
 	}
 	if err != nil {
@@ -126,6 +184,10 @@ func (s *Store) UndoLastMessage(ctx context.Context, id string) (UndoLastMessage
 	}
 	if userEvent.TurnID == "" {
 		return UndoLastMessageResult{}, fmt.Errorf("store: last user event %d has no turn ID", userEvent.EventID)
+	}
+	expectedTurnID = strings.TrimSpace(expectedTurnID)
+	if expectedTurnID != "" && userEvent.TurnID != expectedTurnID {
+		return UndoLastMessageResult{}, fmt.Errorf("store: expected undo turn %q, current turn is %q: %w", expectedTurnID, userEvent.TurnID, ErrUndoConflict)
 	}
 
 	deletedAt := s.now().UTC().UnixMilli()

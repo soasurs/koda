@@ -87,9 +87,12 @@ func (s *Store) GetCurrentCompaction(ctx context.Context, id string) (*Compactio
 		return nil, err
 	}
 	defer unlock()
+	return s.getCurrentCompaction(ctx, id)
+}
 
+func (s *Store) getCurrentCompaction(ctx context.Context, id string) (*Compaction, error) {
 	var currentID int64
-	err = s.db.GetContext(ctx, &currentID, `
+	err := s.db.GetContext(ctx, &currentID, `
 		SELECT current_compaction_id
 		FROM koda_sessions
 		WHERE id = $1 AND deleted_at = 0

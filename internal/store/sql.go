@@ -16,6 +16,7 @@ type queries struct {
 	deleteEvents            string
 	sessionExists           string
 	listEvents              string
+	listHistoryEvents       string
 	latestUserEvent         string
 	deleteTurnEvents        string
 	deleteCompactions       string
@@ -175,6 +176,13 @@ func newQueries(adkTablePrefix string) queries {
 			WHERE session_id = $1
 				AND deleted_at = 0
 				AND archived_at = 0
+			ORDER BY created_at ASC, event_id ASC
+		`,
+		listHistoryEvents: `
+			SELECT ` + eventColumns + `
+			FROM ` + adkEventsTable + `
+			WHERE session_id = $1
+				AND deleted_at = 0
 			ORDER BY created_at ASC, event_id ASC
 		`,
 		latestUserEvent: `

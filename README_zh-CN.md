@@ -103,6 +103,9 @@ Studio 会将 provider 最近一次返回的 prompt 和 completion token usage �
 普通对话 event。`verify` 会增加一次模型校验；每经过 `rebase_interval` 代，Koda 会根据
 一个有界 checkpoint 和此后的不可变 segment summary 重建 snapshot，在降低多次递归
 总结漂移的同时避免 rebase 输入无界增长。
+压缩后 Studio 仍会展示全部未删除的对话，并在仅用于展示的已压缩前缀与 active event
+尾部之间显示 generation 标记。只有服务端明确返回的可撤销 turn 才提供编辑和重试；
+撤销请求会携带该 expected turn，避免过期客户端越过 compaction 边界误删更新的历史。
 
 未达到 reserve 边界时，压缩失败会被记录，Run 仍可继续，并在测得的使用量继续增长后
 重试。达到 reserve 边界后，如果压缩仍失败，Run 会返回 `RESOURCE_EXHAUSTED`，避免历史

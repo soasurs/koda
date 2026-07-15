@@ -175,7 +175,10 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     setRewindingTurnId(turnId)
     setRunError('')
     try {
-      const response = await kodaClient.undoLastMessage({ sessionId })
+      const response = await kodaClient.undoLastMessage({
+        sessionId,
+        expectedTurnId: turnId,
+      })
       if (response.turnId !== turnId) {
         throw new Error('Koda removed a different turn; reload before retrying')
       }
@@ -202,7 +205,10 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     setRewindingTurnId(turnId)
     setRunError('')
     try {
-      const response = await kodaClient.undoLastMessage({ sessionId })
+      const response = await kodaClient.undoLastMessage({
+        sessionId,
+        expectedTurnId: turnId,
+      })
       if (response.turnId !== turnId) {
         throw new Error('Koda removed a different turn; reload before retrying')
       }

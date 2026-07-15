@@ -269,6 +269,16 @@ func TestRunCompactsAcknowledgedHistoryAndInjectsSnapshot(t *testing.T) {
 	if len(active) != 2 || active[0].TurnID != "turn-3" {
 		t.Fatalf("active events = %+v", active)
 	}
+	history, err := client.ListEvents(t.Context(), v1.ListEventsRequest_builder{
+		SessionId: new(created.GetSession().GetId()),
+	}.Build())
+	if err != nil {
+		t.Fatalf("ListEvents(history) error = %v", err)
+	}
+	if len(history.GetEvents()) != 6 || history.GetCompaction().GetGeneration() != 1 ||
+		history.GetCompaction().GetCompactedEventCount() != 4 || history.GetUndoableTurnId() != "turn-3" {
+		t.Fatalf("ListEvents(history) = %+v", history)
+	}
 	current, err := handler.store.GetCurrentCompaction(t.Context(), created.GetSession().GetId())
 	if err != nil || current == nil || current.Generation != 1 || current.StateSnapshot != "working state" {
 		t.Fatalf("current compaction = %+v, %v", current, err)

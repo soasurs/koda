@@ -96,6 +96,14 @@ func TestCommitCompactionGenerations(t *testing.T) {
 	if len(active) != 2 || active[0].EventID != 3 || len(archived) != 2 || archived[0].EventID != 1 {
 		t.Fatalf("events after first compaction: active=%+v archived=%+v", active, archived)
 	}
+	history, err := store.ListHistory(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("ListHistory() error = %v", err)
+	}
+	if len(history.Events) != 4 || history.CompactedEventCount != 2 || history.CurrentCompaction == nil ||
+		history.CurrentCompaction.ID != first.ID || history.UndoableTurnID != "turn" {
+		t.Fatalf("ListHistory() = %+v", history)
+	}
 
 	if err := adkSession.CreateEvent(t.Context(), &event.Event{
 		EventID: 5, TurnID: "turn-3", Role: string(model.RoleAssistant), Content: "new answer",
