@@ -9,7 +9,17 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
+	"github.com/soasurs/koda/internal/store"
 )
+
+func TestSessionToProtoIncludesContextUsage(t *testing.T) {
+	handler := &Handler{contextWindowTokens: 128_000}
+	got := handler.sessionToProto(store.Session{ContextTokens: 32_000, ContextMeasured: true})
+	usage := got.GetContextUsage()
+	if usage == nil || usage.GetUsedTokens() != 32_000 || usage.GetWindowTokens() != 128_000 || !usage.GetMeasured() {
+		t.Fatalf("sessionToProto().ContextUsage = %+v", usage)
+	}
+}
 
 func TestSessionHandlers(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})

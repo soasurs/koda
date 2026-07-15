@@ -52,7 +52,8 @@ go run ./cmd/koda serve --addr 127.0.0.1:8787
 The server accepts loopback addresses only and never opens a browser. Koda also
 reads process-level settings from `~/.koda/koda.yaml`; command-line options take
 precedence over the file. The file is optional and can configure the server,
-diagnostic logging, and process-wide MCP servers:
+the process-wide context window budget and compaction policy, diagnostic
+logging, and process-wide MCP servers:
 
 ```yaml
 version: 1
@@ -60,6 +61,17 @@ server:
   address: 127.0.0.1:8080
 log:
   level: info
+context:
+  window_tokens: 256000
+compaction:
+  enabled: true
+  trigger_percent: 80
+  reserve_tokens: 32768
+  summary_max_tokens: 8192
+  retain_turns: 2
+  retain_tokens: 12000
+  verify: true
+  rebase_interval: 5
 mcp:
   servers:
     - id: exa
@@ -85,6 +97,43 @@ every level are diagnostic output written to stderr, while the listening URL
 remains on stdout. Debug logging includes safe ADK runtime metadata such as
 operation durations and tool names, but not prompts, tool arguments, command
 output, file contents, or credentials.
+
+`context.window_tokens` is the shared context budget reported for every model
+and defaults to 256,000. Studio adds the latest provider-reported prompt and
+completion token usage to show used, remaining, and percentage values for each
+session. Usage remains unavailable until a provider reports token accounting.
+
+Automatic durable compaction is enabled by default. Before a new Run, Koda
+attempts compaction when the preceding acknowledged turn used
+`compaction.trigger_percent` of the shared window, or earlier when needed to
+preserve `compaction.reserve_tokens`. It keeps up to `retain_turns` recent
+complete turns within `retain_tokens`, summarizes the older prefix, and injects
+the resulting working-state snapshot only into later model requests. The
+snapshot does not become an ordinary conversation event. Compaction output is
+validated against a versioned JSON schema with explicit objective,
+requirements, constraints, decisions, facts, progress, files, commands,
+failures, questions, and next-step categories; arbitrary text snapshots are
+rejected. One shared repair attempt may correct an invalid draft or verification
+result, so `verify: true` performs at most three compaction model calls. Provider
+errors, cancellation, content filtering, and invalid durable state are not
+repaired. `verify` performs a second model pass, and every `rebase_interval`
+generations Koda rebuilds the snapshot from a bounded structured checkpoint plus
+the subsequent immutable structured segment summaries to limit recursive drift
+without unbounded rebase input growth.
+During a Run, Studio shows transient started, completed, or failed compaction
+status so the extra model work is not mistaken for a stalled response. The
+status is not stored in conversation history. Studio continues to show the
+complete non-deleted conversation after compaction and places a generation
+marker between the display-only compacted prefix and the active event tail.
+Edit and retry are offered only for the server-reported undoable turn; undo
+requests include that expected turn so a stale client cannot remove newer
+history across the compaction boundary.
+
+Below the reserve boundary, a failed compaction is recorded and the Run may
+continue; Koda retries after measured usage increases. At the reserve boundary,
+a failed compaction stops the Run with `RESOURCE_EXHAUSTED` so history cannot
+continue growing unchecked. Set `compaction.enabled: false` to disable new
+compactions; existing durable snapshots are still supplied to the model.
 
 MCP servers are connected once at startup and their discovered tools are
 available to every Build agent. Servers explicitly configured with
@@ -267,7 +316,9 @@ Run and refreshed on the next Run.
 
 Runtime and workspace instructions are request-scoped context. They are sent to
 the model for each iteration but are not added to conversation events or stored
-in session history.
+in session history. Durable compaction snapshots are likewise inserted as
+request-only synthetic history before the active event tail and are never
+stored as ordinary ADK events.
 
 ## License
 

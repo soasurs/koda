@@ -24,18 +24,24 @@ const (
 // Session is Koda's durable configuration and summary for one coding session.
 // Conversation events remain owned by the associated ADK session ledger.
 type Session struct {
-	ID              string
-	Title           string
-	Workdir         string
-	ProviderID      string
-	ModelID         string
-	ReasoningEffort string
-	FileAccess      permission.FileAccess
-	ShellAccess     permission.ShellAccess
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	ArchivedAt      time.Time
-	EventCount      int64
+	ID                            string
+	Title                         string
+	Workdir                       string
+	ProviderID                    string
+	ModelID                       string
+	ReasoningEffort               string
+	FileAccess                    permission.FileAccess
+	ShellAccess                   permission.ShellAccess
+	CreatedAt                     time.Time
+	UpdatedAt                     time.Time
+	ArchivedAt                    time.Time
+	EventCount                    int64
+	ContextTokens                 int64
+	ContextMeasured               bool
+	CurrentCompactionID           int64
+	CompactionGeneration          int64
+	LastCompactionAttemptUsage    int64
+	ConsecutiveCompactionFailures int
 }
 
 // CreateSessionParams contains the initial configuration for a coding session.
@@ -73,18 +79,23 @@ type ListSessionsParams struct {
 }
 
 type sessionRow struct {
-	ID              string `db:"id"`
-	Title           string `db:"title"`
-	Workdir         string `db:"workdir"`
-	ProviderID      string `db:"provider_id"`
-	ModelID         string `db:"model_id"`
-	ReasoningEffort string `db:"reasoning_effort"`
-	FileAccess      string `db:"file_access"`
-	ShellAccess     string `db:"shell_access"`
-	CreatedAt       int64  `db:"created_at"`
-	UpdatedAt       int64  `db:"updated_at"`
-	ArchivedAt      int64  `db:"archived_at"`
-	EventCount      int64  `db:"event_count"`
+	ID                            string `db:"id"`
+	Title                         string `db:"title"`
+	Workdir                       string `db:"workdir"`
+	ProviderID                    string `db:"provider_id"`
+	ModelID                       string `db:"model_id"`
+	ReasoningEffort               string `db:"reasoning_effort"`
+	FileAccess                    string `db:"file_access"`
+	ShellAccess                   string `db:"shell_access"`
+	CreatedAt                     int64  `db:"created_at"`
+	UpdatedAt                     int64  `db:"updated_at"`
+	ArchivedAt                    int64  `db:"archived_at"`
+	EventCount                    int64  `db:"event_count"`
+	ContextTokens                 int64  `db:"context_tokens"`
+	CurrentCompactionID           int64  `db:"current_compaction_id"`
+	CompactionGeneration          int64  `db:"compaction_generation"`
+	LastCompactionAttemptUsage    int64  `db:"last_compaction_attempt_usage"`
+	ConsecutiveCompactionFailures int    `db:"consecutive_compaction_failures"`
 }
 
 // CreateSession creates Koda session metadata. Its ADK history ledger is
@@ -287,6 +298,9 @@ func (s *Store) DeleteSession(ctx context.Context, id string) error {
 	if _, err := tx.ExecContext(ctx, s.queries.deleteEvents, deletedAt, id); err != nil {
 		return fmt.Errorf("store: delete ADK events for %q: %w", id, err)
 	}
+	if _, err := tx.ExecContext(ctx, s.queries.deleteCompactions, deletedAt, id); err != nil {
+		return fmt.Errorf("store: delete compactions for %q: %w", id, err)
+	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("store: commit delete session %q: %w", id, err)
 	}
@@ -417,17 +431,23 @@ func applyUpdate(current Session, params UpdateSessionParams) (Session, error) {
 
 func sessionFromRow(row sessionRow) Session {
 	session := Session{
-		ID:              row.ID,
-		Title:           row.Title,
-		Workdir:         row.Workdir,
-		ProviderID:      row.ProviderID,
-		ModelID:         row.ModelID,
-		ReasoningEffort: row.ReasoningEffort,
-		FileAccess:      permission.FileAccess(row.FileAccess),
-		ShellAccess:     permission.ShellAccess(row.ShellAccess),
-		CreatedAt:       time.UnixMilli(row.CreatedAt).UTC(),
-		UpdatedAt:       time.UnixMilli(row.UpdatedAt).UTC(),
-		EventCount:      row.EventCount,
+		ID:                            row.ID,
+		Title:                         row.Title,
+		Workdir:                       row.Workdir,
+		ProviderID:                    row.ProviderID,
+		ModelID:                       row.ModelID,
+		ReasoningEffort:               row.ReasoningEffort,
+		FileAccess:                    permission.FileAccess(row.FileAccess),
+		ShellAccess:                   permission.ShellAccess(row.ShellAccess),
+		CreatedAt:                     time.UnixMilli(row.CreatedAt).UTC(),
+		UpdatedAt:                     time.UnixMilli(row.UpdatedAt).UTC(),
+		EventCount:                    row.EventCount,
+		ContextTokens:                 row.ContextTokens,
+		ContextMeasured:               row.ContextTokens > 0,
+		CurrentCompactionID:           row.CurrentCompactionID,
+		CompactionGeneration:          row.CompactionGeneration,
+		LastCompactionAttemptUsage:    row.LastCompactionAttemptUsage,
+		ConsecutiveCompactionFailures: row.ConsecutiveCompactionFailures,
 	}
 	if row.ArchivedAt > 0 {
 		session.ArchivedAt = time.UnixMilli(row.ArchivedAt).UTC()

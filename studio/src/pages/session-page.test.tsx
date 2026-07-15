@@ -1,9 +1,37 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { CompactionProgressStage } from '@/gen/koda/v1/service_pb'
 import { SessionPage } from '@/pages/session-page'
 
-const route = vi.hoisted(() => ({ sessionId: 'session-1' }))
+const route = vi.hoisted(() => ({
+  history: undefined as
+    | {
+        events: {
+          id: string
+          sessionId: string
+          turnId: string
+        }[]
+        undoableTurnId: string
+        compaction?: {
+          generation: bigint
+          compactedEventCount: bigint
+          sourceTokens: bigint
+          estimatedTokensAfter: bigint
+          modelId: string
+          createdAt: bigint
+        }
+      }
+    | undefined,
+  sessionId: 'session-1',
+  compactionProgress: null as null | {
+    stage: CompactionProgressStage
+    generation: bigint
+    contextTokens: bigint
+    sourceTokens: bigint
+    estimatedTokensAfter: bigint
+  },
+}))
 
 vi.mock('@tanstack/react-router', () => ({
   useParams: () => ({ sessionId: route.sessionId }),
@@ -21,29 +49,40 @@ vi.mock('@tanstack/react-query', () => ({
           isError: false,
           isPending: false,
         }
-      : { data: [], isError: false, isPending: false },
+      : {
+          data: route.history ?? { events: [], undoableTurnId: '' },
+          isError: false,
+          isPending: false,
+        },
 }))
 
 vi.mock('@/components/sessions/use-session-run', async () => {
   const { useState } = await import('react')
   return {
-    useSessionRun: (sessionId: string) => {
+    useSessionRun: (
+      sessionId: string,
+      persistedEvents: { id: string; sessionId: string; turnId: string }[],
+    ) => {
       const [sourceSessionId] = useState(sessionId)
       return {
         approvals: [],
         clearApproval: vi.fn(),
         clearQuestionPrompt: vi.fn(),
+        compactionProgress: route.compactionProgress,
         editLastTurn: vi.fn(),
-        events: [
-          {
-            id: 'event-1',
-            sessionId: sourceSessionId,
-            turnId: 'turn-1',
-          },
-        ],
+        events:
+          persistedEvents.length > 0
+            ? persistedEvents
+            : [
+                {
+                  id: 'event-1',
+                  sessionId: sourceSessionId,
+                  turnId: 'turn-1',
+                },
+              ],
         inputRef: { current: null },
         inputRevision: 0,
-        isRunning: true,
+        isRunning: false,
         mode: 1,
         partialReasoning: '',
         partialText: '',
@@ -69,8 +108,16 @@ vi.mock('@/components/sessions/session-header', () => ({
 }))
 
 vi.mock('@/components/sessions/session-turn', () => ({
-  SessionTurn: ({ turn }: { turn: { events: { sessionId: string }[] } }) => (
-    <div data-testid="turn-session">{turn.events[0]?.sessionId}</div>
+  SessionTurn: ({
+    canRevise,
+    turn,
+  }: {
+    canRevise: boolean
+    turn: { id: string; events: { sessionId: string }[] }
+  }) => (
+    <div data-can-revise={canRevise} data-testid={`turn-${turn.id}`}>
+      {turn.events[0]?.sessionId}
+    </div>
   ),
 }))
 
@@ -82,13 +129,94 @@ vi.mock('@/components/sessions/use-follow-latest', () => ({
 }))
 
 describe('SessionPage', () => {
+  beforeEach(() => {
+    route.history = undefined
+    route.sessionId = 'session-1'
+    route.compactionProgress = null
+  })
+
   it('remounts transient run state when the route session changes', () => {
     const view = render(<SessionPage />)
-    expect(screen.getByTestId('turn-session')).toHaveTextContent('session-1')
+    expect(screen.getByTestId('turn-turn-1')).toHaveTextContent('session-1')
 
     route.sessionId = 'session-2'
     view.rerender(<SessionPage />)
 
-    expect(screen.getByTestId('turn-session')).toHaveTextContent('session-2')
+    expect(screen.getByTestId('turn-turn-1')).toHaveTextContent('session-2')
+    view.unmount()
+  })
+
+  it('shows the compaction boundary and only revises the active tail', () => {
+    route.history = {
+      events: [
+        {
+          id: 'event-1',
+          sessionId: 'session-1',
+          turnId: 'turn-1',
+        },
+        {
+          id: 'event-2',
+          sessionId: 'session-1',
+          turnId: 'turn-2',
+        },
+      ],
+      undoableTurnId: 'turn-2',
+      compaction: {
+        generation: 3n,
+        compactedEventCount: 1n,
+        sourceTokens: 200_000n,
+        estimatedTokensAfter: 12_000n,
+        modelId: 'gpt-5.6',
+        createdAt: 1_784_025_600_000n,
+      },
+    }
+
+    render(<SessionPage />)
+
+    expect(screen.getByTestId('compaction-boundary')).toHaveTextContent(
+      'generation 3',
+    )
+    expect(screen.getByTestId('turn-turn-1')).toHaveAttribute(
+      'data-can-revise',
+      'false',
+    )
+    expect(screen.getByTestId('turn-turn-2')).toHaveAttribute(
+      'data-can-revise',
+      'true',
+    )
+  })
+
+  it('shows compaction lifecycle progress during a run', () => {
+    route.compactionProgress = {
+      stage: CompactionProgressStage.STARTED,
+      generation: 2n,
+      contextTokens: 208_000n,
+      sourceTokens: 0n,
+      estimatedTokensAfter: 0n,
+    }
+    const view = render(<SessionPage />)
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Compacting earlier context…',
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '208K tokens in current context',
+    )
+
+    route.compactionProgress = {
+      stage: CompactionProgressStage.COMPLETED,
+      generation: 2n,
+      contextTokens: 208_000n,
+      sourceTokens: 192_000n,
+      estimatedTokensAfter: 32_000n,
+    }
+    view.rerender(<SessionPage />)
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Context compacted · generation 2',
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '192K source tokens · 32K estimated after',
+    )
   })
 })

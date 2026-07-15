@@ -52,11 +52,19 @@ func TestEventHistoryHandlers(t *testing.T) {
 	}
 	if len(listed.GetEvents()) != 2 || listed.GetEvents()[0].GetId() != "1" ||
 		listed.GetEvents()[0].GetMessage().GetRole() != v1.Role_ROLE_USER || len(listed.GetEvents()[0].GetMessage().GetParts()) != 2 ||
-		listed.GetEvents()[0].GetMessage().GetParts()[1].GetImage().GetUrl() != "https://example.com/diagram.png" {
+		listed.GetEvents()[0].GetMessage().GetParts()[1].GetImage().GetUrl() != "https://example.com/diagram.png" ||
+		listed.GetUndoableTurnId() != "turn-1" || listed.GetCompaction() != nil {
 		t.Fatalf("ListEvents() = %+v", listed)
 	}
+	if _, err := client.UndoLastMessage(t.Context(), v1.UndoLastMessageRequest_builder{
+		SessionId: new(sessionID), ExpectedTurnId: new("stale-turn"),
+	}.Build()); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("UndoLastMessage(stale turn) code = %v, want failed_precondition; error = %v", connect.CodeOf(err), err)
+	}
 
-	undone, err := client.UndoLastMessage(t.Context(), v1.UndoLastMessageRequest_builder{SessionId: new(sessionID)}.Build())
+	undone, err := client.UndoLastMessage(t.Context(), v1.UndoLastMessageRequest_builder{
+		SessionId: new(sessionID), ExpectedTurnId: new("turn-1"),
+	}.Build())
 	if err != nil {
 		t.Fatalf("UndoLastMessage() error = %v", err)
 	}

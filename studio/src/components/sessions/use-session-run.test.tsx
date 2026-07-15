@@ -5,7 +5,10 @@ import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { useSessionRun } from '@/components/sessions/use-session-run'
+import type { RunResponse } from '@/gen/koda/v1/service_pb'
 import {
+  CompactionProgressSchema,
+  CompactionProgressStage,
   QuestionPromptSchema,
   RunResponseSchema,
   ToolApprovalSchema,
@@ -80,6 +83,30 @@ describe('useSessionRun interactions', () => {
     stream.finish()
     await act(async () => runPromise)
   })
+
+  it('tracks compaction progress while the run is active', async () => {
+    const stream = controlledStream([
+      compactionFrame(CompactionProgressStage.STARTED),
+      compactionFrame(CompactionProgressStage.COMPLETED),
+    ])
+    runMock.mockReturnValue(stream.responses)
+    const { result } = renderSessionRun()
+
+    let runPromise: Promise<void>
+    act(() => {
+      runPromise = result.current.run('continue')
+    })
+    await waitFor(() => {
+      expect(result.current.compactionProgress?.stage).toBe(
+        CompactionProgressStage.COMPLETED,
+      )
+      expect(result.current.compactionProgress?.generation).toBe(2n)
+    })
+
+    stream.finish()
+    await act(async () => runPromise)
+    expect(result.current.compactionProgress).toBeNull()
+  })
 })
 
 function renderSessionRun() {
@@ -110,7 +137,22 @@ function questionFrame(id: string) {
   })
 }
 
-function controlledStream(frames: ReturnType<typeof approvalFrame>[]) {
+function compactionFrame(stage: CompactionProgressStage) {
+  return create(RunResponseSchema, {
+    payload: {
+      case: 'compactionProgress',
+      value: create(CompactionProgressSchema, {
+        stage,
+        generation: 2n,
+        contextTokens: 208_000n,
+        sourceTokens: 192_000n,
+        estimatedTokensAfter: 32_000n,
+      }),
+    },
+  })
+}
+
+function controlledStream(frames: RunResponse[]) {
   let finish = () => {}
   const done = new Promise<void>((resolve) => {
     finish = resolve

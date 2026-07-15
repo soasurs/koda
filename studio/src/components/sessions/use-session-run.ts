@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type {
+  CompactionProgress,
   Event,
   QuestionPrompt,
   Session,
@@ -31,6 +32,8 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
   const [liveEvents, setLiveEvents] = useState<Event[]>([])
   const [partialReasoning, setPartialReasoning] = useState('')
   const [partialText, setPartialText] = useState('')
+  const [compactionProgress, setCompactionProgress] =
+    useState<CompactionProgress | null>(null)
   const [approvals, setApprovals] = useState<ToolApproval[]>([])
   const [questionPrompts, setQuestionPrompts] = useState<QuestionPrompt[]>([])
 
@@ -70,6 +73,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     setLiveEvents([])
     setPartialReasoning('')
     setPartialText('')
+    setCompactionProgress(null)
     setIsRunning(true)
     const abortController = new AbortController()
     abortRef.current = abortController
@@ -129,6 +133,10 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
             setQuestionPrompts((current) => [...current, prompt])
             break
           }
+          case 'compactionProgress': {
+            setCompactionProgress(frame.payload.value)
+            break
+          }
           case 'completed': {
             const completedSession = frame.payload.value.session
             if (completedSession) {
@@ -163,6 +171,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
       }
     } finally {
       setIsRunning(false)
+      setCompactionProgress(null)
       setApprovals([])
       setQuestionPrompts([])
       abortRef.current = null
@@ -175,7 +184,10 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     setRewindingTurnId(turnId)
     setRunError('')
     try {
-      const response = await kodaClient.undoLastMessage({ sessionId })
+      const response = await kodaClient.undoLastMessage({
+        sessionId,
+        expectedTurnId: turnId,
+      })
       if (response.turnId !== turnId) {
         throw new Error('Koda removed a different turn; reload before retrying')
       }
@@ -202,7 +214,10 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     setRewindingTurnId(turnId)
     setRunError('')
     try {
-      const response = await kodaClient.undoLastMessage({ sessionId })
+      const response = await kodaClient.undoLastMessage({
+        sessionId,
+        expectedTurnId: turnId,
+      })
       if (response.turnId !== turnId) {
         throw new Error('Koda removed a different turn; reload before retrying')
       }
@@ -253,6 +268,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     approvals,
     clearApproval,
     clearQuestionPrompt,
+    compactionProgress,
     editLastTurn,
     events,
     inputRef,

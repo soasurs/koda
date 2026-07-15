@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
@@ -13,6 +14,65 @@ import (
 
 	"github.com/soasurs/koda/internal/permission"
 )
+
+func TestOpenMigratesVersionTwoStore(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "koda.db")
+	db, err := sql.Open("sqlite3", sqliteDSN(path))
+	if err != nil {
+		t.Fatalf("open version two database: %v", err)
+	}
+	if _, err := db.Exec(`CREATE TABLE koda_schema_migrations (version INTEGER PRIMARY KEY)`); err != nil {
+		t.Fatalf("create migration table: %v", err)
+	}
+	for version := 1; version <= 2; version++ {
+		for _, statement := range migrationSQL(version) {
+			if _, err := db.Exec(statement); err != nil {
+				t.Fatalf("apply old migration v%d: %v", version, err)
+			}
+		}
+		if _, err := db.Exec(`INSERT INTO koda_schema_migrations (version) VALUES ($1)`, version); err != nil {
+			t.Fatalf("record old migration v%d: %v", version, err)
+		}
+	}
+	if _, err := db.Exec(`
+		INSERT INTO koda_sessions (
+			id, workdir, provider_id, model_id, file_access, shell_access,
+			created_at, updated_at
+		) VALUES ('session-1', '/workspace', 'openai', 'gpt-5',
+			'workspace_write', 'approval_required', 1, 1)
+	`); err != nil {
+		t.Fatalf("insert old session: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close version two database: %v", err)
+	}
+
+	store, err := Open(t.Context(), path)
+	if err != nil {
+		t.Fatalf("Open(version two) error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("Close() error = %v", err)
+		}
+	})
+	got, err := store.GetSession(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("GetSession(migrated) error = %v", err)
+	}
+	if got.CompactionGeneration != 0 || got.CurrentCompactionID != 0 {
+		t.Fatalf("GetSession(migrated) = %+v", got)
+	}
+	var applied int
+	if err := store.db.GetContext(t.Context(), &applied, `
+		SELECT COUNT(*) FROM koda_schema_migrations WHERE version = 3
+	`); err != nil {
+		t.Fatalf("find migration v3: %v", err)
+	}
+	if applied != 1 {
+		t.Fatalf("migration v3 count = %d, want 1", applied)
+	}
+}
 
 func TestOpenInitializesSchemasAndSecuresDatabase(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "state", "koda.db")
@@ -31,6 +91,7 @@ func TestOpenInitializesSchemasAndSecuresDatabase(t *testing.T) {
 		"adk_events",
 		"adk_schema_migrations",
 		"koda_sessions",
+		"koda_session_compactions",
 		"koda_schema_migrations",
 	} {
 		var count int
@@ -272,6 +333,61 @@ func TestSessionEventCountIncludesOnlyActiveADKEvents(t *testing.T) {
 	}
 }
 
+func TestSessionContextTokensUseLatestMeasuredEvent(t *testing.T) {
+	store := openTestStore(t)
+	if _, err := store.CreateSession(t.Context(), CreateSessionParams{
+		ID: "session-1", Workdir: "/workspace", ProviderID: "openai", ModelID: "gpt-5",
+	}); err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+	adkSession, err := store.EnsureADKSession(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("EnsureADKSession() error = %v", err)
+	}
+	createdAt := time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC)
+	for _, value := range []struct {
+		id               int64
+		promptTokens     int64
+		completionTokens int64
+	}{
+		{id: 1, promptTokens: 120_000, completionTokens: 5_000},
+		{id: 2, promptTokens: 90_000, completionTokens: 7_000},
+		{id: 3},
+	} {
+		if err := adkSession.CreateEvent(t.Context(), &event.Event{
+			EventID:          value.id,
+			TurnID:           "turn-1",
+			Role:             string(model.RoleAssistant),
+			Content:          "answer",
+			PromptTokens:     value.promptTokens,
+			CompletionTokens: value.completionTokens,
+			CreatedAt:        createdAt.Add(time.Duration(value.id) * time.Millisecond).UnixMilli(),
+			UpdatedAt:        createdAt.Add(time.Duration(value.id) * time.Millisecond).UnixMilli(),
+		}); err != nil {
+			t.Fatalf("CreateEvent(%d) error = %v", value.id, err)
+		}
+	}
+
+	got, err := store.GetSession(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("GetSession() error = %v", err)
+	}
+	if !got.ContextMeasured || got.ContextTokens != 97_000 {
+		t.Fatalf("GetSession() context = %d, measured %t; want 97000, true", got.ContextTokens, got.ContextMeasured)
+	}
+
+	if err := adkSession.DeleteEvent(t.Context(), 2); err != nil {
+		t.Fatalf("DeleteEvent() error = %v", err)
+	}
+	got, err = store.GetSession(t.Context(), "session-1")
+	if err != nil {
+		t.Fatalf("GetSession(after delete) error = %v", err)
+	}
+	if !got.ContextMeasured || got.ContextTokens != 125_000 {
+		t.Fatalf("GetSession(after delete) context = %d, measured %t; want 125000, true", got.ContextTokens, got.ContextMeasured)
+	}
+}
+
 func TestListEventsAndUndoLastMessage(t *testing.T) {
 	store := openTestStore(t)
 	createdAt := time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC)
@@ -321,8 +437,11 @@ func TestListEventsAndUndoLastMessage(t *testing.T) {
 	if len(listed) != 4 || listed[0].ID != 1 || listed[1].ID != 2 || listed[2].ID != 3 || listed[3].ID != 4 {
 		t.Fatalf("ListEvents() = %+v; want all 4 events", listed)
 	}
+	if _, err := store.UndoLastMessage(t.Context(), "session-1", "turn-1"); !errors.Is(err, ErrUndoConflict) {
+		t.Fatalf("UndoLastMessage(stale turn) error = %v, want ErrUndoConflict", err)
+	}
 
-	undone, err := store.UndoLastMessage(t.Context(), "session-1")
+	undone, err := store.UndoLastMessage(t.Context(), "session-1", "turn-2")
 	if err != nil {
 		t.Fatalf("UndoLastMessage() error = %v", err)
 	}
@@ -346,10 +465,10 @@ func TestListEventsAndUndoLastMessage(t *testing.T) {
 		t.Fatalf("GetSession(after undo) = %+v", updated)
 	}
 
-	if _, err := store.UndoLastMessage(t.Context(), "session-1"); err != nil {
+	if _, err := store.UndoLastMessage(t.Context(), "session-1", ""); err != nil {
 		t.Fatalf("UndoLastMessage(second) error = %v", err)
 	}
-	undone, err = store.UndoLastMessage(t.Context(), "session-1")
+	undone, err = store.UndoLastMessage(t.Context(), "session-1", "")
 	if err != nil {
 		t.Fatalf("UndoLastMessage(empty) error = %v", err)
 	}
@@ -375,7 +494,7 @@ func TestEventHistoryValidationAndEmptyLedger(t *testing.T) {
 	if _, err := store.ListEvents(t.Context(), "missing"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("ListEvents(missing) error = %v, want ErrNotFound", err)
 	}
-	if _, err := store.UndoLastMessage(t.Context(), "missing"); !errors.Is(err, ErrNotFound) {
+	if _, err := store.UndoLastMessage(t.Context(), "missing", ""); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("UndoLastMessage(missing) error = %v, want ErrNotFound", err)
 	}
 }

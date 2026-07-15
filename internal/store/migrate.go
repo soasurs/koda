@@ -9,7 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const currentSchemaVersion = 2
+const currentSchemaVersion = 3
 
 func initSchema(ctx context.Context, db *sqlx.DB) error {
 	if _, err := db.ExecContext(ctx, `
@@ -95,6 +95,51 @@ func migrationSQL(version int) []string {
 			`
 				CREATE INDEX idx_koda_sessions_state_updated
 				ON koda_sessions (deleted_at, archived_at, updated_at DESC, id ASC)
+			`,
+		}
+	case 3:
+		return []string{
+			`
+				ALTER TABLE koda_sessions
+				ADD COLUMN current_compaction_id BIGINT NOT NULL DEFAULT 0
+			`,
+			`
+				ALTER TABLE koda_sessions
+				ADD COLUMN compaction_generation BIGINT NOT NULL DEFAULT 0
+			`,
+			`
+				ALTER TABLE koda_sessions
+				ADD COLUMN context_usage_min_event_id BIGINT NOT NULL DEFAULT 0
+			`,
+			`
+				ALTER TABLE koda_sessions
+				ADD COLUMN last_compaction_attempt_usage BIGINT NOT NULL DEFAULT 0
+			`,
+			`
+				ALTER TABLE koda_sessions
+				ADD COLUMN consecutive_compaction_failures INTEGER NOT NULL DEFAULT 0
+			`,
+			`
+				CREATE TABLE koda_session_compactions (
+					id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+					session_id               TEXT NOT NULL,
+					generation               BIGINT NOT NULL,
+					previous_compaction_id   BIGINT NOT NULL DEFAULT 0,
+					start_event_id           BIGINT NOT NULL,
+					boundary_event_id        BIGINT NOT NULL,
+					segment_summary          TEXT NOT NULL,
+					state_snapshot           TEXT NOT NULL,
+					source_tokens            BIGINT NOT NULL,
+					estimated_tokens_after   BIGINT NOT NULL,
+					model_id                 TEXT NOT NULL,
+					created_at               BIGINT NOT NULL,
+					deleted_at               BIGINT NOT NULL DEFAULT 0,
+					UNIQUE (session_id, generation)
+				)
+			`,
+			`
+				CREATE INDEX idx_koda_session_compactions_current
+				ON koda_session_compactions (session_id, deleted_at, generation DESC)
 			`,
 		}
 	default:

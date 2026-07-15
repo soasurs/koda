@@ -49,7 +49,7 @@ go run ./cmd/koda serve --addr 127.0.0.1:8787
 
 服务只接受 loopback 地址，并且不会打开浏览器。Koda 还会从
 `~/.koda/koda.yaml` 读取进程级配置；命令行参数优先于配置文件。配置文件可选，可配置
-服务地址、诊断日志和进程级 MCP server：
+服务地址、全局 context window 预算与 compaction 策略、诊断日志和进程级 MCP server：
 
 ```yaml
 version: 1
@@ -57,6 +57,17 @@ server:
   address: 127.0.0.1:8080
 log:
   level: info
+context:
+  window_tokens: 256000
+compaction:
+  enabled: true
+  trigger_percent: 80
+  reserve_tokens: 32768
+  summary_max_tokens: 8192
+  retain_turns: 2
+  retain_tokens: 12000
+  verify: true
+  rebase_interval: 5
 mcp:
   servers:
     - id: exa
@@ -80,6 +91,32 @@ mcp:
 `warn` 和 `error`，默认为 `info`。所有级别的日志都是诊断信息并写入 stderr，监听
 地址仍写入 stdout。DEBUG 日志包含操作耗时、工具名称等安全的 ADK 运行时元数据，
 但不会记录 prompt、工具参数、命令输出、文件内容或凭据。
+
+`context.window_tokens` 是所有模型共享的 context window 预算，默认为 256,000。
+Studio 会将 provider 最近一次返回的 prompt 和 completion token usage 相加，展示 session
+已使用、剩余和百分比；provider 尚未返回 token usage 时，使用量显示为不可用。
+
+持久化 compaction 默认启用。每次新 Run 开始前，如果上一个已确认 turn 使用量达到
+`compaction.trigger_percent`，或者需要提前为 `compaction.reserve_tokens` 留出空间，Koda
+会尝试压缩历史。它在 `retain_tokens` 范围内最多保留 `retain_turns` 个最近完整 turn，
+总结更早的前缀，并只在后续模型请求中注入完整 working-state snapshot；snapshot 不会成为
+普通对话 event。compaction 输出必须通过版本化 JSON schema 校验，其中明确区分目标、
+用户要求、约束、决策、事实、进度、文件、命令、失败、未决问题和下一步；任意文本格式的
+snapshot 会被拒绝。draft 和 verify 共享一次格式修复机会，因此 `verify: true` 时每次
+compaction 最多调用模型三次；provider 错误、取消、content filter 和无效的持久化状态
+不会触发修复。`verify` 会增加一次模型校验；每经过 `rebase_interval` 代，Koda 会根据一个
+有界的结构化 checkpoint 和此后的不可变结构化 segment summary 重建 snapshot，在降低
+多次递归总结漂移的同时避免 rebase 输入无界增长。
+Run 期间 Studio 会显示瞬时的压缩开始、完成或失败状态，避免额外的模型调用看起来像响应
+卡住；这些状态不会写入对话历史。压缩后 Studio 仍会展示全部未删除的对话，并在仅用于
+展示的已压缩前缀与 active event 尾部之间显示 generation 标记。只有服务端明确返回的
+可撤销 turn 才提供编辑和重试；撤销请求会携带该 expected turn，避免过期客户端越过
+compaction 边界误删更新的历史。
+
+未达到 reserve 边界时，压缩失败会被记录，Run 仍可继续，并在测得的使用量继续增长后
+重试。达到 reserve 边界后，如果压缩仍失败，Run 会返回 `RESOURCE_EXHAUSTED`，避免历史
+无上限增长。设置 `compaction.enabled: false` 可关闭新的压缩；已有的持久化 snapshot
+仍会继续提供给模型。
 
 Koda 在启动时连接一次 MCP server，并将发现的工具提供给所有 Build agent；显式配置
 `read_only: true` 的 server 会自动执行，也会提供给 Plan agent；其它 MCP 工具只在
@@ -229,7 +266,9 @@ Session 的有效权限，以及从文件系统根目录到 workspace 的分层 
 会重新读取。
 
 运行时上下文和 workspace 指令只作用于当前请求。它们会在每次模型调用时
-发送，但不会加入 conversation event，也不会持久化到 Session history。
+发送，但不会加入 conversation event，也不会持久化到 Session history。持久化
+compaction snapshot 同样只会作为 request-only 的合成历史插入 active event tail
+之前，不会保存成普通 ADK event。
 
 ## License
 

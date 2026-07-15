@@ -36,7 +36,7 @@ service KodaService {
   // DeleteSession deletes a coding session and its event history.
   rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
 
-  // ListEvents returns all active events in a session.
+  // ListEvents returns complete visible history, including compacted events.
   rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
   // UndoLastMessage removes the most recent user turn.
   rpc UndoLastMessage(UndoLastMessageRequest) returns (UndoLastMessageResponse);
@@ -196,6 +196,9 @@ message RunResponse {
     // question_prompt blocks one ask_questions tool call until the frontend
     // submits answers or cancels the prompt.
     QuestionPrompt question_prompt = 4;
+    // compaction_progress reports transient context compaction lifecycle state.
+    // It is never persisted in session history.
+    CompactionProgress compaction_progress = 5;
   }
 }
 
@@ -380,6 +383,19 @@ message Session {
   // archived_at is the archive timestamp in Unix milliseconds, or zero while
   // the session is active.
   int64 archived_at = 12;
+  // context_usage reports the most recent provider-measured prompt and
+  // completion size against Koda's process-wide context window budget.
+  ContextUsage context_usage = 13;
+}
+
+// ContextUsage describes how much of the process-wide context window budget
+// the session used after its most recent provider-reported model call.
+message ContextUsage {
+  // used_tokens is valid only when measured is true.
+  int64 used_tokens = 1;
+  int64 window_tokens = 2;
+  // measured is false before the provider has reported usage for this session.
+  bool measured = 3;
 }
 
 // CreateSessionRequest creates a session with an initial execution configuration.
@@ -585,19 +601,41 @@ message TokenUsageDetails {
   int64 rejected_prediction_tokens = 9;
 }
 
-// ListEventsRequest selects all active events in conversation order.
+// ListEventsRequest selects complete visible history in conversation order.
 message ListEventsRequest {
   string session_id = 1;
 }
 
-// ListEventsResponse contains all active events.
+// ListEventsResponse contains complete visible history and its mutation boundary.
 message ListEventsResponse {
+  // events includes both compacted and active events. Compacted events always
+  // form the prefix identified by compaction.compacted_event_count.
   repeated Event events = 1;
+  // compaction describes the current durable generation. It is absent before
+  // the first compaction.
+  CompactionStatus compaction = 2;
+  // undoable_turn_id is the only turn UndoLastMessage may currently remove.
+  // It is empty when no active user turn remains after the compaction boundary.
+  string undoable_turn_id = 3;
+}
+
+// CompactionStatus describes the current boundary between compacted history
+// retained for display and active history sent verbatim to the model.
+message CompactionStatus {
+  int64 generation = 1;
+  int64 compacted_event_count = 2;
+  int64 source_tokens = 3;
+  int64 estimated_tokens_after = 4;
+  string model_id = 5;
+  int64 created_at = 6;
 }
 
 // UndoLastMessageRequest identifies the session to modify.
 message UndoLastMessageRequest {
   string session_id = 1;
+  // expected_turn_id prevents a stale client from removing a newer turn. It
+  // may be empty for clients that do not perform optimistic concurrency checks.
+  string expected_turn_id = 2;
 }
 
 // UndoLastMessageResponse describes the removed user turn.
@@ -788,4 +826,23 @@ message RefreshModelsResponse {
   repeated Model models = 2;
   // refreshed_at is the Unix timestamp in milliseconds of this successful refresh.
   int64 refreshed_at = 3;
+}
+
+// CompactionProgress reports one automatic context compaction attempt made
+// before the requested agent turn starts.
+message CompactionProgress {
+  CompactionProgressStage stage = 1;
+  int64 generation = 2;
+  int64 context_tokens = 3;
+  int64 source_tokens = 4;
+  int64 estimated_tokens_after = 5;
+}
+
+// CompactionProgressStage identifies the current state of one context
+// compaction attempt.
+enum CompactionProgressStage {
+  COMPACTION_PROGRESS_STAGE_UNSPECIFIED = 0;
+  COMPACTION_PROGRESS_STAGE_STARTED = 1;
+  COMPACTION_PROGRESS_STAGE_COMPLETED = 2;
+  COMPACTION_PROGRESS_STAGE_FAILED = 3;
 }

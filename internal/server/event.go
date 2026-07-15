@@ -53,24 +53,54 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		return h.sessionFailure(ctx, "lock run", err, slog.String("session_id", id))
 	}
 	defer unlock()
+	runCtx, cancel := context.WithCancel(lockedCtx)
+	defer cancel()
+	publisher := &runPublisher{stream: stream, cancel: cancel}
 
-	session, err := h.store.GetSession(lockedCtx, id)
+	session, err := h.store.GetSession(runCtx, id)
 	if err != nil {
-		return h.sessionFailure(lockedCtx, "load run session", err, slog.String("session_id", id))
+		return h.sessionFailure(runCtx, "load run session", err, slog.String("session_id", id))
+	}
+	compactionAttempted := h.compaction.shouldAttempt(session)
+	compactionGeneration := session.CompactionGeneration + 1
+	compactionContextTokens := session.ContextTokens
+	if compactionAttempted {
+		if err := publishCompactionProgress(publisher, v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_STARTED, compactionGeneration, compactionContextTokens, nil); err != nil {
+			return h.runtimeFailure(runCtx, "publish compaction start", err, slog.String("session_id", id))
+		}
+	}
+	previousCompactionGeneration := session.CompactionGeneration
+	session, currentCompaction, err := h.prepareRunCompaction(runCtx, session)
+	if err != nil {
+		if compactionAttempted {
+			if publishErr := publishCompactionProgress(publisher, v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_FAILED, compactionGeneration, compactionContextTokens, nil); publishErr != nil {
+				return h.runtimeFailure(runCtx, "publish compaction failure", publishErr, slog.String("session_id", id))
+			}
+		}
+		return err
+	}
+	if compactionAttempted {
+		stage := v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_FAILED
+		if session.CompactionGeneration > previousCompactionGeneration {
+			stage = v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_COMPLETED
+		}
+		if err := publishCompactionProgress(publisher, stage, compactionGeneration, compactionContextTokens, currentCompaction); err != nil {
+			return h.runtimeFailure(runCtx, "publish compaction completion", err, slog.String("session_id", id))
+		}
 	}
 	var runner TurnRunner
 	if h.turnRunnerFactory != nil {
-		runner, err = h.turnRunnerFactory(lockedCtx, session, mode)
+		runner, err = h.turnRunnerFactory(runCtx, session, mode)
 	} else {
-		_, err = h.store.EnsureADKSession(lockedCtx, id)
+		_, err = h.store.EnsureADKSession(runCtx, id)
 	}
 	if h.turnRunnerFactory == nil {
 		if err != nil {
-			return h.sessionFailure(lockedCtx, "ensure ADK session", err, slog.String("session_id", id))
+			return h.sessionFailure(runCtx, "ensure ADK session", err, slog.String("session_id", id))
 		}
-		runtimeRunner, factoryErr := h.agentFactory.Runner(lockedCtx, session, agentModeToRuntime(mode))
+		runtimeRunner, factoryErr := h.agentFactory.Runner(runCtx, session, agentModeToRuntime(mode))
 		if factoryErr != nil {
-			return h.runtimeFailure(lockedCtx, "construct runner", factoryErr,
+			return h.runtimeFailure(runCtx, "construct runner", factoryErr,
 				slog.String("session_id", id),
 				slog.String("provider_id", session.ProviderID),
 				slog.String("model_id", session.ModelID),
@@ -79,21 +109,27 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		runner = runtimeRunner
 	}
 	if err != nil {
-		return h.runtimeFailure(lockedCtx, "construct injected runner", err, slog.String("session_id", id))
+		return h.runtimeFailure(runCtx, "construct injected runner", err, slog.String("session_id", id))
 	}
 	if runner == nil {
 		err := errors.New("agent runtime returned nil runner")
-		return h.internalFailure(lockedCtx, "construct runner", err, err, slog.String("session_id", id))
+		return h.internalFailure(runCtx, "construct runner", err, err, slog.String("session_id", id))
 	}
-	runCtx, cancel := context.WithCancel(lockedCtx)
-	defer cancel()
-	publisher := &runPublisher{stream: stream, cancel: cancel}
 	runCtx = agent.WithRunInteractions(runCtx, h.runInteractions(publisher.Publish))
 	runCtx = agent.WithRunEnvironment(runCtx, agent.RunEnvironment{
 		Workdir:     session.Workdir,
 		FileAccess:  session.FileAccess,
 		ShellAccess: session.ShellAccess,
 	})
+	if currentCompaction != nil {
+		runCtx, err = agent.WithCompactionSnapshot(runCtx, agent.CompactionSnapshot{
+			Generation: currentCompaction.Generation,
+			Content:    currentCompaction.StateSnapshot,
+		})
+		if err != nil {
+			return h.internalFailure(runCtx, "prepare compacted history", errors.New("prepare compacted history"), err, slog.String("session_id", id))
+		}
+	}
 	titleResult := h.startTitleGeneration(runCtx, session, input)
 	var (
 		turnID           string
@@ -184,7 +220,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	completed := v1.RunResponse{}
 	completed.SetCompleted(v1.RunCompleted_builder{
 		TurnId:  new(turnID),
-		Session: sessionToProto(committedSession),
+		Session: h.sessionToProto(committedSession),
 	}.Build())
 	if err := publisher.Publish(&completed); err != nil {
 		mapped := h.runtimeFailure(runCtx, "publish run completion", err,
@@ -207,6 +243,21 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		slog.Duration("duration", time.Since(startedAt)),
 	)
 	return nil
+}
+
+func publishCompactionProgress(publisher *runPublisher, stage v1.CompactionProgressStage, generation, contextTokens int64, compaction *store.Compaction) error {
+	progress := v1.CompactionProgress_builder{
+		Stage:         stage.Enum(),
+		Generation:    new(generation),
+		ContextTokens: new(contextTokens),
+	}
+	if compaction != nil && stage == v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_COMPLETED {
+		progress.SourceTokens = new(compaction.SourceTokens)
+		progress.EstimatedTokensAfter = new(compaction.EstimatedTokensAfter)
+	}
+	response := new(v1.RunResponse)
+	response.SetCompactionProgress(progress.Build())
+	return publisher.Publish(response)
 }
 
 func (h *Handler) rollbackCommittedTurn(ctx context.Context, session store.Session, turnID string, runErr error) error {
@@ -284,7 +335,8 @@ func terminalEvent(event model.Event) bool {
 	}
 }
 
-// ListEvents returns all active, complete events in conversation order.
+// ListEvents returns complete visible history and its compaction and undo
+// boundaries in one snapshot.
 func (h *Handler) ListEvents(ctx context.Context, request *v1.ListEventsRequest) (*v1.ListEventsResponse, error) {
 	if request == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("list events request must not be nil"))
@@ -293,19 +345,31 @@ func (h *Handler) ListEvents(ctx context.Context, request *v1.ListEventsRequest)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	events, err := h.store.ListEvents(ctx, id)
+	history, err := h.store.ListHistory(ctx, id)
 	if err != nil {
 		return nil, h.sessionFailure(ctx, "list events", err, slog.String("session_id", id))
 	}
-	converted, err := eventsToProto(events)
+	converted, err := eventsToProto(history.Events)
 	if err != nil {
 		return nil, h.internalFailure(ctx, "convert stored events", errors.New("convert stored events"), err,
 			slog.String("session_id", id),
 		)
 	}
-	return v1.ListEventsResponse_builder{
-		Events: converted,
-	}.Build(), nil
+	response := v1.ListEventsResponse_builder{
+		Events:         converted,
+		UndoableTurnId: new(history.UndoableTurnID),
+	}.Build()
+	if current := history.CurrentCompaction; current != nil {
+		response.SetCompaction(v1.CompactionStatus_builder{
+			Generation:           new(current.Generation),
+			CompactedEventCount:  new(history.CompactedEventCount),
+			SourceTokens:         new(current.SourceTokens),
+			EstimatedTokensAfter: new(current.EstimatedTokensAfter),
+			ModelId:              new(current.ModelID),
+			CreatedAt:            new(current.CreatedAt.UnixMilli()),
+		}.Build())
+	}
+	return response, nil
 }
 
 // UndoLastMessage deletes the most recent active user turn and returns its
@@ -318,7 +382,7 @@ func (h *Handler) UndoLastMessage(ctx context.Context, request *v1.UndoLastMessa
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	result, err := h.store.UndoLastMessage(ctx, id)
+	result, err := h.store.UndoLastMessage(ctx, id, request.GetExpectedTurnId())
 	if err != nil {
 		return nil, h.sessionFailure(ctx, "undo last message", err, slog.String("session_id", id))
 	}

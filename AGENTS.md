@@ -36,7 +36,7 @@ their own domain types or ADK types.
 - `proto/koda/v1/service.proto` is the API source of truth. Never edit `gen/`
   directly; regenerate it with Buf.
 - `Run` is server-streaming and emits only `Event`, `ToolApproval`,
-  `QuestionPrompt`, and `RunCompleted` frames.
+  `QuestionPrompt`, transient `CompactionProgress`, and `RunCompleted` frames.
 - A successful turn includes every tool-call round through the final assistant
   response. `RunCompleted` is sent only after durable history and session
   metadata are consistent.
