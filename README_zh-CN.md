@@ -49,7 +49,7 @@ go run ./cmd/koda serve --addr 127.0.0.1:8787
 
 服务只接受 loopback 地址，并且不会打开浏览器。Koda 还会从
 `~/.koda/koda.yaml` 读取进程级配置；命令行参数优先于配置文件。配置文件可选，可配置
-服务地址、全局 context window 预算、诊断日志和进程级 MCP server：
+服务地址、全局 context window 预算与 compaction 策略、诊断日志和进程级 MCP server：
 
 ```yaml
 version: 1
@@ -59,6 +59,15 @@ log:
   level: info
 context:
   window_tokens: 256000
+compaction:
+  enabled: true
+  trigger_percent: 80
+  reserve_tokens: 32768
+  summary_max_tokens: 8192
+  retain_turns: 2
+  retain_tokens: 12000
+  verify: true
+  rebase_interval: 5
 mcp:
   servers:
     - id: exa
@@ -86,6 +95,19 @@ mcp:
 `context.window_tokens` 是所有模型共享的 context window 预算，默认为 256,000。
 Studio 会将 provider 最近一次返回的 prompt 和 completion token usage 相加，展示 session
 已使用、剩余和百分比；provider 尚未返回 token usage 时，使用量显示为不可用。
+
+持久化 compaction 默认启用。每次新 Run 开始前，如果上一个已确认 turn 使用量达到
+`compaction.trigger_percent`，或者需要提前为 `compaction.reserve_tokens` 留出空间，Koda
+会尝试压缩历史。它在 `retain_tokens` 范围内最多保留 `retain_turns` 个最近完整 turn，
+总结更早的前缀，并只在后续模型请求中注入完整 working-state snapshot；snapshot 不会成为
+普通对话 event。`verify` 会增加一次模型校验；每经过 `rebase_interval` 代，Koda 会根据
+一个有界 checkpoint 和此后的不可变 segment summary 重建 snapshot，在降低多次递归
+总结漂移的同时避免 rebase 输入无界增长。
+
+未达到 reserve 边界时，压缩失败会被记录，Run 仍可继续，并在测得的使用量继续增长后
+重试。达到 reserve 边界后，如果压缩仍失败，Run 会返回 `RESOURCE_EXHAUSTED`，避免历史
+无上限增长。设置 `compaction.enabled: false` 可关闭新的压缩；已有的持久化 snapshot
+仍会继续提供给模型。
 
 Koda 在启动时连接一次 MCP server，并将发现的工具提供给所有 Build agent；显式配置
 `read_only: true` 的 server 会自动执行，也会提供给 Plan agent；其它 MCP 工具只在
@@ -235,7 +257,9 @@ Session 的有效权限，以及从文件系统根目录到 workspace 的分层 
 会重新读取。
 
 运行时上下文和 workspace 指令只作用于当前请求。它们会在每次模型调用时
-发送，但不会加入 conversation event，也不会持久化到 Session history。
+发送，但不会加入 conversation event，也不会持久化到 Session history。持久化
+compaction snapshot 同样只会作为 request-only 的合成历史插入 active event tail
+之前，不会保存成普通 ADK event。
 
 ## License
 

@@ -198,6 +198,7 @@ func runServer(ctx context.Context, config serveConfig, stdout, stderr io.Writer
 		mcpManager,
 		logger,
 		kodaserver.WithContextWindowTokens(fileConfig.Context.EffectiveWindowTokens()),
+		kodaserver.WithCompactionConfig(fileConfig.Compaction),
 	)
 	if err != nil {
 		return fmt.Errorf("create service handler: %w", err)

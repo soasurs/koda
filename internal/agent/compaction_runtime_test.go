@@ -108,7 +108,7 @@ func TestCompactorGeneratesAndVerifiesRebasedSnapshot(t *testing.T) {
 	}
 	result, err := compactor.Compact(t.Context(), CompactionRequest{
 		ModelID: "test-model", Events: []model.Event{testCompactionEvent(1, "turn-1", model.RoleUser, "fix it")},
-		PriorSegmentSummaries: []string{"older segment"}, Rebase: true, Verify: true, MaxTokens: 4096,
+		PreviousSnapshot: "checkpoint state", PriorSegmentSummaries: []string{"older segment"}, Rebase: true, Verify: true, MaxTokens: 4096,
 	})
 	if err != nil {
 		t.Fatalf("Compact() error = %v", err)
@@ -120,7 +120,8 @@ func TestCompactorGeneratesAndVerifiesRebasedSnapshot(t *testing.T) {
 		t.Fatalf("compaction calls = requests %d, configs %+v, streams %v", len(llm.requests), llm.configs, llm.streams)
 	}
 	firstPrompt := llm.requests[0].Contents[1].Content
-	if !strings.Contains(firstPrompt, "MODE: rebase") || !strings.Contains(firstPrompt, "older segment") || strings.Contains(firstPrompt, "PREVIOUS WORKING-STATE") {
+	if !strings.Contains(firstPrompt, "MODE: rebase") || !strings.Contains(firstPrompt, "older segment") ||
+		!strings.Contains(firstPrompt, "checkpoint state") || strings.Contains(firstPrompt, "PREVIOUS WORKING-STATE") {
 		t.Fatalf("rebase prompt = %q", firstPrompt)
 	}
 	if !strings.Contains(llm.requests[1].Contents[1].Content, "draft state") ||

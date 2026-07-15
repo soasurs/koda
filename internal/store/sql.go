@@ -4,21 +4,22 @@ package store
 // fixed during Store initialization, so it is assembled once rather than at
 // each call site. Runtime values are always passed as SQL parameters.
 type queries struct {
-	createSession     string
-	getSession        string
-	countSessions     string
-	listSessions      string
-	updateSession     string
-	touchSession      string
-	restoreSession    string
-	deleteSession     string
-	deleteADKSession  string
-	deleteEvents      string
-	sessionExists     string
-	listEvents        string
-	latestUserEvent   string
-	deleteTurnEvents  string
-	deleteCompactions string
+	createSession           string
+	getSession              string
+	countSessions           string
+	listSessions            string
+	updateSession           string
+	touchSession            string
+	restoreSession          string
+	deleteSession           string
+	deleteADKSession        string
+	deleteEvents            string
+	sessionExists           string
+	listEvents              string
+	latestUserEvent         string
+	deleteTurnEvents        string
+	deleteCompactions       string
+	recordCompactionFailure string
 }
 
 func newQueries(adkTablePrefix string) queries {
@@ -198,6 +199,12 @@ func newQueries(adkTablePrefix string) queries {
 			UPDATE koda_session_compactions
 			SET deleted_at = $1
 			WHERE session_id = $2 AND deleted_at = 0
+		`,
+		recordCompactionFailure: `
+			UPDATE koda_sessions
+			SET last_compaction_attempt_usage = $1,
+				consecutive_compaction_failures = consecutive_compaction_failures + 1
+			WHERE id = $2 AND deleted_at = 0 AND compaction_generation = $3
 		`,
 	}
 }

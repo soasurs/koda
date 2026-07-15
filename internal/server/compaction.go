@@ -1,0 +1,239 @@
+package server
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+
+	"connectrpc.com/connect"
+	"github.com/soasurs/adk/model"
+
+	"github.com/soasurs/koda/internal/agent"
+	"github.com/soasurs/koda/internal/config"
+	"github.com/soasurs/koda/internal/store"
+)
+
+type compactionPolicy struct {
+	enabled          bool
+	triggerTokens    int64
+	hardLimitTokens  int64
+	summaryMaxTokens int64
+	retainTurns      int
+	retainTokens     int64
+	verify           bool
+	rebaseInterval   int64
+}
+
+type sessionCompactor interface {
+	Compact(context.Context, agent.CompactionRequest) (agent.CompactionResult, error)
+}
+
+type sessionCompactorFactory func(context.Context, store.Session) (sessionCompactor, error)
+
+func resolveCompactionPolicy(windowTokens int64, value config.CompactionConfig) (compactionPolicy, error) {
+	if windowTokens <= 0 {
+		return compactionPolicy{}, errors.New("server: context window tokens must be positive")
+	}
+	policy := compactionPolicy{
+		enabled:          value.EffectiveEnabled(),
+		summaryMaxTokens: value.EffectiveSummaryMaxTokens(),
+		retainTurns:      value.EffectiveRetainTurns(),
+		retainTokens:     value.EffectiveRetainTokens(),
+		verify:           value.EffectiveVerify(),
+		rebaseInterval:   int64(value.EffectiveRebaseInterval()),
+	}
+	triggerPercent := value.EffectiveTriggerPercent()
+	reserveTokens := value.EffectiveReserveTokens()
+	if !policy.enabled {
+		return policy, nil
+	}
+	if triggerPercent <= 0 || triggerPercent > 100 {
+		return compactionPolicy{}, errors.New("server: compaction trigger percent must be between 1 and 100")
+	}
+	if reserveTokens <= 0 || reserveTokens >= windowTokens {
+		return compactionPolicy{}, errors.New("server: compaction reserve tokens must be positive and smaller than the context window")
+	}
+	if policy.summaryMaxTokens <= 0 || policy.summaryMaxTokens > reserveTokens {
+		return compactionPolicy{}, errors.New("server: compaction summary max tokens must be positive and no larger than the reserve")
+	}
+	if policy.retainTurns <= 0 || policy.retainTokens <= 0 {
+		return compactionPolicy{}, errors.New("server: compaction retained turns and tokens must be positive")
+	}
+	if policy.rebaseInterval <= 0 {
+		return compactionPolicy{}, errors.New("server: compaction rebase interval must be positive")
+	}
+	policy.hardLimitTokens = windowTokens - reserveTokens
+	policy.triggerTokens = percentageTokens(windowTokens, triggerPercent)
+	if policy.triggerTokens > policy.hardLimitTokens {
+		policy.triggerTokens = policy.hardLimitTokens
+	}
+	return policy, nil
+}
+
+func percentageTokens(tokens int64, percent int) int64 {
+	percentage := int64(percent)
+	return tokens/100*percentage + tokens%100*percentage/100
+}
+
+func (p compactionPolicy) shouldAttempt(session store.Session) bool {
+	if !p.enabled || !session.ContextMeasured || session.ContextTokens < p.triggerTokens {
+		return false
+	}
+	if session.ContextTokens >= p.hardLimitTokens {
+		return true
+	}
+	return session.ConsecutiveCompactionFailures == 0 || session.ContextTokens > session.LastCompactionAttemptUsage
+}
+
+func (p compactionPolicy) shouldRebase(nextGeneration int64) bool {
+	return nextGeneration > 0 && nextGeneration%p.rebaseInterval == 0
+}
+
+func (h *Handler) prepareRunCompaction(ctx context.Context, session store.Session) (store.Session, *store.Compaction, error) {
+	if h.compaction.shouldAttempt(session) {
+		updated, err := h.compactSession(ctx, session)
+		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return store.Session{}, nil, runtimeError(err)
+			}
+			failed := session
+			recorded, recordErr := h.store.RecordCompactionFailure(ctx, session.ID, session.CompactionGeneration, session.ContextTokens)
+			if recordErr == nil {
+				failed = recorded
+			}
+			h.log(ctx, slog.LevelWarn, "context compaction failed",
+				slog.String("session_id", session.ID),
+				slog.Int64("generation", session.CompactionGeneration+1),
+				slog.Int64("context_tokens", session.ContextTokens),
+				slog.Int("consecutive_failures", failed.ConsecutiveCompactionFailures),
+				slog.Any("error", err),
+				slog.Any("record_error", recordErr),
+			)
+			if session.ContextTokens >= h.compaction.hardLimitTokens {
+				return store.Session{}, nil, connect.NewError(connect.CodeResourceExhausted, errors.New("context compaction failed near the context limit; retry the run"))
+			}
+			session = failed
+		} else {
+			session = updated
+		}
+	}
+
+	current, err := h.store.GetCurrentCompaction(ctx, session.ID)
+	if err != nil {
+		return store.Session{}, nil, h.sessionFailure(ctx, "load current compaction", err, slog.String("session_id", session.ID))
+	}
+	if session.CurrentCompactionID != 0 && (current == nil || current.ID != session.CurrentCompactionID) {
+		err := fmt.Errorf("session current compaction %d is unavailable", session.CurrentCompactionID)
+		return store.Session{}, nil, h.internalFailure(ctx, "load current compaction", errors.New("load current compaction"), err, slog.String("session_id", session.ID))
+	}
+	return session, current, nil
+}
+
+func (h *Handler) compactSession(ctx context.Context, session store.Session) (store.Session, error) {
+	events, err := h.store.ListEvents(ctx, session.ID)
+	if err != nil {
+		return store.Session{}, fmt.Errorf("list compaction history: %w", err)
+	}
+	selection, err := agent.SelectCompaction(events, agent.CompactionSelectorConfig{
+		RetainTurns: h.compaction.retainTurns, RetainTokens: h.compaction.retainTokens,
+	})
+	if err != nil {
+		return store.Session{}, err
+	}
+
+	current, err := h.store.GetCurrentCompaction(ctx, session.ID)
+	if err != nil {
+		return store.Session{}, fmt.Errorf("load previous compaction: %w", err)
+	}
+	nextGeneration := session.CompactionGeneration + 1
+	rebase := h.compaction.shouldRebase(nextGeneration)
+	request := agent.CompactionRequest{
+		ModelID: session.ModelID, Events: selection.Events, Rebase: rebase,
+		Verify: h.compaction.verify, MaxTokens: h.compaction.summaryMaxTokens,
+	}
+	if current != nil && !rebase {
+		request.PreviousSnapshot = current.StateSnapshot
+	}
+	if rebase {
+		generations, err := h.store.ListCompactions(ctx, session.ID)
+		if err != nil {
+			return store.Session{}, fmt.Errorf("list compaction generations: %w", err)
+		}
+		checkpointGeneration := nextGeneration - h.compaction.rebaseInterval
+		if err := configureRebaseRequest(&request, generations, checkpointGeneration); err != nil {
+			return store.Session{}, err
+		}
+	}
+
+	h.log(ctx, slog.LevelInfo, "context compaction started",
+		slog.String("session_id", session.ID),
+		slog.Int64("generation", nextGeneration),
+		slog.Int64("context_tokens", session.ContextTokens),
+		slog.Int("compacted_turns", selection.CompactedTurnCount),
+		slog.Int("retained_turns", selection.RetainedTurnCount),
+		slog.Bool("rebase", rebase),
+	)
+	compactor, err := h.newSessionCompactor(ctx, session)
+	if err != nil {
+		return store.Session{}, err
+	}
+	if compactor == nil {
+		return store.Session{}, errors.New("server: compactor factory returned nil")
+	}
+	result, err := compactor.Compact(ctx, request)
+	if err != nil {
+		return store.Session{}, err
+	}
+	estimatedTokensAfter := selection.RetainedTokens + agent.EstimateContentTokens(modelSnapshotContent(result.StateSnapshot))
+	committed, err := h.store.CommitCompaction(ctx, session.ID, store.CommitCompactionParams{
+		ExpectedGeneration: session.CompactionGeneration,
+		StartEventID:       selection.StartEventID, BoundaryEventID: selection.BoundaryEventID,
+		SegmentSummary: result.SegmentSummary, StateSnapshot: result.StateSnapshot,
+		SourceTokens: selection.SourceTokens, EstimatedTokensAfter: estimatedTokensAfter,
+		ModelID: session.ModelID,
+	})
+	if err != nil {
+		return store.Session{}, err
+	}
+	h.log(ctx, slog.LevelInfo, "context compaction completed",
+		slog.String("session_id", session.ID),
+		slog.Int64("generation", committed.Generation),
+		slog.Int64("source_tokens", committed.SourceTokens),
+		slog.Int64("estimated_tokens_after", committed.EstimatedTokensAfter),
+		slog.Int64("boundary_event_id", committed.BoundaryEventID),
+		slog.Bool("rebase", rebase),
+	)
+	return h.store.GetSession(ctx, session.ID)
+}
+
+func configureRebaseRequest(request *agent.CompactionRequest, generations []store.Compaction, checkpointGeneration int64) error {
+	if request == nil {
+		return errors.New("server: rebase request must not be nil")
+	}
+	checkpointFound := checkpointGeneration == 0
+	for _, generation := range generations {
+		switch {
+		case generation.Generation == checkpointGeneration:
+			request.PreviousSnapshot = generation.StateSnapshot
+			checkpointFound = true
+		case generation.Generation > checkpointGeneration:
+			request.PriorSegmentSummaries = append(request.PriorSegmentSummaries, generation.SegmentSummary)
+		}
+	}
+	if !checkpointFound {
+		return fmt.Errorf("compaction checkpoint generation %d is missing", checkpointGeneration)
+	}
+	return nil
+}
+
+func (h *Handler) newSessionCompactor(ctx context.Context, session store.Session) (sessionCompactor, error) {
+	if h.compactorFactory != nil {
+		return h.compactorFactory(ctx, session)
+	}
+	return h.agentFactory.Compactor(ctx, session)
+}
+
+func modelSnapshotContent(snapshot string) model.Content {
+	return model.Content{Role: model.RoleUser, Content: snapshot}
+}

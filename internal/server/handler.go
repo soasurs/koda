@@ -31,14 +31,25 @@ type Handler struct {
 	mcp                 MCPCatalog
 	logger              *slog.Logger
 	contextWindowTokens int64
+	compaction          compactionPolicy
 
 	newSessionID      func() (string, error)
 	turnRunnerFactory turnRunnerFactory
+	compactorFactory  sessionCompactorFactory
 	titleGenerator    func(context.Context, store.Session, model.Content) (string, error)
 }
 
 type handlerOptions struct {
 	contextWindowTokens int64
+	compaction          config.CompactionConfig
+}
+
+// WithCompactionConfig configures automatic durable context compaction.
+func WithCompactionConfig(value config.CompactionConfig) HandlerOption {
+	return func(options *handlerOptions) error {
+		options.compaction = value
+		return nil
+	}
 }
 
 // HandlerOption configures one Handler.
@@ -87,6 +98,10 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 			return nil, err
 		}
 	}
+	compaction, err := resolveCompactionPolicy(options.contextWindowTokens, options.compaction)
+	if err != nil {
+		return nil, err
+	}
 	logger = logging.OrDiscard(logger)
 	agentFactory, err := agent.New(agent.Config{
 		Registry: registry,
@@ -110,6 +125,7 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 		mcp:                 mcpCatalog,
 		logger:              logger,
 		contextWindowTokens: options.contextWindowTokens,
+		compaction:          compaction,
 		newSessionID:        newSessionID,
 		titleGenerator:      agentFactory.GenerateTitle,
 	}, nil

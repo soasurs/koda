@@ -366,6 +366,48 @@ func (s *Store) CommitCompaction(ctx context.Context, id string, params CommitCo
 	}, nil
 }
 
+// RecordCompactionFailure records one failed attempt at contextUsage without
+// changing conversation ordering metadata. expectedGeneration prevents a
+// stale attempt from affecting a newer compaction chain.
+func (s *Store) RecordCompactionFailure(ctx context.Context, id string, expectedGeneration, contextUsage int64) (Session, error) {
+	if err := ctx.Err(); err != nil {
+		return Session{}, err
+	}
+	if err := s.checkClosed(); err != nil {
+		return Session{}, err
+	}
+	if expectedGeneration < 0 {
+		return Session{}, errors.New("store: expected compaction generation must not be negative")
+	}
+	if contextUsage < 0 {
+		return Session{}, errors.New("store: compaction attempt usage must not be negative")
+	}
+	id, err := normalizeSessionID(id)
+	if err != nil {
+		return Session{}, err
+	}
+	lockedCtx, unlock, err := s.LockRunContext(ctx, id)
+	if err != nil {
+		return Session{}, err
+	}
+	defer unlock()
+	result, err := s.db.ExecContext(lockedCtx, s.queries.recordCompactionFailure, contextUsage, id, expectedGeneration)
+	if err != nil {
+		return Session{}, fmt.Errorf("store: record compaction failure for %q: %w", id, err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return Session{}, fmt.Errorf("store: count recorded compaction failure for %q: %w", id, err)
+	}
+	if rows != 1 {
+		if _, getErr := s.GetSession(lockedCtx, id); getErr != nil {
+			return Session{}, getErr
+		}
+		return Session{}, fmt.Errorf("store: record compaction failure for %q at generation %d: %w", id, expectedGeneration, ErrCompactionConflict)
+	}
+	return s.GetSession(lockedCtx, id)
+}
+
 func normalizeCommitCompactionParams(params CommitCompactionParams) (CommitCompactionParams, error) {
 	params.SegmentSummary = strings.TrimSpace(params.SegmentSummary)
 	params.StateSnapshot = strings.TrimSpace(params.StateSnapshot)

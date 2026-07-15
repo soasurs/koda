@@ -36,8 +36,17 @@ func WithCompactionSnapshot(ctx context.Context, snapshot CompactionSnapshot) (c
 	return context.WithValue(ctx, compactionSnapshotContextKey{}, snapshot), nil
 }
 
-func compactionHistoryHook(ctx context.Context, call *llmagent.LLMCall) (*model.LLMResponse, error) {
+// CompactionSnapshotFromContext returns the request-scoped snapshot, if any.
+func CompactionSnapshotFromContext(ctx context.Context) (CompactionSnapshot, bool) {
+	if ctx == nil {
+		return CompactionSnapshot{}, false
+	}
 	snapshot, ok := ctx.Value(compactionSnapshotContextKey{}).(CompactionSnapshot)
+	return snapshot, ok
+}
+
+func compactionHistoryHook(ctx context.Context, call *llmagent.LLMCall) (*model.LLMResponse, error) {
+	snapshot, ok := CompactionSnapshotFromContext(ctx)
 	if !ok {
 		return nil, nil
 	}

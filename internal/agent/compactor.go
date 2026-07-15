@@ -40,8 +40,8 @@ type Compactor struct {
 }
 
 // CompactionRequest contains the selected history and prior durable state.
-// Rebase reconstructs the snapshot from prior segment summaries instead of
-// recursively editing PreviousSnapshot.
+// Rebase reconstructs the snapshot from a bounded checkpoint snapshot plus
+// the segment summaries accumulated since that checkpoint.
 type CompactionRequest struct {
 	ModelID               string
 	Events                []model.Event
@@ -199,8 +199,14 @@ func buildCompactionPrompt(request CompactionRequest, source []byte) (string, er
 	var priorLabel string
 	var prior any
 	if request.Rebase {
-		priorLabel = "PRIOR SEGMENT SUMMARIES (JSON)"
-		prior = request.PriorSegmentSummaries
+		priorLabel = "REBASE CHECKPOINT AND SEGMENT SUMMARIES (JSON)"
+		prior = struct {
+			CheckpointSnapshot string   `json:"checkpoint_snapshot"`
+			SegmentSummaries   []string `json:"segment_summaries"`
+		}{
+			CheckpointSnapshot: request.PreviousSnapshot,
+			SegmentSummaries:   request.PriorSegmentSummaries,
+		}
 	} else {
 		priorLabel = "PREVIOUS WORKING-STATE SNAPSHOT (JSON STRING)"
 		prior = request.PreviousSnapshot

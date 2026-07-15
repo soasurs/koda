@@ -3,15 +3,20 @@ package server
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"iter"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/soasurs/adk/model"
+	sessionevent "github.com/soasurs/adk/session/event"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/agent"
+	"github.com/soasurs/koda/internal/config"
 	"github.com/soasurs/koda/internal/logging"
 	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
@@ -22,6 +27,8 @@ type fakeTurnRunner struct {
 	gotInput         model.Content
 	gotEnvironment   agent.RunEnvironment
 	gotEnvironmentOK bool
+	gotSnapshot      agent.CompactionSnapshot
+	gotSnapshotOK    bool
 	events           []model.Event
 	err              error
 }
@@ -30,6 +37,7 @@ func (r *fakeTurnRunner) Run(ctx context.Context, sessionID string, input model.
 	r.gotSessionID = sessionID
 	r.gotInput = input
 	r.gotEnvironment, r.gotEnvironmentOK = agent.RunEnvironmentFromContext(ctx)
+	r.gotSnapshot, r.gotSnapshotOK = agent.CompactionSnapshotFromContext(ctx)
 	return func(yield func(*model.Event, error) bool) {
 		for index := range r.events {
 			event := r.events[index]
@@ -41,6 +49,19 @@ func (r *fakeTurnRunner) Run(ctx context.Context, sessionID string, input model.
 			yield(nil, r.err)
 		}
 	}
+}
+
+type fakeSessionCompactor struct {
+	request agent.CompactionRequest
+	result  agent.CompactionResult
+	err     error
+	calls   int
+}
+
+func (c *fakeSessionCompactor) Compact(_ context.Context, request agent.CompactionRequest) (agent.CompactionResult, error) {
+	c.calls++
+	c.request = request
+	return c.result, c.err
 }
 
 func TestRunLogsLifecycleWithoutMessageContent(t *testing.T) {
@@ -174,6 +195,169 @@ func TestRunStreamsInjectedTurnRunner(t *testing.T) {
 	}
 }
 
+func TestRunCompactsAcknowledgedHistoryAndInjectsSnapshot(t *testing.T) {
+	client, _, handler := newTestService(t, staticDiscoverer{})
+	var logOutput bytes.Buffer
+	logger, err := logging.New(&logOutput, "info", "")
+	if err != nil {
+		t.Fatalf("logging.New() error = %v", err)
+	}
+	handler.logger = logger
+	handler.newSessionID = func() (string, error) { return "session-1", nil }
+	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: new(t.TempDir()), ProviderId: new("openai-responses"), ModelId: new("gpt-5.6"),
+	}.Build())
+	if err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+	seedServerCompactionHistory(t, handler, created.GetSession().GetId(), 700)
+	policy, err := resolveCompactionPolicy(1_000, config.CompactionConfig{
+		TriggerPercent: 50, ReserveTokens: 200, SummaryMaxTokens: 100,
+		RetainTurns: 1, RetainTokens: 500, RebaseInterval: 2,
+	})
+	if err != nil {
+		t.Fatalf("resolveCompactionPolicy() error = %v", err)
+	}
+	handler.contextWindowTokens = 1_000
+	handler.compaction = policy
+	compactor := &fakeSessionCompactor{result: agent.CompactionResult{
+		SegmentSummary: "first two turns", StateSnapshot: "working state",
+	}}
+	handler.compactorFactory = func(context.Context, store.Session) (sessionCompactor, error) { return compactor, nil }
+	runner := &fakeTurnRunner{events: []model.Event{{
+		ID: 99, SessionID: created.GetSession().GetId(), TurnID: "turn-4", Author: "assistant",
+		Content: model.Content{Role: model.RoleAssistant, Content: "continued"}, FinishReason: model.FinishReasonStop,
+	}}}
+	var runnerSession store.Session
+	handler.turnRunnerFactory = func(_ context.Context, session store.Session, _ v1.AgentMode) (TurnRunner, error) {
+		runnerSession = session
+		return runner, nil
+	}
+	handler.titleGenerator = nil
+
+	stream, err := client.Run(t.Context(), v1.RunRequest_builder{
+		SessionId: new(created.GetSession().GetId()), Mode: v1.AgentMode_AGENT_MODE_PLAN.Enum(),
+		Input: v1.Input_builder{Parts: []*v1.Part{v1.Part_builder{Text: new("continue")}.Build()}}.Build(),
+	}.Build())
+	if err != nil {
+		t.Fatalf("Run() setup error = %v", err)
+	}
+	var completed *v1.RunCompleted
+	for stream.Receive() {
+		if value := stream.Msg().GetCompleted(); value != nil {
+			completed = value
+		}
+	}
+	if err := stream.Err(); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if compactor.calls != 1 || len(compactor.request.Events) != 4 || compactor.request.Rebase ||
+		compactor.request.ModelID != "gpt-5.6" || compactor.request.MaxTokens != 100 {
+		t.Fatalf("compactor calls = %d, request = %+v", compactor.calls, compactor.request)
+	}
+	if runnerSession.CompactionGeneration != 1 || runnerSession.ContextMeasured || runnerSession.ContextTokens != 0 ||
+		!runner.gotSnapshotOK || runner.gotSnapshot.Generation != 1 || runner.gotSnapshot.Content != "working state" {
+		t.Fatalf("runner session = %+v, snapshot = %+v, present = %t", runnerSession, runner.gotSnapshot, runner.gotSnapshotOK)
+	}
+	if completed == nil || completed.GetSession().GetContextUsage().GetMeasured() {
+		t.Fatalf("RunCompleted = %+v", completed)
+	}
+	active, err := handler.store.ListEvents(t.Context(), created.GetSession().GetId())
+	if err != nil {
+		t.Fatalf("ListEvents() error = %v", err)
+	}
+	if len(active) != 2 || active[0].TurnID != "turn-3" {
+		t.Fatalf("active events = %+v", active)
+	}
+	current, err := handler.store.GetCurrentCompaction(t.Context(), created.GetSession().GetId())
+	if err != nil || current == nil || current.Generation != 1 || current.StateSnapshot != "working state" {
+		t.Fatalf("current compaction = %+v, %v", current, err)
+	}
+	logs := logOutput.String()
+	if !strings.Contains(logs, "msg=\"context compaction started\"") || !strings.Contains(logs, "msg=\"context compaction completed\"") {
+		t.Fatalf("compaction logs = %q", logs)
+	}
+	for _, content := range []string{"first two turns", "working state", "event-1"} {
+		if strings.Contains(logs, content) {
+			t.Fatalf("compaction logs contain message content %q: %q", content, logs)
+		}
+	}
+}
+
+func TestRunCompactionFailurePolicy(t *testing.T) {
+	client, _, handler := newTestService(t, staticDiscoverer{})
+	handler.newSessionID = func() (string, error) { return "session-1", nil }
+	created, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: new(t.TempDir()), ProviderId: new("openai-responses"), ModelId: new("gpt-5.6"),
+	}.Build())
+	if err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+	seedServerCompactionHistory(t, handler, created.GetSession().GetId(), 700)
+	policy, err := resolveCompactionPolicy(1_000, config.CompactionConfig{
+		TriggerPercent: 50, ReserveTokens: 200, SummaryMaxTokens: 100,
+		RetainTurns: 1, RetainTokens: 500, RebaseInterval: 2,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler.compaction = policy
+	compactor := &fakeSessionCompactor{err: errors.New("summary unavailable")}
+	handler.compactorFactory = func(context.Context, store.Session) (sessionCompactor, error) { return compactor, nil }
+	session, err := handler.store.GetSession(t.Context(), created.GetSession().GetId())
+	if err != nil {
+		t.Fatal(err)
+	}
+	soft, current, err := handler.prepareRunCompaction(t.Context(), session)
+	if err != nil || current != nil || soft.ConsecutiveCompactionFailures != 1 || soft.LastCompactionAttemptUsage != 700 || compactor.calls != 1 {
+		t.Fatalf("soft failure = session %+v, current %+v, calls %d, error %v", soft, current, compactor.calls, err)
+	}
+	deferred, _, err := handler.prepareRunCompaction(t.Context(), soft)
+	if err != nil || deferred.ConsecutiveCompactionFailures != 1 || compactor.calls != 1 {
+		t.Fatalf("deferred retry = session %+v, calls %d, error %v", deferred, compactor.calls, err)
+	}
+
+	handler.compaction.hardLimitTokens = 600
+	_, _, err = handler.prepareRunCompaction(t.Context(), deferred)
+	if connect.CodeOf(err) != connect.CodeResourceExhausted || compactor.calls != 2 {
+		t.Fatalf("hard failure = calls %d, code %v, error %v", compactor.calls, connect.CodeOf(err), err)
+	}
+	failed, getErr := handler.store.GetSession(t.Context(), created.GetSession().GetId())
+	if getErr != nil || failed.ConsecutiveCompactionFailures != 2 || failed.LastCompactionAttemptUsage != 700 {
+		t.Fatalf("persisted failures = %+v, %v", failed, getErr)
+	}
+	compactor.err = nil
+	compactor.result = agent.CompactionResult{SegmentSummary: "recovered", StateSnapshot: "recovered state"}
+	recovered, current, err := handler.prepareRunCompaction(t.Context(), failed)
+	if err != nil || current == nil || compactor.calls != 3 || recovered.CompactionGeneration != 1 ||
+		recovered.ConsecutiveCompactionFailures != 0 || recovered.LastCompactionAttemptUsage != 0 || recovered.ContextMeasured {
+		t.Fatalf("recovered compaction = session %+v, current %+v, calls %d, error %v", recovered, current, compactor.calls, err)
+	}
+}
+
+func TestCompactionPolicySchedulesPeriodicRebase(t *testing.T) {
+	policy, err := resolveCompactionPolicy(256_000, config.CompactionConfig{})
+	if err != nil {
+		t.Fatalf("resolveCompactionPolicy() error = %v", err)
+	}
+	if policy.triggerTokens != 204_800 || policy.hardLimitTokens != 223_232 || policy.shouldRebase(4) || !policy.shouldRebase(5) {
+		t.Fatalf("policy = %+v", policy)
+	}
+	request := agent.CompactionRequest{Rebase: true}
+	generations := make([]store.Compaction, 9)
+	for index := range generations {
+		generation := int64(index + 1)
+		generations[index] = store.Compaction{Generation: generation, SegmentSummary: fmt.Sprintf("segment-%d", generation), StateSnapshot: fmt.Sprintf("snapshot-%d", generation)}
+	}
+	if err := configureRebaseRequest(&request, generations, 5); err != nil {
+		t.Fatalf("configureRebaseRequest() error = %v", err)
+	}
+	if request.PreviousSnapshot != "snapshot-5" || len(request.PriorSegmentSummaries) != 4 ||
+		request.PriorSegmentSummaries[0] != "segment-6" || request.PriorSegmentSummaries[3] != "segment-9" {
+		t.Fatalf("bounded rebase request = %+v", request)
+	}
+}
+
 func TestRunUsesExpectedErrorCodes(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	stream, err := client.Run(t.Context(), v1.RunRequest_builder{}.Build())
@@ -253,5 +437,34 @@ func TestTerminalEvent(t *testing.T) {
 				t.Fatalf("terminalEvent() = %v, want %v", got, test.want)
 			}
 		})
+	}
+}
+
+func seedServerCompactionHistory(t *testing.T, handler *Handler, sessionID string, contextTokens int64) {
+	t.Helper()
+	ledger, err := handler.store.EnsureADKSession(t.Context(), sessionID)
+	if err != nil {
+		t.Fatalf("EnsureADKSession() error = %v", err)
+	}
+	createdAt := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
+	for index := 1; index <= 6; index++ {
+		role := model.RoleUser
+		if index%2 == 0 {
+			role = model.RoleAssistant
+		}
+		promptTokens, completionTokens := int64(0), int64(0)
+		if index == 6 {
+			promptTokens = contextTokens - 50
+			completionTokens = 50
+		}
+		if err := ledger.CreateEvent(t.Context(), &sessionevent.Event{
+			EventID: int64(index), TurnID: fmt.Sprintf("turn-%d", (index+1)/2),
+			Role: string(role), Content: fmt.Sprintf("event-%d", index),
+			PromptTokens: promptTokens, CompletionTokens: completionTokens,
+			CreatedAt: createdAt.Add(time.Duration(index) * time.Millisecond).UnixMilli(),
+			UpdatedAt: createdAt.Add(time.Duration(index) * time.Millisecond).UnixMilli(),
+		}); err != nil {
+			t.Fatalf("CreateEvent(%d) error = %v", index, err)
+		}
 	}
 }

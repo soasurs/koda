@@ -58,6 +58,10 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	if err != nil {
 		return h.sessionFailure(lockedCtx, "load run session", err, slog.String("session_id", id))
 	}
+	session, currentCompaction, err := h.prepareRunCompaction(lockedCtx, session)
+	if err != nil {
+		return err
+	}
 	var runner TurnRunner
 	if h.turnRunnerFactory != nil {
 		runner, err = h.turnRunnerFactory(lockedCtx, session, mode)
@@ -94,6 +98,15 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		FileAccess:  session.FileAccess,
 		ShellAccess: session.ShellAccess,
 	})
+	if currentCompaction != nil {
+		runCtx, err = agent.WithCompactionSnapshot(runCtx, agent.CompactionSnapshot{
+			Generation: currentCompaction.Generation,
+			Content:    currentCompaction.StateSnapshot,
+		})
+		if err != nil {
+			return h.internalFailure(lockedCtx, "prepare compacted history", errors.New("prepare compacted history"), err, slog.String("session_id", id))
+		}
+	}
 	titleResult := h.startTitleGeneration(runCtx, session, input)
 	var (
 		turnID           string

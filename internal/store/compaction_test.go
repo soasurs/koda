@@ -205,3 +205,30 @@ func TestCommitCompactionCanArchiveAllActiveEvents(t *testing.T) {
 		t.Fatalf("ListEvents() = %+v, want empty", active)
 	}
 }
+
+func TestRecordCompactionFailureTracksUsageAndGeneration(t *testing.T) {
+	store := openTestStore(t)
+	created, err := store.CreateSession(t.Context(), CreateSessionParams{
+		ID: "session-1", Workdir: "/workspace", ProviderID: "openai", ModelID: "gpt-5",
+	})
+	if err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+	first, err := store.RecordCompactionFailure(t.Context(), "session-1", 0, 200_000)
+	if err != nil {
+		t.Fatalf("RecordCompactionFailure(first) error = %v", err)
+	}
+	if first.LastCompactionAttemptUsage != 200_000 || first.ConsecutiveCompactionFailures != 1 || first.UpdatedAt != created.UpdatedAt {
+		t.Fatalf("RecordCompactionFailure(first) = %+v", first)
+	}
+	second, err := store.RecordCompactionFailure(t.Context(), "session-1", 0, 205_000)
+	if err != nil {
+		t.Fatalf("RecordCompactionFailure(second) error = %v", err)
+	}
+	if second.LastCompactionAttemptUsage != 205_000 || second.ConsecutiveCompactionFailures != 2 {
+		t.Fatalf("RecordCompactionFailure(second) = %+v", second)
+	}
+	if _, err := store.RecordCompactionFailure(t.Context(), "session-1", 1, 210_000); !errors.Is(err, ErrCompactionConflict) {
+		t.Fatalf("RecordCompactionFailure(stale) error = %v, want ErrCompactionConflict", err)
+	}
+}
