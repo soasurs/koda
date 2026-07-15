@@ -40,8 +40,8 @@ their own domain types or ADK types.
 - A successful turn includes every tool-call round through the final assistant
   response. `RunCompleted` is sent only after durable history and session
   metadata are consistent.
-- Failed, canceled, abandoned, or unacknowledged turns must not remain in active
-  ADK history.
+- Failed, canceled, and abandoned turns remain durable with structured status;
+  later model context uses the configured ADK projector.
 - Partial events are transient. Complete user events must preserve multimodal
   parts so history and undo can round-trip the original input.
 - Event IDs cross the API as decimal strings; timestamps use Unix milliseconds.
@@ -63,8 +63,8 @@ READMEs in the same change.
 - ADK session history is the conversation source of truth.
 - Serialize Run, history mutation, session update, and deletion per session.
   Preserve context cancellation while waiting for a lock.
-- Hold the Run serialization boundary until the completion frame is accepted;
-  roll back committed events and metadata if acknowledgment fails.
+- Hold the Run serialization boundary until the completion frame is accepted.
+  Transport acknowledgment failure does not rewrite an already completed Turn.
 - Creating Koda session metadata may lazily create its ADK ledger before the
   first Run. Deleting a session must remove its active metadata and history as
   one logical operation.

@@ -70,6 +70,8 @@ func TestCompactionPromptsEmbedVersionedSchema(t *testing.T) {
 		}
 	}
 	if strings.Count(prompt, `"schema_version": 1`) != 2 ||
+		!strings.Contains(prompt, "failed or was interrupted") ||
+		!strings.Contains(prompt, "safe prefix") ||
 		!strings.Contains(verify, "version 1") || !strings.Contains(repair, "version 1") {
 		t.Fatalf("compaction schema version missing: prompt %q, verify %q, repair %q", prompt, verify, repair)
 	}

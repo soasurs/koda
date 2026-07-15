@@ -25,14 +25,14 @@ context 允许通过 ADK Session service 重入。
 
 以下操作共用同一串行化边界：
 
-- 包含 completion 确认的完整 Run；
+- 包含持久化 Turn 终结与 completion 确认的完整 Run；
 - Session 设置与 metadata update；
 - history mutation 和 undo；
 - Session delete；
 - context compaction commit 和失败统计。
 
-该边界比锁定单条 SQL 更强。它可以防止模型 Run 中途使用被修改的设置，避免 undo 与新
-turn 竞争，并确保 rollback 在其它操作观察前恢复 history 和 metadata。
+该边界比锁定单条 SQL 更强。它可以防止模型 Run 中途使用被修改的设置，并避免 undo、
+懒 crash 恢复和 compaction 与新 turn 竞争。
 
 ## History 视图
 
@@ -111,6 +111,9 @@ Provider error、取消、content filter 和无效持久化输入不是格式问
 
 ## 模型 Context 投影
 
+Compaction 使用原始持久化 event ID 选择并提交 boundary，但交给 compactor 的前缀会经过
+与 Runner 相同的 ADK Turn projector。因此 failed/interrupted 输出会采用相同的安全规则。
+
 每次模型调用前，Agent hook 会从输入中移除 compacted active-history，并在剩余 active tail
 前插入解码后的当前 snapshot。该 snapshot 是 request-only synthetic history，不会进入
 ADK event，因此不会表现为用户消息，也不会被普通 turn 处理递归持久化。
@@ -120,6 +123,6 @@ active，它们仍会继续参与模型 context。
 
 ## Undo 与 Compaction Boundary
 
-Undo 只能删除 Server 返回的最新完整且不会破坏持久化 compaction state 的 turn。请求会
+Undo 只能删除 Server 返回的最新可见 user turn，且不能破坏持久化 compaction state。请求会
 携带 expected turn ID。如果 history 已推进或 boundary 已变化，操作会失败，而不是让过期
 客户端删除更新后的历史。

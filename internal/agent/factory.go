@@ -48,6 +48,8 @@ type Config struct {
 	Skills *adkskill.Catalog
 	// MCP contains process-wide MCP tools and their mode/approval policy.
 	MCP MCPToolCatalog
+	// Projector converts durable Turn facts into safe model context.
+	Projector runner.Projector
 }
 
 // MCPToolCatalog constructs mode-appropriate MCP tool slices.
@@ -72,7 +74,8 @@ type Factory struct {
 	mu    sync.Mutex
 	cache map[cacheKey]*runner.Runner
 
-	newModel providerModelFactory
+	newModel  providerModelFactory
+	projector runner.Projector
 }
 
 type cacheKey struct {
@@ -146,6 +149,7 @@ func New(config Config) (*Factory, error) {
 		mcpPlanTools:     append([]tool.Tool(nil), mcpPlanTools...),
 		cache:            make(map[cacheKey]*runner.Runner),
 		newModel:         newProviderModel,
+		projector:        config.Projector,
 	}, nil
 }
 
@@ -229,6 +233,7 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 		turnCompletionAgent{delegate: llmAgent},
 		f.sessions,
 		runner.WithTracer(logging.NewADKTracer(f.logger)),
+		runner.WithProjector(f.projector),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("agent: construct runner: %w", err)

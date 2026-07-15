@@ -7,13 +7,27 @@ import (
 
 	adkagent "github.com/soasurs/adk/agent"
 	"github.com/soasurs/adk/model"
+	"github.com/soasurs/adk/session"
 )
 
-var errTurnIncomplete = errors.New("agent: turn ended without a terminal assistant event")
+var errTurnIncomplete = turnIncompleteError{}
+
+type turnIncompleteError struct{}
+
+func (turnIncompleteError) Error() string {
+	return "agent: turn ended without a terminal assistant event"
+}
+
+func (turnIncompleteError) TurnFailure() session.TurnFailure {
+	return session.TurnFailure{
+		Code:    "turn_incomplete",
+		Message: "Agent ended without a terminal response",
+		Stage:   session.TurnFailureStageAgent,
+	}
+}
 
 // turnCompletionAgent turns a natural agent exit without a terminal assistant
-// response into an error before runner.Runner commits the turn. The Runner then
-// rolls back every durable event created for the incomplete turn.
+// response into an error so runner.Runner durably marks the Turn failed.
 type turnCompletionAgent struct {
 	delegate adkagent.Agent
 }

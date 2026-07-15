@@ -5,6 +5,7 @@ import {
   Pencil,
   RotateCcw,
   Send,
+  TriangleAlert,
   X,
 } from 'lucide-react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
@@ -12,7 +13,12 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { EventView, ReasoningView } from '@/components/sessions/session-message'
 import { ToolGroup } from '@/components/sessions/tool-activity'
-import { Role } from '@/gen/koda/v1/service_pb'
+import {
+  Role,
+  TurnFailureStage,
+  TurnReason,
+  TurnStatus,
+} from '@/gen/koda/v1/service_pb'
 import { eventText, groupTurnActivities, type Turn } from '@/lib/session-turns'
 
 type SendShortcut = 'enter' | 'shift-enter' | 'command-enter'
@@ -61,7 +67,7 @@ export const SessionTurn = memo(function SessionTurn({
   onEditCancel: () => void
   onEditStart: () => void
   onEditSubmit: (text: string) => void
-  onRetry: () => void
+  onRetry: (input: string) => void
   turn: Turn
 }) {
   const userEvents = turn.events.filter(
@@ -127,13 +133,14 @@ export const SessionTurn = memo(function SessionTurn({
           {finalActivity && <ActivityView activity={finalActivity} />}
         </>
       )}
+      {!isRunning && <TurnStatusView turn={turn} />}
       {canRevise && !isEditing && (
         <div className="-mt-3 ml-9 flex items-center gap-1">
           <CopyButton text={lastAssistantText} />
           <Button
             aria-label="Retry turn"
             disabled={isRewinding}
-            onClick={onRetry}
+            onClick={() => onRetry(initialEditText)}
             size="icon"
             title="Retry turn"
             variant="ghost"
@@ -156,6 +163,7 @@ function areTurnPropsEqual(prev: TurnProps, next: TurnProps): boolean {
     prev.turn.events.length === next.turn.events.length &&
     prev.turn.events[prev.turn.events.length - 1] ===
       next.turn.events[next.turn.events.length - 1] &&
+    prev.turn.metadata === next.turn.metadata &&
     prev.canRevise === next.canRevise &&
     prev.isEditing === next.isEditing &&
     prev.isRunning === next.isRunning &&
@@ -171,8 +179,77 @@ type TurnProps = {
   onEditCancel: () => void
   onEditStart: () => void
   onEditSubmit: (text: string) => void
-  onRetry: () => void
+  onRetry: (input: string) => void
   turn: Turn
+}
+
+function TurnStatusView({ turn }: { turn: Turn }) {
+  const metadata = turn.metadata
+  if (
+    !metadata ||
+    (metadata.status !== TurnStatus.FAILED &&
+      metadata.status !== TurnStatus.INTERRUPTED)
+  ) {
+    return null
+  }
+  const failed = metadata.status === TurnStatus.FAILED
+  const title = failed ? 'Turn failed' : 'Turn interrupted'
+  const detail = failed
+    ? metadata.failure?.message ||
+      failureLabel(metadata.failure?.code, metadata.failure?.stage)
+    : interruptionLabel(metadata.reason)
+  return (
+    <div
+      className="ml-9 flex items-start gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm"
+      role="status"
+    >
+      <TriangleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
+      <div>
+        <div className="font-medium text-foreground">{title}</div>
+        <div className="mt-0.5 text-xs text-muted-foreground">{detail}</div>
+      </div>
+    </div>
+  )
+}
+
+function interruptionLabel(reason: TurnReason) {
+  switch (reason) {
+    case TurnReason.CANCELED:
+      return 'Canceled by the user'
+    case TurnReason.DEADLINE_EXCEEDED:
+      return 'Execution timed out'
+    case TurnReason.CONSUMER_STOPPED:
+      return 'The client stopped receiving the turn'
+    case TurnReason.ABANDONED:
+      return 'Recovered after an earlier Koda process stopped'
+    default:
+      return 'Execution stopped before completion'
+  }
+}
+
+function failureLabel(code = '', stage = TurnFailureStage.UNSPECIFIED) {
+  let location = ''
+  switch (stage) {
+    case TurnFailureStage.AGENT:
+      location = 'agent'
+      break
+    case TurnFailureStage.PROVIDER:
+      location = 'provider'
+      break
+    case TurnFailureStage.TOOL:
+      location = 'tool'
+      break
+    case TurnFailureStage.PERSISTENCE:
+      location = 'storage'
+      break
+    case TurnFailureStage.CONSUMER:
+      location = 'client'
+      break
+  }
+  const normalizedCode = code.replaceAll('_', ' ').trim()
+  if (normalizedCode && location) return `${normalizedCode} · ${location}`
+  if (normalizedCode) return normalizedCode
+  return location ? `Execution failed in the ${location}` : 'Execution failed'
 }
 
 type TurnActivity = ReturnType<typeof groupTurnActivities>[number]

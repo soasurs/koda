@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/soasurs/adk/model"
+	adksession "github.com/soasurs/adk/session"
 	sessionevent "github.com/soasurs/adk/session/event"
 )
 
@@ -16,49 +17,6 @@ var (
 	// client loaded the conversation history.
 	ErrUndoConflict = errors.New("undo turn conflict")
 )
-
-// RollbackTurn removes a turn that the ADK Runner completed but the Run RPC
-// could not acknowledge. previous restores the session title and ordering
-// timestamp when completion metadata had already been updated.
-func (s *Store) RollbackTurn(ctx context.Context, id, turnID string, previous Session) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if err := s.checkClosed(); err != nil {
-		return err
-	}
-	id, err := normalizeSessionID(id)
-	if err != nil {
-		return err
-	}
-	turnID = strings.TrimSpace(turnID)
-	if turnID == "" {
-		return errors.New("store: turn ID must not be empty")
-	}
-	unlock, err := s.LockRun(ctx, id)
-	if err != nil {
-		return err
-	}
-	defer unlock()
-
-	tx, err := s.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("store: begin rollback turn %q: %w", turnID, err)
-	}
-	defer tx.Rollback() //nolint:errcheck // Commit below completes the transaction.
-	if _, err := tx.ExecContext(ctx, s.queries.deleteTurnEvents, s.now().UTC().UnixMilli(), id, turnID); err != nil {
-		return fmt.Errorf("store: rollback turn %q: %w", turnID, err)
-	}
-	if !previous.UpdatedAt.IsZero() {
-		if _, err := tx.ExecContext(ctx, s.queries.restoreSession, previous.Title, previous.UpdatedAt.UTC().UnixMilli(), id); err != nil {
-			return fmt.Errorf("store: restore session %q metadata: %w", id, err)
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("store: commit rollback turn %q: %w", turnID, err)
-	}
-	return nil
-}
 
 // UndoLastMessageResult describes the most recently removed user turn.
 type UndoLastMessageResult struct {
@@ -71,6 +29,7 @@ type UndoLastMessageResult struct {
 // compacted prefix retained for display, and the current mutation boundary.
 type ConversationHistory struct {
 	Events              []model.Event
+	Turns               []*adksession.Turn
 	CompactedEventCount int64
 	CurrentCompaction   *Compaction
 	UndoableTurnID      string
@@ -94,18 +53,42 @@ func (s *Store) ListHistory(ctx context.Context, id string) (ConversationHistory
 	if _, err := s.GetSession(ctx, id); err != nil {
 		return ConversationHistory{}, err
 	}
+	turns, err := s.recoverAndListTurns(ctx, id)
+	if err != nil {
+		return ConversationHistory{}, err
+	}
 
 	persisted := make([]sessionevent.Event, 0)
 	if err := s.db.SelectContext(ctx, &persisted, s.queries.listHistoryEvents, id); err != nil {
 		return ConversationHistory{}, fmt.Errorf("store: list history for %q: %w", id, err)
 	}
 	history := ConversationHistory{Events: make([]model.Event, len(persisted))}
+	visibleTurnIDs := make(map[string]struct{})
 	for index := range persisted {
 		history.Events[index] = persisted[index].ToModel()
+		visibleTurnIDs[persisted[index].TurnID] = struct{}{}
 		if persisted[index].ArchivedAt > 0 {
 			history.CompactedEventCount++
 		} else if persisted[index].Role == string(model.RoleUser) {
 			history.UndoableTurnID = persisted[index].TurnID
+		}
+	}
+	allEventTurnIDs := make([]string, 0)
+	if err := s.db.SelectContext(ctx, &allEventTurnIDs, s.queries.listAllEventTurnIDs, id); err != nil {
+		return ConversationHistory{}, fmt.Errorf("store: list event turns for %q: %w", id, err)
+	}
+	hadEvents := make(map[string]struct{}, len(allEventTurnIDs))
+	for _, turnID := range allEventTurnIDs {
+		hadEvents[turnID] = struct{}{}
+	}
+	for _, turn := range turns {
+		if turn == nil {
+			continue
+		}
+		_, visible := visibleTurnIDs[turn.ID]
+		_, deleted := hadEvents[turn.ID]
+		if visible || !deleted {
+			history.Turns = append(history.Turns, turn)
 		}
 	}
 	current, err := s.getCurrentCompaction(ctx, id)
@@ -116,8 +99,72 @@ func (s *Store) ListHistory(ctx context.Context, id string) (ConversationHistory
 	return history, nil
 }
 
-// ListEvents returns all active ADK events in conversation order.
-// It waits for any active turn so callers never observe an incomplete ledger.
+// ProjectionHistory contains active durable facts for context projection.
+type ProjectionHistory struct {
+	Events []*sessionevent.Event
+	Turns  []*adksession.Turn
+}
+
+// ListProjectionHistory returns active Events and Turns in one locked snapshot.
+// Any running Turns left by an earlier process are lazily marked abandoned.
+func (s *Store) ListProjectionHistory(ctx context.Context, id string) (ProjectionHistory, error) {
+	if err := ctx.Err(); err != nil {
+		return ProjectionHistory{}, err
+	}
+	id, err := normalizeSessionID(id)
+	if err != nil {
+		return ProjectionHistory{}, err
+	}
+	unlock, err := s.LockRun(ctx, id)
+	if err != nil {
+		return ProjectionHistory{}, err
+	}
+	defer unlock()
+	if _, err := s.GetSession(ctx, id); err != nil {
+		return ProjectionHistory{}, err
+	}
+	turns, err := s.recoverAndListTurns(ctx, id)
+	if err != nil {
+		return ProjectionHistory{}, err
+	}
+	sess, err := s.adkSessions.GetSession(ctx, id)
+	if err != nil {
+		return ProjectionHistory{}, fmt.Errorf("store: get ADK session %q: %w", id, err)
+	}
+	if sess == nil {
+		return ProjectionHistory{Turns: turns}, nil
+	}
+	events, err := sess.ListEvents(ctx)
+	if err != nil {
+		return ProjectionHistory{}, fmt.Errorf("store: list projection events for %q: %w", id, err)
+	}
+	return ProjectionHistory{Events: events, Turns: turns}, nil
+}
+
+func (s *Store) recoverAndListTurns(ctx context.Context, id string) ([]*adksession.Turn, error) {
+	sess, err := s.adkSessions.GetSession(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("store: get ADK session %q: %w", id, err)
+	}
+	if sess == nil {
+		return nil, nil
+	}
+	turns, ok := sess.(adksession.TurnStore)
+	if !ok {
+		return nil, errors.New("store: ADK session does not support durable turns")
+	}
+	if err := turns.InterruptRunningTurns(ctx, adksession.TurnReasonAbandoned); err != nil {
+		return nil, fmt.Errorf("store: recover abandoned turns for %q: %w", id, err)
+	}
+	result, err := turns.ListTurns(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("store: list turns for %q: %w", id, err)
+	}
+	return result, nil
+}
+
+// ListEvents returns all active ADK events in conversation order. Failed and
+// interrupted Turns may intentionally contribute an incomplete event prefix.
 func (s *Store) ListEvents(ctx context.Context, id string) ([]model.Event, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

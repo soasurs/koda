@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/soasurs/adk/model"
+	"github.com/soasurs/adk/runner"
 
 	"github.com/soasurs/koda/internal/agent"
 	"github.com/soasurs/koda/internal/config"
@@ -136,15 +137,45 @@ func (h *Handler) prepareRunCompaction(ctx context.Context, session store.Sessio
 }
 
 func (h *Handler) compactSession(ctx context.Context, session store.Session) (store.Session, error) {
-	events, err := h.store.ListEvents(ctx, session.ID)
+	facts, err := h.store.ListProjectionHistory(ctx, session.ID)
 	if err != nil {
 		return store.Session{}, fmt.Errorf("list compaction history: %w", err)
+	}
+	events := make([]model.Event, len(facts.Events))
+	for index, event := range facts.Events {
+		events[index] = event.ToModel()
 	}
 	selection, err := agent.SelectCompaction(events, agent.CompactionSelectorConfig{
 		RetainTurns: h.compaction.retainTurns, RetainTokens: h.compaction.retainTokens,
 	})
 	if err != nil {
 		return store.Session{}, err
+	}
+	projectedHistory, err := h.projector.Project(ctx, runner.ProjectionInput{
+		Turns: facts.Turns, Events: facts.Events,
+	})
+	if err != nil {
+		return store.Session{}, fmt.Errorf("project compaction history: %w", err)
+	}
+	selectedTurnIDs := make(map[string]struct{})
+	knownTurnIDs := make(map[string]struct{})
+	for _, event := range events {
+		knownTurnIDs[event.TurnID] = struct{}{}
+	}
+	for _, event := range selection.Events {
+		selectedTurnIDs[event.TurnID] = struct{}{}
+	}
+	projected := make([]model.Event, 0, len(projectedHistory))
+	projectedRetained := make([]model.Event, 0, len(projectedHistory))
+	for _, event := range projectedHistory {
+		if _, ok := knownTurnIDs[event.TurnID]; !ok {
+			return store.Session{}, fmt.Errorf("project compaction history: projected event has unknown turn ID %q", event.TurnID)
+		}
+		if _, selected := selectedTurnIDs[event.TurnID]; selected {
+			projected = append(projected, event)
+		} else {
+			projectedRetained = append(projectedRetained, event)
+		}
 	}
 
 	current, err := h.store.GetCurrentCompaction(ctx, session.ID)
@@ -154,7 +185,7 @@ func (h *Handler) compactSession(ctx context.Context, session store.Session) (st
 	nextGeneration := session.CompactionGeneration + 1
 	rebase := h.compaction.shouldRebase(nextGeneration)
 	request := agent.CompactionRequest{
-		ModelID: session.ModelID, Events: selection.Events, Rebase: rebase,
+		ModelID: session.ModelID, Events: projected, Rebase: rebase,
 		Verify: h.compaction.verify, MaxTokens: h.compaction.summaryMaxTokens,
 	}
 	if current != nil && !rebase {
@@ -198,12 +229,14 @@ func (h *Handler) compactSession(ctx context.Context, session store.Session) (st
 	if err != nil {
 		return store.Session{}, err
 	}
-	estimatedTokensAfter := selection.RetainedTokens + agent.EstimateContentTokens(modelSnapshotContent(stateSnapshot))
+	sourceTokens := agent.EstimateEventsTokens(projected)
+	retainedTokens := agent.EstimateEventsTokens(projectedRetained)
+	estimatedTokensAfter := retainedTokens + agent.EstimateContentTokens(modelSnapshotContent(stateSnapshot))
 	committed, err := h.store.CommitCompaction(ctx, session.ID, store.CommitCompactionParams{
 		ExpectedGeneration: session.CompactionGeneration,
 		StartEventID:       selection.StartEventID, BoundaryEventID: selection.BoundaryEventID,
 		SegmentSummary: segmentSummary, StateSnapshot: stateSnapshot,
-		SourceTokens: selection.SourceTokens, EstimatedTokensAfter: estimatedTokensAfter,
+		SourceTokens: sourceTokens, EstimatedTokensAfter: estimatedTokensAfter,
 		ModelID: session.ModelID,
 	})
 	if err != nil {

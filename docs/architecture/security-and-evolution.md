@@ -77,7 +77,7 @@ Narrow boundaries keep high-risk behavior testable without a live model:
 Changes to the following invariants need focused regression coverage:
 
 - per-session serialization and cancellation while waiting;
-- rollback after runtime, metadata, or completion-frame failure;
+- durable failed/interrupted Turn recovery after runtime or transport failure;
 - concurrent frame publication from same-round tools;
 - stale provider revision and compaction generation rejection;
 - symlink and future-path scope classification;
@@ -105,7 +105,7 @@ tests because concurrency is part of the storage and streaming contract.
   publication with every other frame, specify cancellation behavior, and avoid
   duplicating an Event as another source of conversation truth.
 - When adding persistent history transformation, design display history, model
-  projection, undo, rollback, concurrency, migration, and failure recovery
+  projection, undo, durable status, concurrency, migration, and failure recovery
   together. A summary field alone is not a complete durable design.
 
 ## Possible evolution

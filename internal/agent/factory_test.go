@@ -284,7 +284,7 @@ func TestFactoryRunnerPassesRunInteractionsIntoCachedTools(t *testing.T) {
 	}
 }
 
-func TestFactoryRunnerRollsBackIncompleteTurn(t *testing.T) {
+func TestFactoryRunnerPreservesIncompleteTurn(t *testing.T) {
 	factory, _ := newTestFactory(t)
 	session := testSession(t.TempDir())
 	if _, err := factory.sessions.CreateSession(t.Context(), adksession.CreateSessionRequest{
@@ -319,8 +319,16 @@ func TestFactoryRunnerRollsBackIncompleteTurn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListEvents() error = %v", err)
 	}
-	if len(events) != 0 {
-		t.Fatalf("persisted events = %+v, want rollback", events)
+	if len(events) != 1 || events[0].Role != string(model.RoleUser) {
+		t.Fatalf("persisted events = %+v, want durable user event", events)
+	}
+	turns := adkSession.(adksession.TurnStore)
+	turn, err := turns.GetTurn(t.Context(), events[0].TurnID)
+	if err != nil {
+		t.Fatalf("GetTurn() error = %v", err)
+	}
+	if turn == nil || turn.Status != adksession.TurnFailed || turn.Failure == nil || turn.Failure.Code != "turn_incomplete" {
+		t.Fatalf("turn = %+v, want failed agent turn", turn)
 	}
 }
 

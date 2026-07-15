@@ -6,6 +6,8 @@ import {
   InputSchema,
   Role,
   ToolCallSchema,
+  TurnSchema,
+  TurnStatus,
 } from '@/gen/koda/v1/service_pb'
 import {
   eventText,
@@ -41,6 +43,17 @@ describe('session turn helpers', () => {
     expect(turns.map((turn) => turn.id)).toEqual(['turn-a', 'turn-b'])
     expect(turns[0]?.events).toHaveLength(2)
     expect(eventText(turns[0]?.events[0])).toBe('first')
+  })
+
+  it('keeps durable turns that have no events', () => {
+    const metadata = create(TurnSchema, {
+      id: 'turn-failed',
+      status: TurnStatus.FAILED,
+    })
+
+    const turns = groupEventsByTurn([], [metadata])
+
+    expect(turns).toEqual([{ id: 'turn-failed', events: [], metadata }])
   })
 
   it('shows an optimistic user event until its persisted event arrives', () => {

@@ -13,7 +13,7 @@ Server 首先校验 Session ID、mode 和有序多模态输入。文本、HTTPS 
 
 Handler 随后使用请求 context 获取 Session Run lock。该锁与 ADK 历史操作共用，并通过
 locked context 支持可重入调用。锁一直持有到 completion frame 被接受，或者 turn 完成
-回滚。不同 Session 的 Run 可以并发；同一 Session 的操作会串行执行。
+终结。不同 Session 的 Run 可以并发；同一 Session 的操作会串行执行。
 
 ## 执行顺序
 
@@ -99,26 +99,24 @@ lock。
 
 客户端可以乐观显示 partial event 或临时标题，但必须以 `RunCompleted` 作为提交边界。
 
-## 失败与回滚
+## 失败与持久化 Turn 状态
 
 在后续 Provider 调用、stream send 或 metadata 更新失败前，ADK 可能已经提交了一些
-complete event。失败、取消、被遗弃或未确认的 turn 不能留在 active history。
-
-如果已有 turn ID 但无法确认终止完成，Server 会使用不受原取消影响的 cleanup context
-删除该 turn，并恢复 Run 前 Session snapshot。Cleanup 在释放 Run lock 前完成，因此其它
-操作不会观察到只回滚了一部分的 Session。
+complete event。这些 event 会继续持久化。ADK 将 Turn 终结为 `failed` 或 `interrupted`，
+后续模型上下文通过 projector 只获得安全前缀和瞬态状态说明。读取历史时，会懒恢复旧进程
+遗留的 running Turn，将其标记为 `interrupted/abandoned`。
 
 | 失败 | 结果 |
 |---|---|
 | 等待锁时取消 | Session 无变化 |
 | reserve 边界以下 compaction 失败 | 记录失败并继续 |
 | hard boundary 上 compaction 失败 | 返回 `RESOURCE_EXHAUSTED` |
-| Provider 或 runtime 失败 | 返回映射后的 Connect error；不保留 incomplete turn |
+| Provider 或 runtime 失败 | 返回映射后的 Connect error，并保留 failed Turn |
 | 审批拒绝 | handled tool result；Run 可以继续 |
-| stream send 失败 | 取消 Run 并回滚已提交 turn 数据 |
-| 缺少 terminal event 或 turn ID | internal error，并在可能时回滚 |
+| stream send 失败 | 取消 Run，并保留 interrupted Turn |
+| 缺少 terminal event | Agent wrapper 返回错误并将 Turn 终结为 failed |
 | 标题生成失败 | 记录日志，使用原有标题完成 |
-| metadata commit 或 `RunCompleted` 失败 | 恢复历史和 Session metadata |
+| metadata commit 或 `RunCompleted` 失败 | 返回错误，但不重写已经 completed 的 Turn 事实 |
 
 ## Run 之外的历史修改
 

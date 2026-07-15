@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/soasurs/adk/model"
+	adksession "github.com/soasurs/adk/session"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/agent"
@@ -16,9 +17,8 @@ import (
 )
 
 // Run validates transport input, executes one cached agent turn, and streams
-// events and transient frontend interactions. The handler holds the session
-// run lock through the final completion frame so acknowledged history and
-// session metadata remain consistent.
+// events and transient frontend interactions. Durable Turn state is owned by
+// ADK and is not rolled back when transport delivery fails.
 func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *connect.ServerStream[v1.RunResponse]) error {
 	if h.turnRunnerFactory == nil && h.agentFactory == nil {
 		return connect.NewError(connect.CodeUnimplemented, errors.New("agent runtime is not configured"))
@@ -183,6 +183,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		terminal = terminalEvent(*event)
 	}
 	if runErr != nil {
+		titleResult.cancel()
 		return runErr
 	}
 	if !terminal {
@@ -192,9 +193,6 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 			slog.String("session_id", id),
 			slog.String("turn_id", turnID),
 		)
-		if turnID != "" {
-			return h.rollbackCommittedTurn(runCtx, session, turnID, runErr)
-		}
 		return runErr
 	}
 	if turnID == "" {
@@ -215,7 +213,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 			slog.String("session_id", id),
 			slog.String("turn_id", turnID),
 		)
-		return h.rollbackCommittedTurn(runCtx, session, turnID, mapped)
+		return mapped
 	}
 	completed := v1.RunResponse{}
 	completed.SetCompleted(v1.RunCompleted_builder{
@@ -227,7 +225,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 			slog.String("session_id", id),
 			slog.String("turn_id", turnID),
 		)
-		return h.rollbackCommittedTurn(runCtx, session, turnID, mapped)
+		return mapped
 	}
 	h.log(runCtx, slog.LevelInfo, "run completed",
 		slog.String("session_id", id),
@@ -258,27 +256,6 @@ func publishCompactionProgress(publisher *runPublisher, stage v1.CompactionProgr
 	response := new(v1.RunResponse)
 	response.SetCompactionProgress(progress.Build())
 	return publisher.Publish(response)
-}
-
-func (h *Handler) rollbackCommittedTurn(ctx context.Context, session store.Session, turnID string, runErr error) error {
-	h.log(ctx, slog.LevelWarn, "rolling back unacknowledged turn",
-		slog.String("session_id", session.ID),
-		slog.String("turn_id", turnID),
-		slog.String("code", connect.CodeOf(runErr).String()),
-	)
-	cleanupCtx := context.WithoutCancel(ctx)
-	if err := h.store.RollbackTurn(cleanupCtx, session.ID, turnID, session); err != nil {
-		joined := errors.Join(errors.New("rollback unacknowledged turn"), runErr, err)
-		return h.internalFailure(cleanupCtx, "rollback unacknowledged turn", errors.New("rollback unacknowledged turn"), joined,
-			slog.String("session_id", session.ID),
-			slog.String("turn_id", turnID),
-		)
-	}
-	h.log(cleanupCtx, slog.LevelWarn, "unacknowledged turn rolled back",
-		slog.String("session_id", session.ID),
-		slog.String("turn_id", turnID),
-	)
-	return runErr
 }
 
 type generatedTitle struct {
@@ -357,6 +334,7 @@ func (h *Handler) ListEvents(ctx context.Context, request *v1.ListEventsRequest)
 	}
 	response := v1.ListEventsResponse_builder{
 		Events:         converted,
+		Turns:          turnsToProto(history.Turns),
 		UndoableTurnId: new(history.UndoableTurnID),
 	}.Build()
 	if current := history.CurrentCompaction; current != nil {
@@ -370,6 +348,80 @@ func (h *Handler) ListEvents(ctx context.Context, request *v1.ListEventsRequest)
 		}.Build())
 	}
 	return response, nil
+}
+
+func turnsToProto(turns []*adksession.Turn) []*v1.Turn {
+	result := make([]*v1.Turn, 0, len(turns))
+	for _, turn := range turns {
+		if turn == nil {
+			continue
+		}
+		converted := v1.Turn_builder{
+			Id:         new(turn.ID),
+			Status:     turnStatusToProto(turn.Status).Enum(),
+			Reason:     turnReasonToProto(turn.Reason).Enum(),
+			StartedAt:  new(turn.StartedAt),
+			FinishedAt: new(turn.FinishedAt),
+		}.Build()
+		if failure := turn.Failure; failure != nil {
+			converted.SetFailure(v1.TurnFailure_builder{
+				Code:    new(failure.Code),
+				Message: new(failure.Message),
+				Stage:   turnFailureStageToProto(failure.Stage).Enum(),
+			}.Build())
+		}
+		result = append(result, converted)
+	}
+	return result
+}
+
+func turnStatusToProto(status adksession.TurnStatus) v1.TurnStatus {
+	switch status {
+	case adksession.TurnRunning:
+		return v1.TurnStatus_TURN_STATUS_RUNNING
+	case adksession.TurnCompleted:
+		return v1.TurnStatus_TURN_STATUS_COMPLETED
+	case adksession.TurnInterrupted:
+		return v1.TurnStatus_TURN_STATUS_INTERRUPTED
+	case adksession.TurnFailed:
+		return v1.TurnStatus_TURN_STATUS_FAILED
+	default:
+		return v1.TurnStatus_TURN_STATUS_UNSPECIFIED
+	}
+}
+
+func turnReasonToProto(reason adksession.TurnReason) v1.TurnReason {
+	switch reason {
+	case adksession.TurnReasonCanceled:
+		return v1.TurnReason_TURN_REASON_CANCELED
+	case adksession.TurnReasonDeadline:
+		return v1.TurnReason_TURN_REASON_DEADLINE_EXCEEDED
+	case adksession.TurnReasonConsumerStopped:
+		return v1.TurnReason_TURN_REASON_CONSUMER_STOPPED
+	case adksession.TurnReasonAgentError:
+		return v1.TurnReason_TURN_REASON_AGENT_ERROR
+	case adksession.TurnReasonAbandoned:
+		return v1.TurnReason_TURN_REASON_ABANDONED
+	default:
+		return v1.TurnReason_TURN_REASON_UNSPECIFIED
+	}
+}
+
+func turnFailureStageToProto(stage adksession.TurnFailureStage) v1.TurnFailureStage {
+	switch stage {
+	case adksession.TurnFailureStageAgent:
+		return v1.TurnFailureStage_TURN_FAILURE_STAGE_AGENT
+	case adksession.TurnFailureStageProvider:
+		return v1.TurnFailureStage_TURN_FAILURE_STAGE_PROVIDER
+	case adksession.TurnFailureStageTool:
+		return v1.TurnFailureStage_TURN_FAILURE_STAGE_TOOL
+	case adksession.TurnFailureStagePersistence:
+		return v1.TurnFailureStage_TURN_FAILURE_STAGE_PERSISTENCE
+	case adksession.TurnFailureStageConsumer:
+		return v1.TurnFailureStage_TURN_FAILURE_STAGE_CONSUMER
+	default:
+		return v1.TurnFailureStage_TURN_FAILURE_STAGE_UNSPECIFIED
+	}
 }
 
 // UndoLastMessage deletes the most recent active user turn and returns its
