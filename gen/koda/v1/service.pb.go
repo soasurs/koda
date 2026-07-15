@@ -625,6 +625,55 @@ func (x DiffLineKind) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
+// CompactionProgressStage identifies the current state of one context
+// compaction attempt.
+type CompactionProgressStage int32
+
+const (
+	CompactionProgressStage_COMPACTION_PROGRESS_STAGE_UNSPECIFIED CompactionProgressStage = 0
+	CompactionProgressStage_COMPACTION_PROGRESS_STAGE_STARTED     CompactionProgressStage = 1
+	CompactionProgressStage_COMPACTION_PROGRESS_STAGE_COMPLETED   CompactionProgressStage = 2
+	CompactionProgressStage_COMPACTION_PROGRESS_STAGE_FAILED      CompactionProgressStage = 3
+)
+
+// Enum value maps for CompactionProgressStage.
+var (
+	CompactionProgressStage_name = map[int32]string{
+		0: "COMPACTION_PROGRESS_STAGE_UNSPECIFIED",
+		1: "COMPACTION_PROGRESS_STAGE_STARTED",
+		2: "COMPACTION_PROGRESS_STAGE_COMPLETED",
+		3: "COMPACTION_PROGRESS_STAGE_FAILED",
+	}
+	CompactionProgressStage_value = map[string]int32{
+		"COMPACTION_PROGRESS_STAGE_UNSPECIFIED": 0,
+		"COMPACTION_PROGRESS_STAGE_STARTED":     1,
+		"COMPACTION_PROGRESS_STAGE_COMPLETED":   2,
+		"COMPACTION_PROGRESS_STAGE_FAILED":      3,
+	}
+)
+
+func (x CompactionProgressStage) Enum() *CompactionProgressStage {
+	p := new(CompactionProgressStage)
+	*p = x
+	return p
+}
+
+func (x CompactionProgressStage) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CompactionProgressStage) Descriptor() protoreflect.EnumDescriptor {
+	return file_koda_v1_service_proto_enumTypes[12].Descriptor()
+}
+
+func (CompactionProgressStage) Type() protoreflect.EnumType {
+	return &file_koda_v1_service_proto_enumTypes[12]
+}
+
+func (x CompactionProgressStage) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
 // RunRequest starts one user turn in an existing session.
 type RunRequest struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
@@ -833,6 +882,15 @@ func (x *RunResponse) GetQuestionPrompt() *QuestionPrompt {
 	return nil
 }
 
+func (x *RunResponse) GetCompactionProgress() *CompactionProgress {
+	if x != nil {
+		if x, ok := x.xxx_hidden_Payload.(*runResponse_CompactionProgress); ok {
+			return x.CompactionProgress
+		}
+	}
+	return nil
+}
+
 func (x *RunResponse) SetEvent(v *Event) {
 	if v == nil {
 		x.xxx_hidden_Payload = nil
@@ -863,6 +921,14 @@ func (x *RunResponse) SetQuestionPrompt(v *QuestionPrompt) {
 		return
 	}
 	x.xxx_hidden_Payload = &runResponse_QuestionPrompt{v}
+}
+
+func (x *RunResponse) SetCompactionProgress(v *CompactionProgress) {
+	if v == nil {
+		x.xxx_hidden_Payload = nil
+		return
+	}
+	x.xxx_hidden_Payload = &runResponse_CompactionProgress{v}
 }
 
 func (x *RunResponse) HasPayload() bool {
@@ -904,6 +970,14 @@ func (x *RunResponse) HasQuestionPrompt() bool {
 	return ok
 }
 
+func (x *RunResponse) HasCompactionProgress() bool {
+	if x == nil {
+		return false
+	}
+	_, ok := x.xxx_hidden_Payload.(*runResponse_CompactionProgress)
+	return ok
+}
+
 func (x *RunResponse) ClearPayload() {
 	x.xxx_hidden_Payload = nil
 }
@@ -932,11 +1006,18 @@ func (x *RunResponse) ClearQuestionPrompt() {
 	}
 }
 
+func (x *RunResponse) ClearCompactionProgress() {
+	if _, ok := x.xxx_hidden_Payload.(*runResponse_CompactionProgress); ok {
+		x.xxx_hidden_Payload = nil
+	}
+}
+
 const RunResponse_Payload_not_set_case case_RunResponse_Payload = 0
 const RunResponse_Event_case case_RunResponse_Payload = 1
 const RunResponse_Approval_case case_RunResponse_Payload = 2
 const RunResponse_Completed_case case_RunResponse_Payload = 3
 const RunResponse_QuestionPrompt_case case_RunResponse_Payload = 4
+const RunResponse_CompactionProgress_case case_RunResponse_Payload = 5
 
 func (x *RunResponse) WhichPayload() case_RunResponse_Payload {
 	if x == nil {
@@ -951,6 +1032,8 @@ func (x *RunResponse) WhichPayload() case_RunResponse_Payload {
 		return RunResponse_Completed_case
 	case *runResponse_QuestionPrompt:
 		return RunResponse_QuestionPrompt_case
+	case *runResponse_CompactionProgress:
+		return RunResponse_CompactionProgress_case
 	default:
 		return RunResponse_Payload_not_set_case
 	}
@@ -969,6 +1052,9 @@ type RunResponse_builder struct {
 	// question_prompt blocks one ask_questions tool call until the frontend
 	// submits answers or cancels the prompt.
 	QuestionPrompt *QuestionPrompt
+	// compaction_progress reports transient context compaction lifecycle state.
+	// It is never persisted in session history.
+	CompactionProgress *CompactionProgress
 	// -- end of xxx_hidden_Payload
 }
 
@@ -987,6 +1073,9 @@ func (b0 RunResponse_builder) Build() *RunResponse {
 	}
 	if b.QuestionPrompt != nil {
 		x.xxx_hidden_Payload = &runResponse_QuestionPrompt{b.QuestionPrompt}
+	}
+	if b.CompactionProgress != nil {
+		x.xxx_hidden_Payload = &runResponse_CompactionProgress{b.CompactionProgress}
 	}
 	return m0
 }
@@ -1026,6 +1115,12 @@ type runResponse_QuestionPrompt struct {
 	QuestionPrompt *QuestionPrompt `protobuf:"bytes,4,opt,name=question_prompt,json=questionPrompt,oneof"`
 }
 
+type runResponse_CompactionProgress struct {
+	// compaction_progress reports transient context compaction lifecycle state.
+	// It is never persisted in session history.
+	CompactionProgress *CompactionProgress `protobuf:"bytes,5,opt,name=compaction_progress,json=compactionProgress,oneof"`
+}
+
 func (*runResponse_Event) isRunResponse_Payload() {}
 
 func (*runResponse_Approval) isRunResponse_Payload() {}
@@ -1033,6 +1128,8 @@ func (*runResponse_Approval) isRunResponse_Payload() {}
 func (*runResponse_Completed) isRunResponse_Payload() {}
 
 func (*runResponse_QuestionPrompt) isRunResponse_Payload() {}
+
+func (*runResponse_CompactionProgress) isRunResponse_Payload() {}
 
 // RunCompleted marks the successful end of a turn stream.
 type RunCompleted struct {
@@ -11013,6 +11110,205 @@ func (b0 RefreshModelsResponse_builder) Build() *RefreshModelsResponse {
 	return m0
 }
 
+// CompactionProgress reports one automatic context compaction attempt made
+// before the requested agent turn starts.
+type CompactionProgress struct {
+	state                           protoimpl.MessageState  `protogen:"opaque.v1"`
+	xxx_hidden_Stage                CompactionProgressStage `protobuf:"varint,1,opt,name=stage,enum=koda.v1.CompactionProgressStage"`
+	xxx_hidden_Generation           int64                   `protobuf:"varint,2,opt,name=generation"`
+	xxx_hidden_ContextTokens        int64                   `protobuf:"varint,3,opt,name=context_tokens,json=contextTokens"`
+	xxx_hidden_SourceTokens         int64                   `protobuf:"varint,4,opt,name=source_tokens,json=sourceTokens"`
+	xxx_hidden_EstimatedTokensAfter int64                   `protobuf:"varint,5,opt,name=estimated_tokens_after,json=estimatedTokensAfter"`
+	XXX_raceDetectHookData          protoimpl.RaceDetectHookData
+	XXX_presence                    [1]uint32
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
+}
+
+func (x *CompactionProgress) Reset() {
+	*x = CompactionProgress{}
+	mi := &file_koda_v1_service_proto_msgTypes[72]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompactionProgress) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompactionProgress) ProtoMessage() {}
+
+func (x *CompactionProgress) ProtoReflect() protoreflect.Message {
+	mi := &file_koda_v1_service_proto_msgTypes[72]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *CompactionProgress) GetStage() CompactionProgressStage {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 0) {
+			return x.xxx_hidden_Stage
+		}
+	}
+	return CompactionProgressStage_COMPACTION_PROGRESS_STAGE_UNSPECIFIED
+}
+
+func (x *CompactionProgress) GetGeneration() int64 {
+	if x != nil {
+		return x.xxx_hidden_Generation
+	}
+	return 0
+}
+
+func (x *CompactionProgress) GetContextTokens() int64 {
+	if x != nil {
+		return x.xxx_hidden_ContextTokens
+	}
+	return 0
+}
+
+func (x *CompactionProgress) GetSourceTokens() int64 {
+	if x != nil {
+		return x.xxx_hidden_SourceTokens
+	}
+	return 0
+}
+
+func (x *CompactionProgress) GetEstimatedTokensAfter() int64 {
+	if x != nil {
+		return x.xxx_hidden_EstimatedTokensAfter
+	}
+	return 0
+}
+
+func (x *CompactionProgress) SetStage(v CompactionProgressStage) {
+	x.xxx_hidden_Stage = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
+}
+
+func (x *CompactionProgress) SetGeneration(v int64) {
+	x.xxx_hidden_Generation = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
+}
+
+func (x *CompactionProgress) SetContextTokens(v int64) {
+	x.xxx_hidden_ContextTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
+}
+
+func (x *CompactionProgress) SetSourceTokens(v int64) {
+	x.xxx_hidden_SourceTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+}
+
+func (x *CompactionProgress) SetEstimatedTokensAfter(v int64) {
+	x.xxx_hidden_EstimatedTokensAfter = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
+}
+
+func (x *CompactionProgress) HasStage() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *CompactionProgress) HasGeneration() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *CompactionProgress) HasContextTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *CompactionProgress) HasSourceTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *CompactionProgress) HasEstimatedTokensAfter() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *CompactionProgress) ClearStage() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Stage = CompactionProgressStage_COMPACTION_PROGRESS_STAGE_UNSPECIFIED
+}
+
+func (x *CompactionProgress) ClearGeneration() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_Generation = 0
+}
+
+func (x *CompactionProgress) ClearContextTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_ContextTokens = 0
+}
+
+func (x *CompactionProgress) ClearSourceTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_SourceTokens = 0
+}
+
+func (x *CompactionProgress) ClearEstimatedTokensAfter() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_EstimatedTokensAfter = 0
+}
+
+type CompactionProgress_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	Stage                *CompactionProgressStage
+	Generation           *int64
+	ContextTokens        *int64
+	SourceTokens         *int64
+	EstimatedTokensAfter *int64
+}
+
+func (b0 CompactionProgress_builder) Build() *CompactionProgress {
+	m0 := &CompactionProgress{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Stage != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
+		x.xxx_hidden_Stage = *b.Stage
+	}
+	if b.Generation != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
+		x.xxx_hidden_Generation = *b.Generation
+	}
+	if b.ContextTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
+		x.xxx_hidden_ContextTokens = *b.ContextTokens
+	}
+	if b.SourceTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
+		x.xxx_hidden_SourceTokens = *b.SourceTokens
+	}
+	if b.EstimatedTokensAfter != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		x.xxx_hidden_EstimatedTokensAfter = *b.EstimatedTokensAfter
+	}
+	return m0
+}
+
 var File_koda_v1_service_proto protoreflect.FileDescriptor
 
 const file_koda_v1_service_proto_rawDesc = "" +
@@ -11023,12 +11319,13 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12$\n" +
 	"\x05input\x18\x02 \x01(\v2\x0e.koda.v1.InputR\x05input\x12&\n" +
-	"\x04mode\x18\x03 \x01(\x0e2\x12.koda.v1.AgentModeR\x04mode\"\xf0\x01\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x12.koda.v1.AgentModeR\x04mode\"\xc0\x02\n" +
 	"\vRunResponse\x12&\n" +
 	"\x05event\x18\x01 \x01(\v2\x0e.koda.v1.EventH\x00R\x05event\x123\n" +
 	"\bapproval\x18\x02 \x01(\v2\x15.koda.v1.ToolApprovalH\x00R\bapproval\x125\n" +
 	"\tcompleted\x18\x03 \x01(\v2\x15.koda.v1.RunCompletedH\x00R\tcompleted\x12B\n" +
-	"\x0fquestion_prompt\x18\x04 \x01(\v2\x17.koda.v1.QuestionPromptH\x00R\x0equestionPromptB\t\n" +
+	"\x0fquestion_prompt\x18\x04 \x01(\v2\x17.koda.v1.QuestionPromptH\x00R\x0equestionPrompt\x12N\n" +
+	"\x13compaction_progress\x18\x05 \x01(\v2\x1b.koda.v1.CompactionProgressH\x00R\x12compactionProgressB\t\n" +
 	"\apayload\"S\n" +
 	"\fRunCompleted\x12\x17\n" +
 	"\aturn_id\x18\x01 \x01(\tR\x06turnId\x12*\n" +
@@ -11371,7 +11668,15 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\vprovider_id\x18\x01 \x01(\tR\n" +
 	"providerId\x12&\n" +
 	"\x06models\x18\x02 \x03(\v2\x0e.koda.v1.ModelR\x06models\x12!\n" +
-	"\frefreshed_at\x18\x03 \x01(\x03R\vrefreshedAt*R\n" +
+	"\frefreshed_at\x18\x03 \x01(\x03R\vrefreshedAt\"\xee\x01\n" +
+	"\x12CompactionProgress\x126\n" +
+	"\x05stage\x18\x01 \x01(\x0e2 .koda.v1.CompactionProgressStageR\x05stage\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x02 \x01(\x03R\n" +
+	"generation\x12%\n" +
+	"\x0econtext_tokens\x18\x03 \x01(\x03R\rcontextTokens\x12#\n" +
+	"\rsource_tokens\x18\x04 \x01(\x03R\fsourceTokens\x124\n" +
+	"\x16estimated_tokens_after\x18\x05 \x01(\x03R\x14estimatedTokensAfter*R\n" +
 	"\tAgentMode\x12\x1a\n" +
 	"\x16AGENT_MODE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10AGENT_MODE_BUILD\x10\x01\x12\x13\n" +
@@ -11434,7 +11739,12 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\x1aDIFF_LINE_KIND_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16DIFF_LINE_KIND_CONTEXT\x10\x01\x12\x18\n" +
 	"\x14DIFF_LINE_KIND_ADDED\x10\x02\x12\x1a\n" +
-	"\x16DIFF_LINE_KIND_REMOVED\x10\x032\xb1\f\n" +
+	"\x16DIFF_LINE_KIND_REMOVED\x10\x03*\xba\x01\n" +
+	"\x17CompactionProgressStage\x12)\n" +
+	"%COMPACTION_PROGRESS_STAGE_UNSPECIFIED\x10\x00\x12%\n" +
+	"!COMPACTION_PROGRESS_STAGE_STARTED\x10\x01\x12'\n" +
+	"#COMPACTION_PROGRESS_STAGE_COMPLETED\x10\x02\x12$\n" +
+	" COMPACTION_PROGRESS_STAGE_FAILED\x10\x032\xb1\f\n" +
 	"\vKodaService\x122\n" +
 	"\x03Run\x12\x13.koda.v1.RunRequest\x1a\x14.koda.v1.RunResponse0\x01\x12`\n" +
 	"\x13ResolveToolApproval\x12#.koda.v1.ResolveToolApprovalRequest\x1a$.koda.v1.ResolveToolApprovalResponse\x12f\n" +
@@ -11462,8 +11772,8 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\rRefreshModels\x12\x1d.koda.v1.RefreshModelsRequest\x1a\x1e.koda.v1.RefreshModelsResponseB\x84\x01\n" +
 	"\vcom.koda.v1B\fServiceProtoP\x01Z*github.com/soasurs/koda/gen/koda/v1;kodav1\xa2\x02\x03KXX\xaa\x02\aKoda.V1\xca\x02\aKoda\\V1\xe2\x02\x13Koda\\V1\\GPBMetadata\xea\x02\bKoda::V1b\beditionsp\xe8\a"
 
-var file_koda_v1_service_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
-var file_koda_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 73)
+var file_koda_v1_service_proto_enumTypes = make([]protoimpl.EnumInfo, 13)
+var file_koda_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 74)
 var file_koda_v1_service_proto_goTypes = []any{
 	(AgentMode)(0),                        // 0: koda.v1.AgentMode
 	(Role)(0),                             // 1: koda.v1.Role
@@ -11477,188 +11787,192 @@ var file_koda_v1_service_proto_goTypes = []any{
 	(ToolApprovalScope)(0),                // 9: koda.v1.ToolApprovalScope
 	(FileChangeKind)(0),                   // 10: koda.v1.FileChangeKind
 	(DiffLineKind)(0),                     // 11: koda.v1.DiffLineKind
-	(*RunRequest)(nil),                    // 12: koda.v1.RunRequest
-	(*RunResponse)(nil),                   // 13: koda.v1.RunResponse
-	(*RunCompleted)(nil),                  // 14: koda.v1.RunCompleted
-	(*Input)(nil),                         // 15: koda.v1.Input
-	(*Part)(nil),                          // 16: koda.v1.Part
-	(*Image)(nil),                         // 17: koda.v1.Image
-	(*ToolApproval)(nil),                  // 18: koda.v1.ToolApproval
-	(*ResolveToolApprovalRequest)(nil),    // 19: koda.v1.ResolveToolApprovalRequest
-	(*ResolveToolApprovalResponse)(nil),   // 20: koda.v1.ResolveToolApprovalResponse
-	(*QuestionPrompt)(nil),                // 21: koda.v1.QuestionPrompt
-	(*Question)(nil),                      // 22: koda.v1.Question
-	(*QuestionOption)(nil),                // 23: koda.v1.QuestionOption
-	(*SubmitQuestionAnswersRequest)(nil),  // 24: koda.v1.SubmitQuestionAnswersRequest
-	(*SubmitQuestionAnswersResponse)(nil), // 25: koda.v1.SubmitQuestionAnswersResponse
-	(*QuestionAnswers)(nil),               // 26: koda.v1.QuestionAnswers
-	(*QuestionAnswer)(nil),                // 27: koda.v1.QuestionAnswer
-	(*ListDirectoriesRequest)(nil),        // 28: koda.v1.ListDirectoriesRequest
-	(*ListDirectoriesResponse)(nil),       // 29: koda.v1.ListDirectoriesResponse
-	(*DirectoryEntry)(nil),                // 30: koda.v1.DirectoryEntry
-	(*Session)(nil),                       // 31: koda.v1.Session
-	(*ContextUsage)(nil),                  // 32: koda.v1.ContextUsage
-	(*CreateSessionRequest)(nil),          // 33: koda.v1.CreateSessionRequest
-	(*CreateSessionResponse)(nil),         // 34: koda.v1.CreateSessionResponse
-	(*GetSessionRequest)(nil),             // 35: koda.v1.GetSessionRequest
-	(*GetSessionResponse)(nil),            // 36: koda.v1.GetSessionResponse
-	(*ListSessionsRequest)(nil),           // 37: koda.v1.ListSessionsRequest
-	(*ListSessionsResponse)(nil),          // 38: koda.v1.ListSessionsResponse
-	(*UpdateSessionRequest)(nil),          // 39: koda.v1.UpdateSessionRequest
-	(*UpdateSessionResponse)(nil),         // 40: koda.v1.UpdateSessionResponse
-	(*DeleteSessionRequest)(nil),          // 41: koda.v1.DeleteSessionRequest
-	(*DeleteSessionResponse)(nil),         // 42: koda.v1.DeleteSessionResponse
-	(*Event)(nil),                         // 43: koda.v1.Event
-	(*Message)(nil),                       // 44: koda.v1.Message
-	(*ToolCall)(nil),                      // 45: koda.v1.ToolCall
-	(*ToolResponse)(nil),                  // 46: koda.v1.ToolResponse
-	(*ToolResult)(nil),                    // 47: koda.v1.ToolResult
-	(*FileChange)(nil),                    // 48: koda.v1.FileChange
-	(*DiffHunk)(nil),                      // 49: koda.v1.DiffHunk
-	(*DiffLine)(nil),                      // 50: koda.v1.DiffLine
-	(*ToolError)(nil),                     // 51: koda.v1.ToolError
-	(*TokenUsage)(nil),                    // 52: koda.v1.TokenUsage
-	(*TokenUsageDetails)(nil),             // 53: koda.v1.TokenUsageDetails
-	(*ListEventsRequest)(nil),             // 54: koda.v1.ListEventsRequest
-	(*ListEventsResponse)(nil),            // 55: koda.v1.ListEventsResponse
-	(*CompactionStatus)(nil),              // 56: koda.v1.CompactionStatus
-	(*UndoLastMessageRequest)(nil),        // 57: koda.v1.UndoLastMessageRequest
-	(*UndoLastMessageResponse)(nil),       // 58: koda.v1.UndoLastMessageResponse
-	(*Provider)(nil),                      // 59: koda.v1.Provider
-	(*Model)(nil),                         // 60: koda.v1.Model
-	(*ListProvidersRequest)(nil),          // 61: koda.v1.ListProvidersRequest
-	(*ListProvidersResponse)(nil),         // 62: koda.v1.ListProvidersResponse
-	(*SkillSummary)(nil),                  // 63: koda.v1.SkillSummary
-	(*Skill)(nil),                         // 64: koda.v1.Skill
-	(*ListSkillsRequest)(nil),             // 65: koda.v1.ListSkillsRequest
-	(*ListSkillsResponse)(nil),            // 66: koda.v1.ListSkillsResponse
-	(*GetSkillRequest)(nil),               // 67: koda.v1.GetSkillRequest
-	(*GetSkillResponse)(nil),              // 68: koda.v1.GetSkillResponse
-	(*MCPServerSummary)(nil),              // 69: koda.v1.MCPServerSummary
-	(*MCPTool)(nil),                       // 70: koda.v1.MCPTool
-	(*MCPServer)(nil),                     // 71: koda.v1.MCPServer
-	(*ListMCPServersRequest)(nil),         // 72: koda.v1.ListMCPServersRequest
-	(*ListMCPServersResponse)(nil),        // 73: koda.v1.ListMCPServersResponse
-	(*GetMCPServerRequest)(nil),           // 74: koda.v1.GetMCPServerRequest
-	(*GetMCPServerResponse)(nil),          // 75: koda.v1.GetMCPServerResponse
-	(*SaveProviderRequest)(nil),           // 76: koda.v1.SaveProviderRequest
-	(*SaveProviderResponse)(nil),          // 77: koda.v1.SaveProviderResponse
-	(*DeleteProviderRequest)(nil),         // 78: koda.v1.DeleteProviderRequest
-	(*DeleteProviderResponse)(nil),        // 79: koda.v1.DeleteProviderResponse
-	(*ListModelsRequest)(nil),             // 80: koda.v1.ListModelsRequest
-	(*ListModelsResponse)(nil),            // 81: koda.v1.ListModelsResponse
-	(*RefreshModelsRequest)(nil),          // 82: koda.v1.RefreshModelsRequest
-	(*RefreshModelsResponse)(nil),         // 83: koda.v1.RefreshModelsResponse
-	nil,                                   // 84: koda.v1.Skill.MetadataEntry
+	(CompactionProgressStage)(0),          // 12: koda.v1.CompactionProgressStage
+	(*RunRequest)(nil),                    // 13: koda.v1.RunRequest
+	(*RunResponse)(nil),                   // 14: koda.v1.RunResponse
+	(*RunCompleted)(nil),                  // 15: koda.v1.RunCompleted
+	(*Input)(nil),                         // 16: koda.v1.Input
+	(*Part)(nil),                          // 17: koda.v1.Part
+	(*Image)(nil),                         // 18: koda.v1.Image
+	(*ToolApproval)(nil),                  // 19: koda.v1.ToolApproval
+	(*ResolveToolApprovalRequest)(nil),    // 20: koda.v1.ResolveToolApprovalRequest
+	(*ResolveToolApprovalResponse)(nil),   // 21: koda.v1.ResolveToolApprovalResponse
+	(*QuestionPrompt)(nil),                // 22: koda.v1.QuestionPrompt
+	(*Question)(nil),                      // 23: koda.v1.Question
+	(*QuestionOption)(nil),                // 24: koda.v1.QuestionOption
+	(*SubmitQuestionAnswersRequest)(nil),  // 25: koda.v1.SubmitQuestionAnswersRequest
+	(*SubmitQuestionAnswersResponse)(nil), // 26: koda.v1.SubmitQuestionAnswersResponse
+	(*QuestionAnswers)(nil),               // 27: koda.v1.QuestionAnswers
+	(*QuestionAnswer)(nil),                // 28: koda.v1.QuestionAnswer
+	(*ListDirectoriesRequest)(nil),        // 29: koda.v1.ListDirectoriesRequest
+	(*ListDirectoriesResponse)(nil),       // 30: koda.v1.ListDirectoriesResponse
+	(*DirectoryEntry)(nil),                // 31: koda.v1.DirectoryEntry
+	(*Session)(nil),                       // 32: koda.v1.Session
+	(*ContextUsage)(nil),                  // 33: koda.v1.ContextUsage
+	(*CreateSessionRequest)(nil),          // 34: koda.v1.CreateSessionRequest
+	(*CreateSessionResponse)(nil),         // 35: koda.v1.CreateSessionResponse
+	(*GetSessionRequest)(nil),             // 36: koda.v1.GetSessionRequest
+	(*GetSessionResponse)(nil),            // 37: koda.v1.GetSessionResponse
+	(*ListSessionsRequest)(nil),           // 38: koda.v1.ListSessionsRequest
+	(*ListSessionsResponse)(nil),          // 39: koda.v1.ListSessionsResponse
+	(*UpdateSessionRequest)(nil),          // 40: koda.v1.UpdateSessionRequest
+	(*UpdateSessionResponse)(nil),         // 41: koda.v1.UpdateSessionResponse
+	(*DeleteSessionRequest)(nil),          // 42: koda.v1.DeleteSessionRequest
+	(*DeleteSessionResponse)(nil),         // 43: koda.v1.DeleteSessionResponse
+	(*Event)(nil),                         // 44: koda.v1.Event
+	(*Message)(nil),                       // 45: koda.v1.Message
+	(*ToolCall)(nil),                      // 46: koda.v1.ToolCall
+	(*ToolResponse)(nil),                  // 47: koda.v1.ToolResponse
+	(*ToolResult)(nil),                    // 48: koda.v1.ToolResult
+	(*FileChange)(nil),                    // 49: koda.v1.FileChange
+	(*DiffHunk)(nil),                      // 50: koda.v1.DiffHunk
+	(*DiffLine)(nil),                      // 51: koda.v1.DiffLine
+	(*ToolError)(nil),                     // 52: koda.v1.ToolError
+	(*TokenUsage)(nil),                    // 53: koda.v1.TokenUsage
+	(*TokenUsageDetails)(nil),             // 54: koda.v1.TokenUsageDetails
+	(*ListEventsRequest)(nil),             // 55: koda.v1.ListEventsRequest
+	(*ListEventsResponse)(nil),            // 56: koda.v1.ListEventsResponse
+	(*CompactionStatus)(nil),              // 57: koda.v1.CompactionStatus
+	(*UndoLastMessageRequest)(nil),        // 58: koda.v1.UndoLastMessageRequest
+	(*UndoLastMessageResponse)(nil),       // 59: koda.v1.UndoLastMessageResponse
+	(*Provider)(nil),                      // 60: koda.v1.Provider
+	(*Model)(nil),                         // 61: koda.v1.Model
+	(*ListProvidersRequest)(nil),          // 62: koda.v1.ListProvidersRequest
+	(*ListProvidersResponse)(nil),         // 63: koda.v1.ListProvidersResponse
+	(*SkillSummary)(nil),                  // 64: koda.v1.SkillSummary
+	(*Skill)(nil),                         // 65: koda.v1.Skill
+	(*ListSkillsRequest)(nil),             // 66: koda.v1.ListSkillsRequest
+	(*ListSkillsResponse)(nil),            // 67: koda.v1.ListSkillsResponse
+	(*GetSkillRequest)(nil),               // 68: koda.v1.GetSkillRequest
+	(*GetSkillResponse)(nil),              // 69: koda.v1.GetSkillResponse
+	(*MCPServerSummary)(nil),              // 70: koda.v1.MCPServerSummary
+	(*MCPTool)(nil),                       // 71: koda.v1.MCPTool
+	(*MCPServer)(nil),                     // 72: koda.v1.MCPServer
+	(*ListMCPServersRequest)(nil),         // 73: koda.v1.ListMCPServersRequest
+	(*ListMCPServersResponse)(nil),        // 74: koda.v1.ListMCPServersResponse
+	(*GetMCPServerRequest)(nil),           // 75: koda.v1.GetMCPServerRequest
+	(*GetMCPServerResponse)(nil),          // 76: koda.v1.GetMCPServerResponse
+	(*SaveProviderRequest)(nil),           // 77: koda.v1.SaveProviderRequest
+	(*SaveProviderResponse)(nil),          // 78: koda.v1.SaveProviderResponse
+	(*DeleteProviderRequest)(nil),         // 79: koda.v1.DeleteProviderRequest
+	(*DeleteProviderResponse)(nil),        // 80: koda.v1.DeleteProviderResponse
+	(*ListModelsRequest)(nil),             // 81: koda.v1.ListModelsRequest
+	(*ListModelsResponse)(nil),            // 82: koda.v1.ListModelsResponse
+	(*RefreshModelsRequest)(nil),          // 83: koda.v1.RefreshModelsRequest
+	(*RefreshModelsResponse)(nil),         // 84: koda.v1.RefreshModelsResponse
+	(*CompactionProgress)(nil),            // 85: koda.v1.CompactionProgress
+	nil,                                   // 86: koda.v1.Skill.MetadataEntry
 }
 var file_koda_v1_service_proto_depIdxs = []int32{
-	15, // 0: koda.v1.RunRequest.input:type_name -> koda.v1.Input
+	16, // 0: koda.v1.RunRequest.input:type_name -> koda.v1.Input
 	0,  // 1: koda.v1.RunRequest.mode:type_name -> koda.v1.AgentMode
-	43, // 2: koda.v1.RunResponse.event:type_name -> koda.v1.Event
-	18, // 3: koda.v1.RunResponse.approval:type_name -> koda.v1.ToolApproval
-	14, // 4: koda.v1.RunResponse.completed:type_name -> koda.v1.RunCompleted
-	21, // 5: koda.v1.RunResponse.question_prompt:type_name -> koda.v1.QuestionPrompt
-	31, // 6: koda.v1.RunCompleted.session:type_name -> koda.v1.Session
-	16, // 7: koda.v1.Input.parts:type_name -> koda.v1.Part
-	17, // 8: koda.v1.Part.image:type_name -> koda.v1.Image
-	4,  // 9: koda.v1.Image.detail:type_name -> koda.v1.ImageDetail
-	48, // 10: koda.v1.ToolApproval.file_changes:type_name -> koda.v1.FileChange
-	8,  // 11: koda.v1.ToolApproval.kind:type_name -> koda.v1.ToolApprovalKind
-	9,  // 12: koda.v1.ToolApproval.scope:type_name -> koda.v1.ToolApprovalScope
-	22, // 13: koda.v1.QuestionPrompt.questions:type_name -> koda.v1.Question
-	23, // 14: koda.v1.Question.options:type_name -> koda.v1.QuestionOption
-	26, // 15: koda.v1.SubmitQuestionAnswersRequest.answers:type_name -> koda.v1.QuestionAnswers
-	27, // 16: koda.v1.QuestionAnswers.answers:type_name -> koda.v1.QuestionAnswer
-	30, // 17: koda.v1.ListDirectoriesResponse.directories:type_name -> koda.v1.DirectoryEntry
-	5,  // 18: koda.v1.Session.file_access:type_name -> koda.v1.FileAccess
-	6,  // 19: koda.v1.Session.shell_access:type_name -> koda.v1.ShellAccess
-	32, // 20: koda.v1.Session.context_usage:type_name -> koda.v1.ContextUsage
-	5,  // 21: koda.v1.CreateSessionRequest.file_access:type_name -> koda.v1.FileAccess
-	6,  // 22: koda.v1.CreateSessionRequest.shell_access:type_name -> koda.v1.ShellAccess
-	31, // 23: koda.v1.CreateSessionResponse.session:type_name -> koda.v1.Session
-	31, // 24: koda.v1.GetSessionResponse.session:type_name -> koda.v1.Session
-	31, // 25: koda.v1.ListSessionsResponse.sessions:type_name -> koda.v1.Session
-	5,  // 26: koda.v1.UpdateSessionRequest.file_access:type_name -> koda.v1.FileAccess
-	6,  // 27: koda.v1.UpdateSessionRequest.shell_access:type_name -> koda.v1.ShellAccess
-	31, // 28: koda.v1.UpdateSessionResponse.session:type_name -> koda.v1.Session
-	44, // 29: koda.v1.Event.message:type_name -> koda.v1.Message
-	2,  // 30: koda.v1.Event.finish_reason:type_name -> koda.v1.FinishReason
-	52, // 31: koda.v1.Event.usage:type_name -> koda.v1.TokenUsage
-	1,  // 32: koda.v1.Message.role:type_name -> koda.v1.Role
-	16, // 33: koda.v1.Message.parts:type_name -> koda.v1.Part
-	45, // 34: koda.v1.Message.tool_calls:type_name -> koda.v1.ToolCall
-	46, // 35: koda.v1.Message.tool_response:type_name -> koda.v1.ToolResponse
-	47, // 36: koda.v1.ToolResponse.result:type_name -> koda.v1.ToolResult
-	51, // 37: koda.v1.ToolResponse.error:type_name -> koda.v1.ToolError
-	48, // 38: koda.v1.ToolResult.file_changes:type_name -> koda.v1.FileChange
-	10, // 39: koda.v1.FileChange.kind:type_name -> koda.v1.FileChangeKind
-	49, // 40: koda.v1.FileChange.hunks:type_name -> koda.v1.DiffHunk
-	50, // 41: koda.v1.DiffHunk.lines:type_name -> koda.v1.DiffLine
-	11, // 42: koda.v1.DiffLine.kind:type_name -> koda.v1.DiffLineKind
-	53, // 43: koda.v1.TokenUsage.details:type_name -> koda.v1.TokenUsageDetails
-	43, // 44: koda.v1.ListEventsResponse.events:type_name -> koda.v1.Event
-	56, // 45: koda.v1.ListEventsResponse.compaction:type_name -> koda.v1.CompactionStatus
-	15, // 46: koda.v1.UndoLastMessageResponse.input:type_name -> koda.v1.Input
-	3,  // 47: koda.v1.Provider.type:type_name -> koda.v1.ProviderType
-	59, // 48: koda.v1.ListProvidersResponse.providers:type_name -> koda.v1.Provider
-	84, // 49: koda.v1.Skill.metadata:type_name -> koda.v1.Skill.MetadataEntry
-	63, // 50: koda.v1.ListSkillsResponse.skills:type_name -> koda.v1.SkillSummary
-	64, // 51: koda.v1.GetSkillResponse.skill:type_name -> koda.v1.Skill
-	7,  // 52: koda.v1.MCPServerSummary.transport:type_name -> koda.v1.MCPTransport
-	7,  // 53: koda.v1.MCPServer.transport:type_name -> koda.v1.MCPTransport
-	70, // 54: koda.v1.MCPServer.tools:type_name -> koda.v1.MCPTool
-	69, // 55: koda.v1.ListMCPServersResponse.servers:type_name -> koda.v1.MCPServerSummary
-	71, // 56: koda.v1.GetMCPServerResponse.server:type_name -> koda.v1.MCPServer
-	3,  // 57: koda.v1.SaveProviderRequest.type:type_name -> koda.v1.ProviderType
-	60, // 58: koda.v1.SaveProviderRequest.model_overrides:type_name -> koda.v1.Model
-	59, // 59: koda.v1.SaveProviderResponse.provider:type_name -> koda.v1.Provider
-	60, // 60: koda.v1.ListModelsResponse.models:type_name -> koda.v1.Model
-	60, // 61: koda.v1.RefreshModelsResponse.models:type_name -> koda.v1.Model
-	12, // 62: koda.v1.KodaService.Run:input_type -> koda.v1.RunRequest
-	19, // 63: koda.v1.KodaService.ResolveToolApproval:input_type -> koda.v1.ResolveToolApprovalRequest
-	24, // 64: koda.v1.KodaService.SubmitQuestionAnswers:input_type -> koda.v1.SubmitQuestionAnswersRequest
-	28, // 65: koda.v1.KodaService.ListDirectories:input_type -> koda.v1.ListDirectoriesRequest
-	65, // 66: koda.v1.KodaService.ListSkills:input_type -> koda.v1.ListSkillsRequest
-	67, // 67: koda.v1.KodaService.GetSkill:input_type -> koda.v1.GetSkillRequest
-	72, // 68: koda.v1.KodaService.ListMCPServers:input_type -> koda.v1.ListMCPServersRequest
-	74, // 69: koda.v1.KodaService.GetMCPServer:input_type -> koda.v1.GetMCPServerRequest
-	33, // 70: koda.v1.KodaService.CreateSession:input_type -> koda.v1.CreateSessionRequest
-	35, // 71: koda.v1.KodaService.GetSession:input_type -> koda.v1.GetSessionRequest
-	37, // 72: koda.v1.KodaService.ListSessions:input_type -> koda.v1.ListSessionsRequest
-	39, // 73: koda.v1.KodaService.UpdateSession:input_type -> koda.v1.UpdateSessionRequest
-	41, // 74: koda.v1.KodaService.DeleteSession:input_type -> koda.v1.DeleteSessionRequest
-	54, // 75: koda.v1.KodaService.ListEvents:input_type -> koda.v1.ListEventsRequest
-	57, // 76: koda.v1.KodaService.UndoLastMessage:input_type -> koda.v1.UndoLastMessageRequest
-	61, // 77: koda.v1.KodaService.ListProviders:input_type -> koda.v1.ListProvidersRequest
-	76, // 78: koda.v1.KodaService.SaveProvider:input_type -> koda.v1.SaveProviderRequest
-	78, // 79: koda.v1.KodaService.DeleteProvider:input_type -> koda.v1.DeleteProviderRequest
-	80, // 80: koda.v1.KodaService.ListModels:input_type -> koda.v1.ListModelsRequest
-	82, // 81: koda.v1.KodaService.RefreshModels:input_type -> koda.v1.RefreshModelsRequest
-	13, // 82: koda.v1.KodaService.Run:output_type -> koda.v1.RunResponse
-	20, // 83: koda.v1.KodaService.ResolveToolApproval:output_type -> koda.v1.ResolveToolApprovalResponse
-	25, // 84: koda.v1.KodaService.SubmitQuestionAnswers:output_type -> koda.v1.SubmitQuestionAnswersResponse
-	29, // 85: koda.v1.KodaService.ListDirectories:output_type -> koda.v1.ListDirectoriesResponse
-	66, // 86: koda.v1.KodaService.ListSkills:output_type -> koda.v1.ListSkillsResponse
-	68, // 87: koda.v1.KodaService.GetSkill:output_type -> koda.v1.GetSkillResponse
-	73, // 88: koda.v1.KodaService.ListMCPServers:output_type -> koda.v1.ListMCPServersResponse
-	75, // 89: koda.v1.KodaService.GetMCPServer:output_type -> koda.v1.GetMCPServerResponse
-	34, // 90: koda.v1.KodaService.CreateSession:output_type -> koda.v1.CreateSessionResponse
-	36, // 91: koda.v1.KodaService.GetSession:output_type -> koda.v1.GetSessionResponse
-	38, // 92: koda.v1.KodaService.ListSessions:output_type -> koda.v1.ListSessionsResponse
-	40, // 93: koda.v1.KodaService.UpdateSession:output_type -> koda.v1.UpdateSessionResponse
-	42, // 94: koda.v1.KodaService.DeleteSession:output_type -> koda.v1.DeleteSessionResponse
-	55, // 95: koda.v1.KodaService.ListEvents:output_type -> koda.v1.ListEventsResponse
-	58, // 96: koda.v1.KodaService.UndoLastMessage:output_type -> koda.v1.UndoLastMessageResponse
-	62, // 97: koda.v1.KodaService.ListProviders:output_type -> koda.v1.ListProvidersResponse
-	77, // 98: koda.v1.KodaService.SaveProvider:output_type -> koda.v1.SaveProviderResponse
-	79, // 99: koda.v1.KodaService.DeleteProvider:output_type -> koda.v1.DeleteProviderResponse
-	81, // 100: koda.v1.KodaService.ListModels:output_type -> koda.v1.ListModelsResponse
-	83, // 101: koda.v1.KodaService.RefreshModels:output_type -> koda.v1.RefreshModelsResponse
-	82, // [82:102] is the sub-list for method output_type
-	62, // [62:82] is the sub-list for method input_type
-	62, // [62:62] is the sub-list for extension type_name
-	62, // [62:62] is the sub-list for extension extendee
-	0,  // [0:62] is the sub-list for field type_name
+	44, // 2: koda.v1.RunResponse.event:type_name -> koda.v1.Event
+	19, // 3: koda.v1.RunResponse.approval:type_name -> koda.v1.ToolApproval
+	15, // 4: koda.v1.RunResponse.completed:type_name -> koda.v1.RunCompleted
+	22, // 5: koda.v1.RunResponse.question_prompt:type_name -> koda.v1.QuestionPrompt
+	85, // 6: koda.v1.RunResponse.compaction_progress:type_name -> koda.v1.CompactionProgress
+	32, // 7: koda.v1.RunCompleted.session:type_name -> koda.v1.Session
+	17, // 8: koda.v1.Input.parts:type_name -> koda.v1.Part
+	18, // 9: koda.v1.Part.image:type_name -> koda.v1.Image
+	4,  // 10: koda.v1.Image.detail:type_name -> koda.v1.ImageDetail
+	49, // 11: koda.v1.ToolApproval.file_changes:type_name -> koda.v1.FileChange
+	8,  // 12: koda.v1.ToolApproval.kind:type_name -> koda.v1.ToolApprovalKind
+	9,  // 13: koda.v1.ToolApproval.scope:type_name -> koda.v1.ToolApprovalScope
+	23, // 14: koda.v1.QuestionPrompt.questions:type_name -> koda.v1.Question
+	24, // 15: koda.v1.Question.options:type_name -> koda.v1.QuestionOption
+	27, // 16: koda.v1.SubmitQuestionAnswersRequest.answers:type_name -> koda.v1.QuestionAnswers
+	28, // 17: koda.v1.QuestionAnswers.answers:type_name -> koda.v1.QuestionAnswer
+	31, // 18: koda.v1.ListDirectoriesResponse.directories:type_name -> koda.v1.DirectoryEntry
+	5,  // 19: koda.v1.Session.file_access:type_name -> koda.v1.FileAccess
+	6,  // 20: koda.v1.Session.shell_access:type_name -> koda.v1.ShellAccess
+	33, // 21: koda.v1.Session.context_usage:type_name -> koda.v1.ContextUsage
+	5,  // 22: koda.v1.CreateSessionRequest.file_access:type_name -> koda.v1.FileAccess
+	6,  // 23: koda.v1.CreateSessionRequest.shell_access:type_name -> koda.v1.ShellAccess
+	32, // 24: koda.v1.CreateSessionResponse.session:type_name -> koda.v1.Session
+	32, // 25: koda.v1.GetSessionResponse.session:type_name -> koda.v1.Session
+	32, // 26: koda.v1.ListSessionsResponse.sessions:type_name -> koda.v1.Session
+	5,  // 27: koda.v1.UpdateSessionRequest.file_access:type_name -> koda.v1.FileAccess
+	6,  // 28: koda.v1.UpdateSessionRequest.shell_access:type_name -> koda.v1.ShellAccess
+	32, // 29: koda.v1.UpdateSessionResponse.session:type_name -> koda.v1.Session
+	45, // 30: koda.v1.Event.message:type_name -> koda.v1.Message
+	2,  // 31: koda.v1.Event.finish_reason:type_name -> koda.v1.FinishReason
+	53, // 32: koda.v1.Event.usage:type_name -> koda.v1.TokenUsage
+	1,  // 33: koda.v1.Message.role:type_name -> koda.v1.Role
+	17, // 34: koda.v1.Message.parts:type_name -> koda.v1.Part
+	46, // 35: koda.v1.Message.tool_calls:type_name -> koda.v1.ToolCall
+	47, // 36: koda.v1.Message.tool_response:type_name -> koda.v1.ToolResponse
+	48, // 37: koda.v1.ToolResponse.result:type_name -> koda.v1.ToolResult
+	52, // 38: koda.v1.ToolResponse.error:type_name -> koda.v1.ToolError
+	49, // 39: koda.v1.ToolResult.file_changes:type_name -> koda.v1.FileChange
+	10, // 40: koda.v1.FileChange.kind:type_name -> koda.v1.FileChangeKind
+	50, // 41: koda.v1.FileChange.hunks:type_name -> koda.v1.DiffHunk
+	51, // 42: koda.v1.DiffHunk.lines:type_name -> koda.v1.DiffLine
+	11, // 43: koda.v1.DiffLine.kind:type_name -> koda.v1.DiffLineKind
+	54, // 44: koda.v1.TokenUsage.details:type_name -> koda.v1.TokenUsageDetails
+	44, // 45: koda.v1.ListEventsResponse.events:type_name -> koda.v1.Event
+	57, // 46: koda.v1.ListEventsResponse.compaction:type_name -> koda.v1.CompactionStatus
+	16, // 47: koda.v1.UndoLastMessageResponse.input:type_name -> koda.v1.Input
+	3,  // 48: koda.v1.Provider.type:type_name -> koda.v1.ProviderType
+	60, // 49: koda.v1.ListProvidersResponse.providers:type_name -> koda.v1.Provider
+	86, // 50: koda.v1.Skill.metadata:type_name -> koda.v1.Skill.MetadataEntry
+	64, // 51: koda.v1.ListSkillsResponse.skills:type_name -> koda.v1.SkillSummary
+	65, // 52: koda.v1.GetSkillResponse.skill:type_name -> koda.v1.Skill
+	7,  // 53: koda.v1.MCPServerSummary.transport:type_name -> koda.v1.MCPTransport
+	7,  // 54: koda.v1.MCPServer.transport:type_name -> koda.v1.MCPTransport
+	71, // 55: koda.v1.MCPServer.tools:type_name -> koda.v1.MCPTool
+	70, // 56: koda.v1.ListMCPServersResponse.servers:type_name -> koda.v1.MCPServerSummary
+	72, // 57: koda.v1.GetMCPServerResponse.server:type_name -> koda.v1.MCPServer
+	3,  // 58: koda.v1.SaveProviderRequest.type:type_name -> koda.v1.ProviderType
+	61, // 59: koda.v1.SaveProviderRequest.model_overrides:type_name -> koda.v1.Model
+	60, // 60: koda.v1.SaveProviderResponse.provider:type_name -> koda.v1.Provider
+	61, // 61: koda.v1.ListModelsResponse.models:type_name -> koda.v1.Model
+	61, // 62: koda.v1.RefreshModelsResponse.models:type_name -> koda.v1.Model
+	12, // 63: koda.v1.CompactionProgress.stage:type_name -> koda.v1.CompactionProgressStage
+	13, // 64: koda.v1.KodaService.Run:input_type -> koda.v1.RunRequest
+	20, // 65: koda.v1.KodaService.ResolveToolApproval:input_type -> koda.v1.ResolveToolApprovalRequest
+	25, // 66: koda.v1.KodaService.SubmitQuestionAnswers:input_type -> koda.v1.SubmitQuestionAnswersRequest
+	29, // 67: koda.v1.KodaService.ListDirectories:input_type -> koda.v1.ListDirectoriesRequest
+	66, // 68: koda.v1.KodaService.ListSkills:input_type -> koda.v1.ListSkillsRequest
+	68, // 69: koda.v1.KodaService.GetSkill:input_type -> koda.v1.GetSkillRequest
+	73, // 70: koda.v1.KodaService.ListMCPServers:input_type -> koda.v1.ListMCPServersRequest
+	75, // 71: koda.v1.KodaService.GetMCPServer:input_type -> koda.v1.GetMCPServerRequest
+	34, // 72: koda.v1.KodaService.CreateSession:input_type -> koda.v1.CreateSessionRequest
+	36, // 73: koda.v1.KodaService.GetSession:input_type -> koda.v1.GetSessionRequest
+	38, // 74: koda.v1.KodaService.ListSessions:input_type -> koda.v1.ListSessionsRequest
+	40, // 75: koda.v1.KodaService.UpdateSession:input_type -> koda.v1.UpdateSessionRequest
+	42, // 76: koda.v1.KodaService.DeleteSession:input_type -> koda.v1.DeleteSessionRequest
+	55, // 77: koda.v1.KodaService.ListEvents:input_type -> koda.v1.ListEventsRequest
+	58, // 78: koda.v1.KodaService.UndoLastMessage:input_type -> koda.v1.UndoLastMessageRequest
+	62, // 79: koda.v1.KodaService.ListProviders:input_type -> koda.v1.ListProvidersRequest
+	77, // 80: koda.v1.KodaService.SaveProvider:input_type -> koda.v1.SaveProviderRequest
+	79, // 81: koda.v1.KodaService.DeleteProvider:input_type -> koda.v1.DeleteProviderRequest
+	81, // 82: koda.v1.KodaService.ListModels:input_type -> koda.v1.ListModelsRequest
+	83, // 83: koda.v1.KodaService.RefreshModels:input_type -> koda.v1.RefreshModelsRequest
+	14, // 84: koda.v1.KodaService.Run:output_type -> koda.v1.RunResponse
+	21, // 85: koda.v1.KodaService.ResolveToolApproval:output_type -> koda.v1.ResolveToolApprovalResponse
+	26, // 86: koda.v1.KodaService.SubmitQuestionAnswers:output_type -> koda.v1.SubmitQuestionAnswersResponse
+	30, // 87: koda.v1.KodaService.ListDirectories:output_type -> koda.v1.ListDirectoriesResponse
+	67, // 88: koda.v1.KodaService.ListSkills:output_type -> koda.v1.ListSkillsResponse
+	69, // 89: koda.v1.KodaService.GetSkill:output_type -> koda.v1.GetSkillResponse
+	74, // 90: koda.v1.KodaService.ListMCPServers:output_type -> koda.v1.ListMCPServersResponse
+	76, // 91: koda.v1.KodaService.GetMCPServer:output_type -> koda.v1.GetMCPServerResponse
+	35, // 92: koda.v1.KodaService.CreateSession:output_type -> koda.v1.CreateSessionResponse
+	37, // 93: koda.v1.KodaService.GetSession:output_type -> koda.v1.GetSessionResponse
+	39, // 94: koda.v1.KodaService.ListSessions:output_type -> koda.v1.ListSessionsResponse
+	41, // 95: koda.v1.KodaService.UpdateSession:output_type -> koda.v1.UpdateSessionResponse
+	43, // 96: koda.v1.KodaService.DeleteSession:output_type -> koda.v1.DeleteSessionResponse
+	56, // 97: koda.v1.KodaService.ListEvents:output_type -> koda.v1.ListEventsResponse
+	59, // 98: koda.v1.KodaService.UndoLastMessage:output_type -> koda.v1.UndoLastMessageResponse
+	63, // 99: koda.v1.KodaService.ListProviders:output_type -> koda.v1.ListProvidersResponse
+	78, // 100: koda.v1.KodaService.SaveProvider:output_type -> koda.v1.SaveProviderResponse
+	80, // 101: koda.v1.KodaService.DeleteProvider:output_type -> koda.v1.DeleteProviderResponse
+	82, // 102: koda.v1.KodaService.ListModels:output_type -> koda.v1.ListModelsResponse
+	84, // 103: koda.v1.KodaService.RefreshModels:output_type -> koda.v1.RefreshModelsResponse
+	84, // [84:104] is the sub-list for method output_type
+	64, // [64:84] is the sub-list for method input_type
+	64, // [64:64] is the sub-list for extension type_name
+	64, // [64:64] is the sub-list for extension extendee
+	0,  // [0:64] is the sub-list for field type_name
 }
 
 func init() { file_koda_v1_service_proto_init() }
@@ -11671,6 +11985,7 @@ func file_koda_v1_service_proto_init() {
 		(*runResponse_Approval)(nil),
 		(*runResponse_Completed)(nil),
 		(*runResponse_QuestionPrompt)(nil),
+		(*runResponse_CompactionProgress)(nil),
 	}
 	file_koda_v1_service_proto_msgTypes[4].OneofWrappers = []any{
 		(*part_Text)(nil),
@@ -11693,8 +12008,8 @@ func file_koda_v1_service_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_koda_v1_service_proto_rawDesc), len(file_koda_v1_service_proto_rawDesc)),
-			NumEnums:      12,
-			NumMessages:   73,
+			NumEnums:      13,
+			NumMessages:   74,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -100,12 +100,18 @@ Studio 会将 provider 最近一次返回的 prompt 和 completion token usage �
 `compaction.trigger_percent`，或者需要提前为 `compaction.reserve_tokens` 留出空间，Koda
 会尝试压缩历史。它在 `retain_tokens` 范围内最多保留 `retain_turns` 个最近完整 turn，
 总结更早的前缀，并只在后续模型请求中注入完整 working-state snapshot；snapshot 不会成为
-普通对话 event。`verify` 会增加一次模型校验；每经过 `rebase_interval` 代，Koda 会根据
-一个有界 checkpoint 和此后的不可变 segment summary 重建 snapshot，在降低多次递归
-总结漂移的同时避免 rebase 输入无界增长。
-压缩后 Studio 仍会展示全部未删除的对话，并在仅用于展示的已压缩前缀与 active event
-尾部之间显示 generation 标记。只有服务端明确返回的可撤销 turn 才提供编辑和重试；
-撤销请求会携带该 expected turn，避免过期客户端越过 compaction 边界误删更新的历史。
+普通对话 event。compaction 输出必须通过版本化 JSON schema 校验，其中明确区分目标、
+用户要求、约束、决策、事实、进度、文件、命令、失败、未决问题和下一步；任意文本格式的
+snapshot 会被拒绝。draft 和 verify 共享一次格式修复机会，因此 `verify: true` 时每次
+compaction 最多调用模型三次；provider 错误、取消、content filter 和无效的持久化状态
+不会触发修复。`verify` 会增加一次模型校验；每经过 `rebase_interval` 代，Koda 会根据一个
+有界的结构化 checkpoint 和此后的不可变结构化 segment summary 重建 snapshot，在降低
+多次递归总结漂移的同时避免 rebase 输入无界增长。
+Run 期间 Studio 会显示瞬时的压缩开始、完成或失败状态，避免额外的模型调用看起来像响应
+卡住；这些状态不会写入对话历史。压缩后 Studio 仍会展示全部未删除的对话，并在仅用于
+展示的已压缩前缀与 active event 尾部之间显示 generation 标记。只有服务端明确返回的
+可撤销 turn 才提供编辑和重试；撤销请求会携带该 expected turn，避免过期客户端越过
+compaction 边界误删更新的历史。
 
 未达到 reserve 边界时，压缩失败会被记录，Run 仍可继续，并在测得的使用量继续增长后
 重试。达到 reserve 边界后，如果压缩仍失败，Run 会返回 `RESOURCE_EXHAUSTED`，避免历史

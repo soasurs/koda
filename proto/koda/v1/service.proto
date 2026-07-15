@@ -196,6 +196,9 @@ message RunResponse {
     // question_prompt blocks one ask_questions tool call until the frontend
     // submits answers or cancels the prompt.
     QuestionPrompt question_prompt = 4;
+    // compaction_progress reports transient context compaction lifecycle state.
+    // It is never persisted in session history.
+    CompactionProgress compaction_progress = 5;
   }
 }
 
@@ -823,4 +826,23 @@ message RefreshModelsResponse {
   repeated Model models = 2;
   // refreshed_at is the Unix timestamp in milliseconds of this successful refresh.
   int64 refreshed_at = 3;
+}
+
+// CompactionProgress reports one automatic context compaction attempt made
+// before the requested agent turn starts.
+message CompactionProgress {
+  CompactionProgressStage stage = 1;
+  int64 generation = 2;
+  int64 context_tokens = 3;
+  int64 source_tokens = 4;
+  int64 estimated_tokens_after = 5;
+}
+
+// CompactionProgressStage identifies the current state of one context
+// compaction attempt.
+enum CompactionProgressStage {
+  COMPACTION_PROGRESS_STAGE_UNSPECIFIED = 0;
+  COMPACTION_PROGRESS_STAGE_STARTED = 1;
+  COMPACTION_PROGRESS_STAGE_COMPLETED = 2;
+  COMPACTION_PROGRESS_STAGE_FAILED = 3;
 }

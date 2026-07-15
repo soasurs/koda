@@ -108,6 +108,7 @@ export function CreateSessionDialog({
             <Button
               className="justify-start"
               onClick={() => setShowDirectoryPicker(true)}
+              type="button"
               variant="outline"
             >
               <FolderSearch className="size-4 shrink-0 text-muted-foreground" />
@@ -251,7 +252,7 @@ export function CreateSessionDialog({
           )}
 
           <footer className="flex justify-end gap-2 pt-1">
-            <Button onClick={onClose} variant="outline">
+            <Button onClick={onClose} type="button" variant="outline">
               Cancel
             </Button>
             <Button

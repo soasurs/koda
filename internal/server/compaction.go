@@ -127,6 +127,11 @@ func (h *Handler) prepareRunCompaction(ctx context.Context, session store.Sessio
 		err := fmt.Errorf("session current compaction %d is unavailable", session.CurrentCompactionID)
 		return store.Session{}, nil, h.internalFailure(ctx, "load current compaction", errors.New("load current compaction"), err, slog.String("session_id", session.ID))
 	}
+	if current != nil {
+		if _, err := agent.DecodeCompactionStateSnapshot(current.StateSnapshot); err != nil {
+			return store.Session{}, nil, h.internalFailure(ctx, "decode current compaction", errors.New("decode current compaction"), err, slog.String("session_id", session.ID))
+		}
+	}
 	return session, current, nil
 }
 
@@ -153,7 +158,11 @@ func (h *Handler) compactSession(ctx context.Context, session store.Session) (st
 		Verify: h.compaction.verify, MaxTokens: h.compaction.summaryMaxTokens,
 	}
 	if current != nil && !rebase {
-		request.PreviousSnapshot = current.StateSnapshot
+		previous, err := agent.DecodeCompactionStateSnapshot(current.StateSnapshot)
+		if err != nil {
+			return store.Session{}, fmt.Errorf("decode previous compaction snapshot: %w", err)
+		}
+		request.PreviousSnapshot = &previous
 	}
 	if rebase {
 		generations, err := h.store.ListCompactions(ctx, session.ID)
@@ -185,11 +194,15 @@ func (h *Handler) compactSession(ctx context.Context, session store.Session) (st
 	if err != nil {
 		return store.Session{}, err
 	}
-	estimatedTokensAfter := selection.RetainedTokens + agent.EstimateContentTokens(modelSnapshotContent(result.StateSnapshot))
+	segmentSummary, stateSnapshot, err := agent.EncodeCompactionResult(result)
+	if err != nil {
+		return store.Session{}, err
+	}
+	estimatedTokensAfter := selection.RetainedTokens + agent.EstimateContentTokens(modelSnapshotContent(stateSnapshot))
 	committed, err := h.store.CommitCompaction(ctx, session.ID, store.CommitCompactionParams{
 		ExpectedGeneration: session.CompactionGeneration,
 		StartEventID:       selection.StartEventID, BoundaryEventID: selection.BoundaryEventID,
-		SegmentSummary: result.SegmentSummary, StateSnapshot: result.StateSnapshot,
+		SegmentSummary: segmentSummary, StateSnapshot: stateSnapshot,
 		SourceTokens: selection.SourceTokens, EstimatedTokensAfter: estimatedTokensAfter,
 		ModelID: session.ModelID,
 	})
@@ -215,10 +228,18 @@ func configureRebaseRequest(request *agent.CompactionRequest, generations []stor
 	for _, generation := range generations {
 		switch {
 		case generation.Generation == checkpointGeneration:
-			request.PreviousSnapshot = generation.StateSnapshot
+			snapshot, err := agent.DecodeCompactionStateSnapshot(generation.StateSnapshot)
+			if err != nil {
+				return fmt.Errorf("decode compaction checkpoint generation %d: %w", generation.Generation, err)
+			}
+			request.PreviousSnapshot = &snapshot
 			checkpointFound = true
 		case generation.Generation > checkpointGeneration:
-			request.PriorSegmentSummaries = append(request.PriorSegmentSummaries, generation.SegmentSummary)
+			segment, err := agent.DecodeCompactionSegmentSummary(generation.SegmentSummary)
+			if err != nil {
+				return fmt.Errorf("decode compaction segment generation %d: %w", generation.Generation, err)
+			}
+			request.PriorSegmentSummaries = append(request.PriorSegmentSummaries, segment)
 		}
 	}
 	if !checkpointFound {

@@ -44,6 +44,37 @@ func TestStaticInstructionComposition(t *testing.T) {
 	}
 }
 
+func TestCompactionPromptsEmbedVersionedSchema(t *testing.T) {
+	prompt, err := embeddedPrompt("prompts/compaction.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	verify, err := embeddedPrompt("prompts/compaction_verify.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repair, err := embeddedPrompt("prompts/compaction_repair.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{
+		`"segment_summary"`, `"state_snapshot"`, `"schema_version"`,
+		`"objective"`, `"user_requirements"`, `"constraints"`,
+		`"confirmed_facts"`, `"hypotheses"`, `"completed_work"`,
+		`"current_progress"`, `"pending_work"`, `"relevant_files"`,
+		`"relevant_symbols"`, `"commands_and_results"`,
+		`"errors_and_failures"`, `"open_questions"`, `"next_steps"`,
+	} {
+		if !strings.Contains(prompt, field) {
+			t.Fatalf("compaction prompt does not contain %s", field)
+		}
+	}
+	if strings.Count(prompt, `"schema_version": 1`) != 2 ||
+		!strings.Contains(verify, "version 1") || !strings.Contains(repair, "version 1") {
+		t.Fatalf("compaction schema version missing: prompt %q, verify %q, repair %q", prompt, verify, repair)
+	}
+}
+
 func TestRuntimeInstructionPermissions(t *testing.T) {
 	workdir := t.TempDir()
 	tests := []struct {

@@ -259,7 +259,7 @@ func (f *Factory) Compactor(ctx context.Context, session store.Session) (*Compac
 	if err != nil {
 		return nil, err
 	}
-	result, err := NewCompactor(llm)
+	result, err := NewCompactor(llm, f.logger)
 	if err != nil {
 		return nil, fmt.Errorf("agent: construct compactor: %w", err)
 	}

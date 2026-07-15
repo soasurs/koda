@@ -109,15 +109,25 @@ attempts compaction when the preceding acknowledged turn used
 preserve `compaction.reserve_tokens`. It keeps up to `retain_turns` recent
 complete turns within `retain_tokens`, summarizes the older prefix, and injects
 the resulting working-state snapshot only into later model requests. The
-snapshot does not become an ordinary conversation event. `verify` performs a
-second model pass, and every `rebase_interval` generations Koda rebuilds the
-snapshot from a bounded checkpoint plus the subsequent immutable segment
-summaries to limit recursive drift without unbounded rebase input growth.
-Studio continues to show the complete non-deleted conversation after
-compaction and places a generation marker between the display-only compacted
-prefix and the active event tail. Edit and retry are offered only for the
-server-reported undoable turn; undo requests include that expected turn so a
-stale client cannot remove newer history across the compaction boundary.
+snapshot does not become an ordinary conversation event. Compaction output is
+validated against a versioned JSON schema with explicit objective,
+requirements, constraints, decisions, facts, progress, files, commands,
+failures, questions, and next-step categories; arbitrary text snapshots are
+rejected. One shared repair attempt may correct an invalid draft or verification
+result, so `verify: true` performs at most three compaction model calls. Provider
+errors, cancellation, content filtering, and invalid durable state are not
+repaired. `verify` performs a second model pass, and every `rebase_interval`
+generations Koda rebuilds the snapshot from a bounded structured checkpoint plus
+the subsequent immutable structured segment summaries to limit recursive drift
+without unbounded rebase input growth.
+During a Run, Studio shows transient started, completed, or failed compaction
+status so the extra model work is not mistaken for a stalled response. The
+status is not stored in conversation history. Studio continues to show the
+complete non-deleted conversation after compaction and places a generation
+marker between the display-only compacted prefix and the active event tail.
+Edit and retry are offered only for the server-reported undoable turn; undo
+requests include that expected turn so a stale client cannot remove newer
+history across the compaction boundary.
 
 Below the reserve boundary, a failed compaction is recorded and the Run may
 continue; Koda retries after measured usage increases. At the reserve boundary,

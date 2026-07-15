@@ -1,6 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
-import { Archive, LoaderCircle, Sparkles } from 'lucide-react'
+import {
+  Archive,
+  Check,
+  LoaderCircle,
+  Sparkles,
+  TriangleAlert,
+} from 'lucide-react'
 import { Fragment, useMemo, useState } from 'react'
 
 import { SessionComposer } from '@/components/sessions/session-composer'
@@ -14,7 +20,11 @@ import { SessionTurn } from '@/components/sessions/session-turn'
 import { useFollowLatest } from '@/components/sessions/use-follow-latest'
 import { useSessionRun } from '@/components/sessions/use-session-run'
 import { kodaClient } from '@/lib/connect'
-import type { CompactionStatus } from '@/gen/koda/v1/service_pb'
+import type {
+  CompactionProgress,
+  CompactionStatus,
+} from '@/gen/koda/v1/service_pb'
+import { CompactionProgressStage } from '@/gen/koda/v1/service_pb'
 import { errorMessage, kodaKeys } from '@/lib/koda'
 import { groupEventsByTurn } from '@/lib/session-turns'
 
@@ -55,6 +65,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
       sessionRun.events.length,
       sessionRun.partialReasoning,
       sessionRun.partialText,
+      sessionRun.compactionProgress,
       sessionRun.approvals,
       sessionRun.questionPrompts,
     ],
@@ -63,6 +74,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
       sessionRun.events.length,
       sessionRun.partialReasoning,
       sessionRun.partialText,
+      sessionRun.compactionProgress,
       sessionRun.approvals,
       sessionRun.questionPrompts,
     ],
@@ -136,6 +148,9 @@ function SessionContent({ sessionId }: { sessionId: string }) {
                   )}
                 </Fragment>
               ))}
+              {sessionRun.compactionProgress && (
+                <CompactionActivity progress={sessionRun.compactionProgress} />
+              )}
               {(sessionRun.partialReasoning || sessionRun.partialText) && (
                 <div className="space-y-3">
                   <ReasoningView
@@ -188,6 +203,51 @@ function SessionContent({ sessionId }: { sessionId: string }) {
       />
     </div>
   )
+}
+
+function CompactionActivity({ progress }: { progress: CompactionProgress }) {
+  const completed = progress.stage === CompactionProgressStage.COMPLETED
+  const failed = progress.stage === CompactionProgressStage.FAILED
+  const detail = completed
+    ? `${formatTokens(progress.sourceTokens)} source tokens · ${formatTokens(progress.estimatedTokensAfter)} estimated after`
+    : failed
+      ? 'Continuing with existing context'
+      : `${formatTokens(progress.contextTokens)} tokens in current context`
+
+  return (
+    <div
+      className="ml-9 flex items-center gap-3 text-sm text-muted-foreground"
+      data-testid="compaction-progress"
+      role="status"
+    >
+      {completed ? (
+        <Check className="size-4 text-foreground" />
+      ) : failed ? (
+        <TriangleAlert className="size-4" />
+      ) : (
+        <LoaderCircle className="size-4 animate-spin" />
+      )}
+      <div>
+        <div className="font-medium text-foreground">
+          {completed
+            ? `Context compacted · generation ${progress.generation}`
+            : failed
+              ? 'Context compaction failed'
+              : 'Compacting earlier context…'}
+        </div>
+        <div className="mt-0.5 text-xs">{detail}</div>
+      </div>
+    </div>
+  )
+}
+
+const compactTokenFormatter = new Intl.NumberFormat('en-US', {
+  maximumFractionDigits: 1,
+  notation: 'compact',
+})
+
+function formatTokens(tokens: bigint) {
+  return compactTokenFormatter.format(tokens)
 }
 
 function CompactionBoundary({ compaction }: { compaction: CompactionStatus }) {

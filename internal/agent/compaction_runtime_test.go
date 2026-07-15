@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	adksession "github.com/soasurs/adk/session"
 	"github.com/soasurs/adk/tool"
 
+	"github.com/soasurs/koda/internal/logging"
 	"github.com/soasurs/koda/internal/provider"
 )
 
@@ -98,22 +100,26 @@ func TestPrepareCompactionEventsBoundsToolAndImagePayloads(t *testing.T) {
 }
 
 func TestCompactorGeneratesAndVerifiesRebasedSnapshot(t *testing.T) {
+	draftJSON := testCompactionResultJSON(t, "draft segment", "draft state")
+	verifiedJSON := testCompactionResultJSON(t, "verified segment", "verified state")
+	checkpoint := testCompactionResult("checkpoint segment", "checkpoint state").StateSnapshot
+	olderSegment := testCompactionResult("older segment", "older state").SegmentSummary
 	llm := &scriptedModel{responses: []*model.LLMResponse{
-		{Content: model.Content{Role: model.RoleAssistant, Content: "```json\n{\"segment_summary\":\"draft segment\",\"state_snapshot\":\"draft state\"}\n```"}, FinishReason: model.FinishReasonStop},
-		{Content: model.Content{Role: model.RoleAssistant, Content: `{"segment_summary":"verified segment","state_snapshot":"verified state"}`}, FinishReason: model.FinishReasonStop},
+		{Content: model.Content{Role: model.RoleAssistant, Content: "```json\n" + draftJSON + "\n```"}, FinishReason: model.FinishReasonStop},
+		{Content: model.Content{Role: model.RoleAssistant, Content: verifiedJSON}, FinishReason: model.FinishReasonStop},
 	}}
-	compactor, err := NewCompactor(llm)
+	compactor, err := NewCompactor(llm, nil)
 	if err != nil {
 		t.Fatalf("NewCompactor() error = %v", err)
 	}
 	result, err := compactor.Compact(t.Context(), CompactionRequest{
 		ModelID: "test-model", Events: []model.Event{testCompactionEvent(1, "turn-1", model.RoleUser, "fix it")},
-		PreviousSnapshot: "checkpoint state", PriorSegmentSummaries: []string{"older segment"}, Rebase: true, Verify: true, MaxTokens: 4096,
+		PreviousSnapshot: &checkpoint, PriorSegmentSummaries: []CompactionSegmentSummary{olderSegment}, Rebase: true, Verify: true, MaxTokens: 4096,
 	})
 	if err != nil {
 		t.Fatalf("Compact() error = %v", err)
 	}
-	if result.SegmentSummary != "verified segment" || result.StateSnapshot != "verified state" {
+	if result.SegmentSummary.Overview != "verified segment" || result.StateSnapshot.Objective != "verified state" {
 		t.Fatalf("Compact() = %+v", result)
 	}
 	if len(llm.requests) != 2 || len(llm.configs) != 2 || llm.configs[0].MaxTokens != 4096 || llm.streams[0] || llm.streams[1] {
@@ -121,7 +127,8 @@ func TestCompactorGeneratesAndVerifiesRebasedSnapshot(t *testing.T) {
 	}
 	firstPrompt := llm.requests[0].Contents[1].Content
 	if !strings.Contains(firstPrompt, "MODE: rebase") || !strings.Contains(firstPrompt, "older segment") ||
-		!strings.Contains(firstPrompt, "checkpoint state") || strings.Contains(firstPrompt, "PREVIOUS WORKING-STATE") {
+		!strings.Contains(firstPrompt, "checkpoint state") || strings.Contains(firstPrompt, "PREVIOUS WORKING-STATE") ||
+		strings.Contains(firstPrompt, `\"objective\"`) {
 		t.Fatalf("rebase prompt = %q", firstPrompt)
 	}
 	if !strings.Contains(llm.requests[1].Contents[1].Content, "draft state") ||
@@ -131,12 +138,130 @@ func TestCompactorGeneratesAndVerifiesRebasedSnapshot(t *testing.T) {
 	}
 }
 
+func TestCompactionDurableSchemaRoundTripsAndRejectsText(t *testing.T) {
+	result := testCompactionResult("  new decisions  ", "  finish compaction  ")
+	result.StateSnapshot.NextSteps = []string{"  run real model test  "}
+	segmentJSON, snapshotJSON, err := EncodeCompactionResult(result)
+	if err != nil {
+		t.Fatalf("EncodeCompactionResult() error = %v", err)
+	}
+	segment, err := DecodeCompactionSegmentSummary(segmentJSON)
+	if err != nil {
+		t.Fatalf("DecodeCompactionSegmentSummary() error = %v", err)
+	}
+	snapshot, err := DecodeCompactionStateSnapshot(snapshotJSON)
+	if err != nil {
+		t.Fatalf("DecodeCompactionStateSnapshot() error = %v", err)
+	}
+	if segment.Overview != "new decisions" || snapshot.Objective != "finish compaction" ||
+		len(snapshot.NextSteps) != 1 || snapshot.NextSteps[0] != "run real model test" {
+		t.Fatalf("decoded durable compaction = segment %+v, snapshot %+v", segment, snapshot)
+	}
+	if _, err := DecodeCompactionStateSnapshot("legacy text snapshot"); err == nil {
+		t.Fatal("DecodeCompactionStateSnapshot(legacy text) error = nil")
+	}
+
+	var missing map[string]any
+	if err := json.Unmarshal([]byte(snapshotJSON), &missing); err != nil {
+		t.Fatal(err)
+	}
+	delete(missing, "next_steps")
+	missingJSON, err := json.Marshal(missing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DecodeCompactionStateSnapshot(string(missingJSON)); err == nil {
+		t.Fatal("DecodeCompactionStateSnapshot(missing next_steps) error = nil")
+	}
+}
+
+func TestCompactorRepairsInvalidSchemaOnce(t *testing.T) {
+	var logs bytes.Buffer
+	logger, err := logging.New(&logs, "debug", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid := testCompactionResultJSON(t, "repaired segment", "repaired state")
+	llm := &scriptedModel{responses: []*model.LLMResponse{
+		{Content: model.Content{Role: model.RoleAssistant, Content: `{"segment_summary":"bad","state_snapshot":"bad"}`}, FinishReason: model.FinishReasonStop},
+		{Content: model.Content{Role: model.RoleAssistant, Content: valid}, FinishReason: model.FinishReasonStop},
+	}}
+	compactor, err := NewCompactor(llm, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := logging.WithRequestID(t.Context(), "repair-request")
+	result, err := compactor.Compact(ctx, CompactionRequest{
+		ModelID: "test-model", Events: []model.Event{testCompactionEvent(1, "turn-1", model.RoleUser, "fix it")}, MaxTokens: 4096,
+	})
+	if err != nil {
+		t.Fatalf("Compact() error = %v", err)
+	}
+	if result.StateSnapshot.Objective != "repaired state" || len(llm.requests) != 2 {
+		t.Fatalf("Compact() = %+v, requests = %d", result, len(llm.requests))
+	}
+	repairRequest := llm.requests[1]
+	if !strings.Contains(repairRequest.Contents[0].Content, "previous compaction output was rejected") ||
+		!strings.Contains(repairRequest.Contents[1].Content, "PREVIOUS INVALID OUTPUT") ||
+		!strings.Contains(repairRequest.Contents[1].Content, `"segment_summary":"bad"`) {
+		t.Fatalf("repair request = %+v", repairRequest.Contents)
+	}
+	if !strings.Contains(logs.String(), `msg="compaction output rejected"`) ||
+		!strings.Contains(logs.String(), `msg="compaction output repaired"`) ||
+		!strings.Contains(logs.String(), `request_id=repair-request`) ||
+		strings.Contains(logs.String(), `"segment_summary":"bad"`) {
+		t.Fatalf("repair logs = %q", logs.String())
+	}
+}
+
+func TestCompactorUsesOneSharedRepairAcrossDraftAndVerify(t *testing.T) {
+	repairedDraft := testCompactionResultJSON(t, "draft", "state")
+	llm := &scriptedModel{responses: []*model.LLMResponse{
+		{Content: model.Content{Role: model.RoleAssistant, Content: `{"segment_summary":"bad"}`}, FinishReason: model.FinishReasonStop},
+		{Content: model.Content{Role: model.RoleAssistant, Content: repairedDraft}, FinishReason: model.FinishReasonStop},
+		{Content: model.Content{Role: model.RoleAssistant, Content: `{"state_snapshot":"bad"}`}, FinishReason: model.FinishReasonStop},
+	}}
+	compactor, err := NewCompactor(llm, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = compactor.Compact(t.Context(), CompactionRequest{
+		ModelID: "test-model", Events: []model.Event{testCompactionEvent(1, "turn-1", model.RoleUser, "fix it")},
+		Verify: true, MaxTokens: 4096,
+	})
+	if err == nil || len(llm.requests) != 3 {
+		t.Fatalf("Compact() error = %v, requests = %d; want failed verify without a fourth call", err, len(llm.requests))
+	}
+}
+
+func TestCompactorRegeneratesLengthLimitedOutputWithoutEchoingIt(t *testing.T) {
+	valid := testCompactionResultJSON(t, "short segment", "short state")
+	llm := &scriptedModel{responses: []*model.LLMResponse{
+		{Content: model.Content{Role: model.RoleAssistant, Content: "sensitive truncated output"}, FinishReason: model.FinishReasonLength},
+		{Content: model.Content{Role: model.RoleAssistant, Content: valid}, FinishReason: model.FinishReasonStop},
+	}}
+	compactor, err := NewCompactor(llm, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = compactor.Compact(t.Context(), CompactionRequest{
+		ModelID: "test-model", Events: []model.Event{testCompactionEvent(1, "turn-1", model.RoleUser, "fix it")}, MaxTokens: 4096,
+	})
+	if err != nil {
+		t.Fatalf("Compact() error = %v", err)
+	}
+	repairPrompt := llm.requests[1].Contents[1].Content
+	if strings.Contains(repairPrompt, "sensitive truncated output") || !strings.Contains(repairPrompt, "reached the token limit") {
+		t.Fatalf("length repair prompt = %q", repairPrompt)
+	}
+}
+
 func TestCompactorRejectsInvalidModelOutput(t *testing.T) {
 	llm := &scriptedModel{responses: []*model.LLMResponse{{
-		Content:      model.Content{Role: model.RoleAssistant, Content: `{"segment_summary":"ok","state_snapshot":"","extra":true}`},
+		Content:      model.Content{Role: model.RoleAssistant, Content: `{"segment_summary":{"schema_version":1,"overview":"ok","new_information":[],"decisions":[],"completed_work":[]},"state_snapshot":{"schema_version":1,"objective":"state","user_requirements":[],"constraints":[],"decisions":[],"confirmed_facts":[],"hypotheses":[],"completed_work":[],"current_progress":[],"pending_work":[],"relevant_files":[],"relevant_symbols":[],"commands_and_results":[],"errors_and_failures":[],"open_questions":[],"next_steps":[]},"extra":true}`},
 		FinishReason: model.FinishReasonStop,
 	}}}
-	compactor, err := NewCompactor(llm)
+	compactor, err := NewCompactor(llm, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,4 +337,29 @@ func TestRunnerInjectsCompactionSnapshotOnlyIntoModelRequest(t *testing.T) {
 
 func testCompactionEvent(id int64, turnID string, role model.Role, text string) model.Event {
 	return model.Event{ID: id, TurnID: turnID, Content: model.Content{Role: role, Content: text}}
+}
+
+func testCompactionResult(overview, objective string) CompactionResult {
+	return CompactionResult{
+		SegmentSummary: CompactionSegmentSummary{
+			SchemaVersion: CompactionSchemaVersion,
+			Overview:      overview, NewInformation: []string{}, Decisions: []string{}, CompletedWork: []string{},
+		},
+		StateSnapshot: CompactionStateSnapshot{
+			SchemaVersion: CompactionSchemaVersion,
+			Objective:     objective, UserRequirements: []string{}, Constraints: []string{}, Decisions: []string{},
+			ConfirmedFacts: []string{}, Hypotheses: []string{}, CompletedWork: []string{}, CurrentProgress: []string{},
+			PendingWork: []string{}, RelevantFiles: []string{}, RelevantSymbols: []string{}, CommandsAndResults: []string{},
+			ErrorsAndFailures: []string{}, OpenQuestions: []string{}, NextSteps: []string{},
+		},
+	}
+}
+
+func testCompactionResultJSON(t *testing.T, overview, objective string) string {
+	t.Helper()
+	value, err := json.Marshal(testCompactionResult(overview, objective))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(value)
 }

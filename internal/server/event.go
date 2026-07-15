@@ -53,28 +53,54 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		return h.sessionFailure(ctx, "lock run", err, slog.String("session_id", id))
 	}
 	defer unlock()
+	runCtx, cancel := context.WithCancel(lockedCtx)
+	defer cancel()
+	publisher := &runPublisher{stream: stream, cancel: cancel}
 
-	session, err := h.store.GetSession(lockedCtx, id)
+	session, err := h.store.GetSession(runCtx, id)
 	if err != nil {
-		return h.sessionFailure(lockedCtx, "load run session", err, slog.String("session_id", id))
+		return h.sessionFailure(runCtx, "load run session", err, slog.String("session_id", id))
 	}
-	session, currentCompaction, err := h.prepareRunCompaction(lockedCtx, session)
+	compactionAttempted := h.compaction.shouldAttempt(session)
+	compactionGeneration := session.CompactionGeneration + 1
+	compactionContextTokens := session.ContextTokens
+	if compactionAttempted {
+		if err := publishCompactionProgress(publisher, v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_STARTED, compactionGeneration, compactionContextTokens, nil); err != nil {
+			return h.runtimeFailure(runCtx, "publish compaction start", err, slog.String("session_id", id))
+		}
+	}
+	previousCompactionGeneration := session.CompactionGeneration
+	session, currentCompaction, err := h.prepareRunCompaction(runCtx, session)
 	if err != nil {
+		if compactionAttempted {
+			if publishErr := publishCompactionProgress(publisher, v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_FAILED, compactionGeneration, compactionContextTokens, nil); publishErr != nil {
+				return h.runtimeFailure(runCtx, "publish compaction failure", publishErr, slog.String("session_id", id))
+			}
+		}
 		return err
+	}
+	if compactionAttempted {
+		stage := v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_FAILED
+		if session.CompactionGeneration > previousCompactionGeneration {
+			stage = v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_COMPLETED
+		}
+		if err := publishCompactionProgress(publisher, stage, compactionGeneration, compactionContextTokens, currentCompaction); err != nil {
+			return h.runtimeFailure(runCtx, "publish compaction completion", err, slog.String("session_id", id))
+		}
 	}
 	var runner TurnRunner
 	if h.turnRunnerFactory != nil {
-		runner, err = h.turnRunnerFactory(lockedCtx, session, mode)
+		runner, err = h.turnRunnerFactory(runCtx, session, mode)
 	} else {
-		_, err = h.store.EnsureADKSession(lockedCtx, id)
+		_, err = h.store.EnsureADKSession(runCtx, id)
 	}
 	if h.turnRunnerFactory == nil {
 		if err != nil {
-			return h.sessionFailure(lockedCtx, "ensure ADK session", err, slog.String("session_id", id))
+			return h.sessionFailure(runCtx, "ensure ADK session", err, slog.String("session_id", id))
 		}
-		runtimeRunner, factoryErr := h.agentFactory.Runner(lockedCtx, session, agentModeToRuntime(mode))
+		runtimeRunner, factoryErr := h.agentFactory.Runner(runCtx, session, agentModeToRuntime(mode))
 		if factoryErr != nil {
-			return h.runtimeFailure(lockedCtx, "construct runner", factoryErr,
+			return h.runtimeFailure(runCtx, "construct runner", factoryErr,
 				slog.String("session_id", id),
 				slog.String("provider_id", session.ProviderID),
 				slog.String("model_id", session.ModelID),
@@ -83,15 +109,12 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		runner = runtimeRunner
 	}
 	if err != nil {
-		return h.runtimeFailure(lockedCtx, "construct injected runner", err, slog.String("session_id", id))
+		return h.runtimeFailure(runCtx, "construct injected runner", err, slog.String("session_id", id))
 	}
 	if runner == nil {
 		err := errors.New("agent runtime returned nil runner")
-		return h.internalFailure(lockedCtx, "construct runner", err, err, slog.String("session_id", id))
+		return h.internalFailure(runCtx, "construct runner", err, err, slog.String("session_id", id))
 	}
-	runCtx, cancel := context.WithCancel(lockedCtx)
-	defer cancel()
-	publisher := &runPublisher{stream: stream, cancel: cancel}
 	runCtx = agent.WithRunInteractions(runCtx, h.runInteractions(publisher.Publish))
 	runCtx = agent.WithRunEnvironment(runCtx, agent.RunEnvironment{
 		Workdir:     session.Workdir,
@@ -220,6 +243,21 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		slog.Duration("duration", time.Since(startedAt)),
 	)
 	return nil
+}
+
+func publishCompactionProgress(publisher *runPublisher, stage v1.CompactionProgressStage, generation, contextTokens int64, compaction *store.Compaction) error {
+	progress := v1.CompactionProgress_builder{
+		Stage:         stage.Enum(),
+		Generation:    new(generation),
+		ContextTokens: new(contextTokens),
+	}
+	if compaction != nil && stage == v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_COMPLETED {
+		progress.SourceTokens = new(compaction.SourceTokens)
+		progress.EstimatedTokensAfter = new(compaction.EstimatedTokensAfter)
+	}
+	response := new(v1.RunResponse)
+	response.SetCompactionProgress(progress.Build())
+	return publisher.Publish(response)
 }
 
 func (h *Handler) rollbackCommittedTurn(ctx context.Context, session store.Session, turnID string, runErr error) error {

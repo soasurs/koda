@@ -220,9 +220,11 @@ func TestRunCompactsAcknowledgedHistoryAndInjectsSnapshot(t *testing.T) {
 	}
 	handler.contextWindowTokens = 1_000
 	handler.compaction = policy
-	compactor := &fakeSessionCompactor{result: agent.CompactionResult{
-		SegmentSummary: "first two turns", StateSnapshot: "working state",
-	}}
+	compactor := &fakeSessionCompactor{result: testServerCompactionResult("first two turns", "working state")}
+	expectedSegment, expectedSnapshot, err := agent.EncodeCompactionResult(compactor.result)
+	if err != nil {
+		t.Fatalf("EncodeCompactionResult() error = %v", err)
+	}
 	handler.compactorFactory = func(context.Context, store.Session) (sessionCompactor, error) { return compactor, nil }
 	runner := &fakeTurnRunner{events: []model.Event{{
 		ID: 99, SessionID: created.GetSession().GetId(), TurnID: "turn-4", Author: "assistant",
@@ -243,7 +245,11 @@ func TestRunCompactsAcknowledgedHistoryAndInjectsSnapshot(t *testing.T) {
 		t.Fatalf("Run() setup error = %v", err)
 	}
 	var completed *v1.RunCompleted
+	var progress []*v1.CompactionProgress
 	for stream.Receive() {
+		if value := stream.Msg().GetCompactionProgress(); value != nil {
+			progress = append(progress, value)
+		}
 		if value := stream.Msg().GetCompleted(); value != nil {
 			completed = value
 		}
@@ -256,11 +262,19 @@ func TestRunCompactsAcknowledgedHistoryAndInjectsSnapshot(t *testing.T) {
 		t.Fatalf("compactor calls = %d, request = %+v", compactor.calls, compactor.request)
 	}
 	if runnerSession.CompactionGeneration != 1 || runnerSession.ContextMeasured || runnerSession.ContextTokens != 0 ||
-		!runner.gotSnapshotOK || runner.gotSnapshot.Generation != 1 || runner.gotSnapshot.Content != "working state" {
+		!runner.gotSnapshotOK || runner.gotSnapshot.Generation != 1 || runner.gotSnapshot.Content != expectedSnapshot {
 		t.Fatalf("runner session = %+v, snapshot = %+v, present = %t", runnerSession, runner.gotSnapshot, runner.gotSnapshotOK)
 	}
 	if completed == nil || completed.GetSession().GetContextUsage().GetMeasured() {
 		t.Fatalf("RunCompleted = %+v", completed)
+	}
+	if len(progress) != 2 ||
+		progress[0].GetStage() != v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_STARTED ||
+		progress[0].GetGeneration() != 1 || progress[0].GetContextTokens() != 700 ||
+		progress[1].GetStage() != v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_COMPLETED ||
+		progress[1].GetGeneration() != 1 || progress[1].GetContextTokens() != 700 ||
+		progress[1].GetSourceTokens() <= 0 || progress[1].GetEstimatedTokensAfter() <= 0 {
+		t.Fatalf("compaction progress = %+v", progress)
 	}
 	active, err := handler.store.ListEvents(t.Context(), created.GetSession().GetId())
 	if err != nil {
@@ -280,7 +294,7 @@ func TestRunCompactsAcknowledgedHistoryAndInjectsSnapshot(t *testing.T) {
 		t.Fatalf("ListEvents(history) = %+v", history)
 	}
 	current, err := handler.store.GetCurrentCompaction(t.Context(), created.GetSession().GetId())
-	if err != nil || current == nil || current.Generation != 1 || current.StateSnapshot != "working state" {
+	if err != nil || current == nil || current.Generation != 1 || current.SegmentSummary != expectedSegment || current.StateSnapshot != expectedSnapshot {
 		t.Fatalf("current compaction = %+v, %v", current, err)
 	}
 	logs := logOutput.String()
@@ -337,7 +351,7 @@ func TestRunCompactionFailurePolicy(t *testing.T) {
 		t.Fatalf("persisted failures = %+v, %v", failed, getErr)
 	}
 	compactor.err = nil
-	compactor.result = agent.CompactionResult{SegmentSummary: "recovered", StateSnapshot: "recovered state"}
+	compactor.result = testServerCompactionResult("recovered", "recovered state")
 	recovered, current, err := handler.prepareRunCompaction(t.Context(), failed)
 	if err != nil || current == nil || compactor.calls != 3 || recovered.CompactionGeneration != 1 ||
 		recovered.ConsecutiveCompactionFailures != 0 || recovered.LastCompactionAttemptUsage != 0 || recovered.ContextMeasured {
@@ -357,13 +371,18 @@ func TestCompactionPolicySchedulesPeriodicRebase(t *testing.T) {
 	generations := make([]store.Compaction, 9)
 	for index := range generations {
 		generation := int64(index + 1)
-		generations[index] = store.Compaction{Generation: generation, SegmentSummary: fmt.Sprintf("segment-%d", generation), StateSnapshot: fmt.Sprintf("snapshot-%d", generation)}
+		result := testServerCompactionResult(fmt.Sprintf("segment-%d", generation), fmt.Sprintf("snapshot-%d", generation))
+		segment, snapshot, err := agent.EncodeCompactionResult(result)
+		if err != nil {
+			t.Fatalf("EncodeCompactionResult(%d) error = %v", generation, err)
+		}
+		generations[index] = store.Compaction{Generation: generation, SegmentSummary: segment, StateSnapshot: snapshot}
 	}
 	if err := configureRebaseRequest(&request, generations, 5); err != nil {
 		t.Fatalf("configureRebaseRequest() error = %v", err)
 	}
-	if request.PreviousSnapshot != "snapshot-5" || len(request.PriorSegmentSummaries) != 4 ||
-		request.PriorSegmentSummaries[0] != "segment-6" || request.PriorSegmentSummaries[3] != "segment-9" {
+	if request.PreviousSnapshot == nil || request.PreviousSnapshot.Objective != "snapshot-5" || len(request.PriorSegmentSummaries) != 4 ||
+		request.PriorSegmentSummaries[0].Overview != "segment-6" || request.PriorSegmentSummaries[3].Overview != "segment-9" {
 		t.Fatalf("bounded rebase request = %+v", request)
 	}
 }
@@ -476,5 +495,21 @@ func seedServerCompactionHistory(t *testing.T, handler *Handler, sessionID strin
 		}); err != nil {
 			t.Fatalf("CreateEvent(%d) error = %v", index, err)
 		}
+	}
+}
+
+func testServerCompactionResult(overview, objective string) agent.CompactionResult {
+	return agent.CompactionResult{
+		SegmentSummary: agent.CompactionSegmentSummary{
+			SchemaVersion: agent.CompactionSchemaVersion,
+			Overview:      overview, NewInformation: []string{}, Decisions: []string{}, CompletedWork: []string{},
+		},
+		StateSnapshot: agent.CompactionStateSnapshot{
+			SchemaVersion: agent.CompactionSchemaVersion,
+			Objective:     objective, UserRequirements: []string{}, Constraints: []string{}, Decisions: []string{},
+			ConfirmedFacts: []string{}, Hypotheses: []string{}, CompletedWork: []string{}, CurrentProgress: []string{},
+			PendingWork: []string{}, RelevantFiles: []string{}, RelevantSymbols: []string{}, CommandsAndResults: []string{},
+			ErrorsAndFailures: []string{}, OpenQuestions: []string{}, NextSteps: []string{},
+		},
 	}
 }

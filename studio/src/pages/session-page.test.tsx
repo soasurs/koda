@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { CompactionProgressStage } from '@/gen/koda/v1/service_pb'
 import { SessionPage } from '@/pages/session-page'
 
 const route = vi.hoisted(() => ({
@@ -23,6 +24,13 @@ const route = vi.hoisted(() => ({
       }
     | undefined,
   sessionId: 'session-1',
+  compactionProgress: null as null | {
+    stage: CompactionProgressStage
+    generation: bigint
+    contextTokens: bigint
+    sourceTokens: bigint
+    estimatedTokensAfter: bigint
+  },
 }))
 
 vi.mock('@tanstack/react-router', () => ({
@@ -60,6 +68,7 @@ vi.mock('@/components/sessions/use-session-run', async () => {
         approvals: [],
         clearApproval: vi.fn(),
         clearQuestionPrompt: vi.fn(),
+        compactionProgress: route.compactionProgress,
         editLastTurn: vi.fn(),
         events:
           persistedEvents.length > 0
@@ -123,6 +132,7 @@ describe('SessionPage', () => {
   beforeEach(() => {
     route.history = undefined
     route.sessionId = 'session-1'
+    route.compactionProgress = null
   })
 
   it('remounts transient run state when the route session changes', () => {
@@ -173,6 +183,40 @@ describe('SessionPage', () => {
     expect(screen.getByTestId('turn-turn-2')).toHaveAttribute(
       'data-can-revise',
       'true',
+    )
+  })
+
+  it('shows compaction lifecycle progress during a run', () => {
+    route.compactionProgress = {
+      stage: CompactionProgressStage.STARTED,
+      generation: 2n,
+      contextTokens: 208_000n,
+      sourceTokens: 0n,
+      estimatedTokensAfter: 0n,
+    }
+    const view = render(<SessionPage />)
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Compacting earlier context…',
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '208K tokens in current context',
+    )
+
+    route.compactionProgress = {
+      stage: CompactionProgressStage.COMPLETED,
+      generation: 2n,
+      contextTokens: 208_000n,
+      sourceTokens: 192_000n,
+      estimatedTokensAfter: 32_000n,
+    }
+    view.rerender(<SessionPage />)
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Context compacted · generation 2',
+    )
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '192K source tokens · 32K estimated after',
     )
   })
 })
