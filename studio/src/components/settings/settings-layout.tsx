@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Blocks, Network, Settings2 } from 'lucide-react'
+import { Archive, Blocks, Network, Settings2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { SidebarExpandButton } from '@/components/layout/sidebar-expand-button'
@@ -8,7 +8,7 @@ export function SettingsLayout({
   active,
   children,
 }: {
-  active: 'providers' | 'skills' | 'mcp'
+  active: 'providers' | 'skills' | 'mcp' | 'sessions'
   children: ReactNode
 }) {
   const itemClass = (selected: boolean) =>
@@ -45,6 +45,14 @@ export function SettingsLayout({
           >
             <Settings2 className="size-4" aria-hidden="true" />
             Providers
+          </Link>
+          <Link
+            aria-current={active === 'sessions' ? 'page' : undefined}
+            className={itemClass(active === 'sessions')}
+            to="/settings/sessions"
+          >
+            <Archive className="size-4" aria-hidden="true" />
+            Sessions
           </Link>
           <Link
             aria-current={active === 'mcp' ? 'page' : undefined}

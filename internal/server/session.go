@@ -92,8 +92,9 @@ func (h *Handler) ListSessions(ctx context.Context, request *v1.ListSessionsRequ
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("session list offset must not be negative"))
 	}
 	sessions, total, err := h.store.ListSessions(ctx, store.ListSessionsParams{
-		Limit:  int(request.GetLimit()),
-		Offset: request.GetOffset(),
+		Limit:    int(request.GetLimit()),
+		Offset:   request.GetOffset(),
+		Archived: request.GetArchived(),
 	})
 	if err != nil {
 		return nil, h.sessionFailure(ctx, "list sessions", err)
@@ -169,7 +170,7 @@ func (h *Handler) DeleteSession(ctx context.Context, request *v1.DeleteSessionRe
 }
 
 func changedSessionFields(request *v1.UpdateSessionRequest) []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if request.HasTitle() {
 		fields = append(fields, "title")
 	}
@@ -190,6 +191,9 @@ func changedSessionFields(request *v1.UpdateSessionRequest) []string {
 	}
 	if request.HasShellAccess() {
 		fields = append(fields, "shell_access")
+	}
+	if request.HasArchived() {
+		fields = append(fields, "archived")
 	}
 	return fields
 }
@@ -297,6 +301,10 @@ func updateSessionParams(request *v1.UpdateSessionRequest, current store.Session
 		params.ShellAccess = &value
 		candidate.ShellAccess = value
 	}
+	if request.HasArchived() {
+		value := request.GetArchived()
+		params.Archived = &value
+	}
 	return params, candidate, validateConfiguration, nil
 }
 
@@ -332,6 +340,10 @@ func sessionIDFromRequest(id string) (string, error) {
 }
 
 func sessionToProto(session store.Session) *v1.Session {
+	var archivedAt int64
+	if !session.ArchivedAt.IsZero() {
+		archivedAt = session.ArchivedAt.UnixMilli()
+	}
 	return v1.Session_builder{
 		Id:              new(session.ID),
 		Title:           new(session.Title),
@@ -344,6 +356,7 @@ func sessionToProto(session store.Session) *v1.Session {
 		CreatedAt:       new(session.CreatedAt.UnixMilli()),
 		UpdatedAt:       new(session.UpdatedAt.UnixMilli()),
 		EventCount:      new(session.EventCount),
+		ArchivedAt:      new(archivedAt),
 	}.Build()
 }
 

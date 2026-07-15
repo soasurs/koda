@@ -57,6 +57,7 @@ func newQueries(adkTablePrefix string) queries {
 			s.shell_access,
 			s.created_at,
 			s.updated_at,
+			s.archived_at,
 			COUNT(e.event_id) AS event_count
 		FROM koda_sessions AS s
 		LEFT JOIN ` + adkEventsTable + ` AS e
@@ -74,7 +75,8 @@ func newQueries(adkTablePrefix string) queries {
 		s.file_access,
 		s.shell_access,
 		s.created_at,
-		s.updated_at
+		s.updated_at,
+		s.archived_at
 	`
 
 	return queries{
@@ -92,12 +94,14 @@ func newQueries(adkTablePrefix string) queries {
 			SELECT COUNT(*)
 			FROM koda_sessions
 			WHERE deleted_at = 0
+				AND (($1 AND archived_at > 0) OR (NOT $1 AND archived_at = 0))
 		`,
 		listSessions: sessionSelect + `
 			WHERE s.deleted_at = 0
+				AND (($1 AND s.archived_at > 0) OR (NOT $1 AND s.archived_at = 0))
 			GROUP BY ` + sessionGroupBy + `
 			ORDER BY s.updated_at DESC, s.id ASC
-			LIMIT $1 OFFSET $2
+			LIMIT $2 OFFSET $3
 		`,
 		updateSession: `
 			UPDATE koda_sessions
@@ -108,8 +112,9 @@ func newQueries(adkTablePrefix string) queries {
 				reasoning_effort = $5,
 				file_access = $6,
 				shell_access = $7,
-				updated_at = $8
-			WHERE id = $9 AND deleted_at = 0
+				archived_at = $8,
+				updated_at = $9
+			WHERE id = $10 AND deleted_at = 0
 		`,
 		touchSession: `
 			UPDATE koda_sessions

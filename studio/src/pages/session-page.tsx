@@ -103,6 +103,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
                     Boolean(turn.id)
                   }
                   isEditing={editingTurnId === turn.id}
+                  isRunning={index === turns.length - 1 && sessionRun.isRunning}
                   isRewinding={sessionRun.rewindingTurnId === turn.id}
                   key={turn.id || `turn-${index}`}
                   onEditCancel={() => setEditingTurnId('')}

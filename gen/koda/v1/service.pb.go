@@ -3489,6 +3489,7 @@ type Session struct {
 	xxx_hidden_UpdatedAt       int64                  `protobuf:"varint,9,opt,name=updated_at,json=updatedAt"`
 	xxx_hidden_EventCount      int64                  `protobuf:"varint,10,opt,name=event_count,json=eventCount"`
 	xxx_hidden_ShellAccess     ShellAccess            `protobuf:"varint,11,opt,name=shell_access,json=shellAccess,enum=koda.v1.ShellAccess"`
+	xxx_hidden_ArchivedAt      int64                  `protobuf:"varint,12,opt,name=archived_at,json=archivedAt"`
 	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
 	XXX_presence               [1]uint32
 	unknownFields              protoimpl.UnknownFields
@@ -3619,59 +3620,71 @@ func (x *Session) GetShellAccess() ShellAccess {
 	return ShellAccess_SHELL_ACCESS_UNSPECIFIED
 }
 
+func (x *Session) GetArchivedAt() int64 {
+	if x != nil {
+		return x.xxx_hidden_ArchivedAt
+	}
+	return 0
+}
+
 func (x *Session) SetId(v string) {
 	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 12)
 }
 
 func (x *Session) SetTitle(v string) {
 	x.xxx_hidden_Title = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 12)
 }
 
 func (x *Session) SetWorkdir(v string) {
 	x.xxx_hidden_Workdir = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 12)
 }
 
 func (x *Session) SetProviderId(v string) {
 	x.xxx_hidden_ProviderId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 12)
 }
 
 func (x *Session) SetModelId(v string) {
 	x.xxx_hidden_ModelId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 12)
 }
 
 func (x *Session) SetReasoningEffort(v string) {
 	x.xxx_hidden_ReasoningEffort = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 12)
 }
 
 func (x *Session) SetFileAccess(v FileAccess) {
 	x.xxx_hidden_FileAccess = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 12)
 }
 
 func (x *Session) SetCreatedAt(v int64) {
 	x.xxx_hidden_CreatedAt = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 12)
 }
 
 func (x *Session) SetUpdatedAt(v int64) {
 	x.xxx_hidden_UpdatedAt = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 12)
 }
 
 func (x *Session) SetEventCount(v int64) {
 	x.xxx_hidden_EventCount = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 9, 12)
 }
 
 func (x *Session) SetShellAccess(v ShellAccess) {
 	x.xxx_hidden_ShellAccess = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 11)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 10, 12)
+}
+
+func (x *Session) SetArchivedAt(v int64) {
+	x.xxx_hidden_ArchivedAt = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 11, 12)
 }
 
 func (x *Session) HasId() bool {
@@ -3751,6 +3764,13 @@ func (x *Session) HasShellAccess() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 10)
 }
 
+func (x *Session) HasArchivedAt() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 11)
+}
+
 func (x *Session) ClearId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Id = nil
@@ -3806,6 +3826,11 @@ func (x *Session) ClearShellAccess() {
 	x.xxx_hidden_ShellAccess = ShellAccess_SHELL_ACCESS_UNSPECIFIED
 }
 
+func (x *Session) ClearArchivedAt() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 11)
+	x.xxx_hidden_ArchivedAt = 0
+}
+
 type Session_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -3830,6 +3855,9 @@ type Session_builder struct {
 	EventCount *int64
 	// shell_access determines whether arbitrary shell commands need approval.
 	ShellAccess *ShellAccess
+	// archived_at is the archive timestamp in Unix milliseconds, or zero while
+	// the session is active.
+	ArchivedAt *int64
 }
 
 func (b0 Session_builder) Build() *Session {
@@ -3837,48 +3865,52 @@ func (b0 Session_builder) Build() *Session {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 12)
 		x.xxx_hidden_Id = b.Id
 	}
 	if b.Title != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 12)
 		x.xxx_hidden_Title = b.Title
 	}
 	if b.Workdir != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 12)
 		x.xxx_hidden_Workdir = b.Workdir
 	}
 	if b.ProviderId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 12)
 		x.xxx_hidden_ProviderId = b.ProviderId
 	}
 	if b.ModelId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 12)
 		x.xxx_hidden_ModelId = b.ModelId
 	}
 	if b.ReasoningEffort != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 12)
 		x.xxx_hidden_ReasoningEffort = b.ReasoningEffort
 	}
 	if b.FileAccess != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 12)
 		x.xxx_hidden_FileAccess = *b.FileAccess
 	}
 	if b.CreatedAt != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 12)
 		x.xxx_hidden_CreatedAt = *b.CreatedAt
 	}
 	if b.UpdatedAt != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 12)
 		x.xxx_hidden_UpdatedAt = *b.UpdatedAt
 	}
 	if b.EventCount != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 9, 12)
 		x.xxx_hidden_EventCount = *b.EventCount
 	}
 	if b.ShellAccess != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 11)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 10, 12)
 		x.xxx_hidden_ShellAccess = *b.ShellAccess
+	}
+	if b.ArchivedAt != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 11, 12)
+		x.xxx_hidden_ArchivedAt = *b.ArchivedAt
 	}
 	return m0
 }
@@ -4352,6 +4384,7 @@ type ListSessionsRequest struct {
 	state                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_Limit       int32                  `protobuf:"varint,1,opt,name=limit"`
 	xxx_hidden_Offset      int64                  `protobuf:"varint,2,opt,name=offset"`
+	xxx_hidden_Archived    bool                   `protobuf:"varint,3,opt,name=archived"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -4397,14 +4430,26 @@ func (x *ListSessionsRequest) GetOffset() int64 {
 	return 0
 }
 
+func (x *ListSessionsRequest) GetArchived() bool {
+	if x != nil {
+		return x.xxx_hidden_Archived
+	}
+	return false
+}
+
 func (x *ListSessionsRequest) SetLimit(v int32) {
 	x.xxx_hidden_Limit = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
 }
 
 func (x *ListSessionsRequest) SetOffset(v int64) {
 	x.xxx_hidden_Offset = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 2)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 3)
+}
+
+func (x *ListSessionsRequest) SetArchived(v bool) {
+	x.xxx_hidden_Archived = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
 }
 
 func (x *ListSessionsRequest) HasLimit() bool {
@@ -4421,6 +4466,13 @@ func (x *ListSessionsRequest) HasOffset() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
 }
 
+func (x *ListSessionsRequest) HasArchived() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
 func (x *ListSessionsRequest) ClearLimit() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Limit = 0
@@ -4431,6 +4483,11 @@ func (x *ListSessionsRequest) ClearOffset() {
 	x.xxx_hidden_Offset = 0
 }
 
+func (x *ListSessionsRequest) ClearArchived() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_Archived = false
+}
+
 type ListSessionsRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -4438,6 +4495,9 @@ type ListSessionsRequest_builder struct {
 	Limit *int32
 	// offset is a zero-based offset into the updated-at-descending result set.
 	Offset *int64
+	// archived selects archived sessions when true. Omitted or false selects
+	// active sessions.
+	Archived *bool
 }
 
 func (b0 ListSessionsRequest_builder) Build() *ListSessionsRequest {
@@ -4445,12 +4505,16 @@ func (b0 ListSessionsRequest_builder) Build() *ListSessionsRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Limit != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
 		x.xxx_hidden_Limit = *b.Limit
 	}
 	if b.Offset != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 2)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 3)
 		x.xxx_hidden_Offset = *b.Offset
+	}
+	if b.Archived != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_Archived = *b.Archived
 	}
 	return m0
 }
@@ -4559,6 +4623,7 @@ type UpdateSessionRequest struct {
 	xxx_hidden_ReasoningEffort *string                `protobuf:"bytes,6,opt,name=reasoning_effort,json=reasoningEffort"`
 	xxx_hidden_FileAccess      FileAccess             `protobuf:"varint,7,opt,name=file_access,json=fileAccess,enum=koda.v1.FileAccess"`
 	xxx_hidden_ShellAccess     ShellAccess            `protobuf:"varint,8,opt,name=shell_access,json=shellAccess,enum=koda.v1.ShellAccess"`
+	xxx_hidden_Archived        bool                   `protobuf:"varint,9,opt,name=archived"`
 	XXX_raceDetectHookData     protoimpl.RaceDetectHookData
 	XXX_presence               [1]uint32
 	unknownFields              protoimpl.UnknownFields
@@ -4668,44 +4733,56 @@ func (x *UpdateSessionRequest) GetShellAccess() ShellAccess {
 	return ShellAccess_SHELL_ACCESS_UNSPECIFIED
 }
 
+func (x *UpdateSessionRequest) GetArchived() bool {
+	if x != nil {
+		return x.xxx_hidden_Archived
+	}
+	return false
+}
+
 func (x *UpdateSessionRequest) SetSessionId(v string) {
 	x.xxx_hidden_SessionId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 9)
 }
 
 func (x *UpdateSessionRequest) SetTitle(v string) {
 	x.xxx_hidden_Title = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 9)
 }
 
 func (x *UpdateSessionRequest) SetWorkdir(v string) {
 	x.xxx_hidden_Workdir = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 9)
 }
 
 func (x *UpdateSessionRequest) SetProviderId(v string) {
 	x.xxx_hidden_ProviderId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 9)
 }
 
 func (x *UpdateSessionRequest) SetModelId(v string) {
 	x.xxx_hidden_ModelId = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 9)
 }
 
 func (x *UpdateSessionRequest) SetReasoningEffort(v string) {
 	x.xxx_hidden_ReasoningEffort = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 9)
 }
 
 func (x *UpdateSessionRequest) SetFileAccess(v FileAccess) {
 	x.xxx_hidden_FileAccess = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 9)
 }
 
 func (x *UpdateSessionRequest) SetShellAccess(v ShellAccess) {
 	x.xxx_hidden_ShellAccess = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 8)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 9)
+}
+
+func (x *UpdateSessionRequest) SetArchived(v bool) {
+	x.xxx_hidden_Archived = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 9)
 }
 
 func (x *UpdateSessionRequest) HasSessionId() bool {
@@ -4764,6 +4841,13 @@ func (x *UpdateSessionRequest) HasShellAccess() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
 }
 
+func (x *UpdateSessionRequest) HasArchived() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
 func (x *UpdateSessionRequest) ClearSessionId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_SessionId = nil
@@ -4804,6 +4888,11 @@ func (x *UpdateSessionRequest) ClearShellAccess() {
 	x.xxx_hidden_ShellAccess = ShellAccess_SHELL_ACCESS_UNSPECIFIED
 }
 
+func (x *UpdateSessionRequest) ClearArchived() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_Archived = false
+}
+
 type UpdateSessionRequest_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -4819,6 +4908,8 @@ type UpdateSessionRequest_builder struct {
 	FileAccess *FileAccess
 	// shell_access changes whether arbitrary shell commands need approval.
 	ShellAccess *ShellAccess
+	// archived moves the session out of or back into the active session list.
+	Archived *bool
 }
 
 func (b0 UpdateSessionRequest_builder) Build() *UpdateSessionRequest {
@@ -4826,36 +4917,40 @@ func (b0 UpdateSessionRequest_builder) Build() *UpdateSessionRequest {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.SessionId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 9)
 		x.xxx_hidden_SessionId = b.SessionId
 	}
 	if b.Title != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 9)
 		x.xxx_hidden_Title = b.Title
 	}
 	if b.Workdir != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 9)
 		x.xxx_hidden_Workdir = b.Workdir
 	}
 	if b.ProviderId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 9)
 		x.xxx_hidden_ProviderId = b.ProviderId
 	}
 	if b.ModelId != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 9)
 		x.xxx_hidden_ModelId = b.ModelId
 	}
 	if b.ReasoningEffort != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 9)
 		x.xxx_hidden_ReasoningEffort = b.ReasoningEffort
 	}
 	if b.FileAccess != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 9)
 		x.xxx_hidden_FileAccess = *b.FileAccess
 	}
 	if b.ShellAccess != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 8)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 9)
 		x.xxx_hidden_ShellAccess = *b.ShellAccess
+	}
+	if b.Archived != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 9)
+		x.xxx_hidden_Archived = *b.Archived
 	}
 	return m0
 }
@@ -10515,7 +10610,7 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\vdirectories\x18\x03 \x03(\v2\x17.koda.v1.DirectoryEntryR\vdirectories\"8\n" +
 	"\x0eDirectoryEntry\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\"\xfe\x02\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\"\x9f\x03\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
@@ -10533,7 +10628,9 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\vevent_count\x18\n" +
 	" \x01(\x03R\n" +
 	"eventCount\x127\n" +
-	"\fshell_access\x18\v \x01(\x0e2\x14.koda.v1.ShellAccessR\vshellAccess\"\x86\x02\n" +
+	"\fshell_access\x18\v \x01(\x0e2\x14.koda.v1.ShellAccessR\vshellAccess\x12\x1f\n" +
+	"\varchived_at\x18\f \x01(\x03R\n" +
+	"archivedAt\"\x86\x02\n" +
 	"\x14CreateSessionRequest\x12\x18\n" +
 	"\aworkdir\x18\x01 \x01(\tR\aworkdir\x12\x1f\n" +
 	"\vprovider_id\x18\x02 \x01(\tR\n" +
@@ -10549,13 +10646,14 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"@\n" +
 	"\x12GetSessionResponse\x12*\n" +
-	"\asession\x18\x01 \x01(\v2\x10.koda.v1.SessionR\asession\"C\n" +
+	"\asession\x18\x01 \x01(\v2\x10.koda.v1.SessionR\asession\"f\n" +
 	"\x13ListSessionsRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x03R\x06offset\"Z\n" +
+	"\x06offset\x18\x02 \x01(\x03R\x06offset\x12!\n" +
+	"\barchived\x18\x03 \x01(\bB\x05\xaa\x01\x02\b\x01R\barchived\"Z\n" +
 	"\x14ListSessionsResponse\x12,\n" +
 	"\bsessions\x18\x01 \x03(\v2\x10.koda.v1.SessionR\bsessions\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x03R\x05total\"\xec\x02\n" +
+	"\x05total\x18\x02 \x01(\x03R\x05total\"\x8f\x03\n" +
 	"\x14UpdateSessionRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1b\n" +
@@ -10567,7 +10665,8 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"\x10reasoning_effort\x18\x06 \x01(\tB\x05\xaa\x01\x02\b\x01R\x0freasoningEffort\x12;\n" +
 	"\vfile_access\x18\a \x01(\x0e2\x13.koda.v1.FileAccessB\x05\xaa\x01\x02\b\x01R\n" +
 	"fileAccess\x12>\n" +
-	"\fshell_access\x18\b \x01(\x0e2\x14.koda.v1.ShellAccessB\x05\xaa\x01\x02\b\x01R\vshellAccess\"C\n" +
+	"\fshell_access\x18\b \x01(\x0e2\x14.koda.v1.ShellAccessB\x05\xaa\x01\x02\b\x01R\vshellAccess\x12!\n" +
+	"\barchived\x18\t \x01(\bB\x05\xaa\x01\x02\b\x01R\barchived\"C\n" +
 	"\x15UpdateSessionResponse\x12*\n" +
 	"\asession\x18\x01 \x01(\v2\x10.koda.v1.SessionR\asession\"5\n" +
 	"\x14DeleteSessionRequest\x12\x1d\n" +

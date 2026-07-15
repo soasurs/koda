@@ -1,11 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
-import { Link, Outlet } from '@tanstack/react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link, Outlet, useNavigate, useParams } from '@tanstack/react-router'
 import {
   Bot,
   ChevronRight,
   Folder,
   LoaderCircle,
-  MessageSquare,
   PanelLeftClose,
   Plus,
   Settings2,
@@ -14,8 +13,12 @@ import { useState } from 'react'
 
 import { Button, buttonVariants } from '@/components/ui/button'
 import { CreateSessionDialog } from '@/components/sessions/create-session-dialog'
+import { RenameSessionDialog } from '@/components/sessions/rename-session-dialog'
+import { SessionListItem } from '@/components/sessions/session-list-item'
 import { SidebarContext } from '@/components/layout/sidebar-context'
 import { ThemeToggle } from '@/components/theme-toggle'
+import type { Session } from '@/gen/koda/v1/service_pb'
+import { kodaClient } from '@/lib/connect'
 import { errorMessage, kodaKeys, listSessions } from '@/lib/koda'
 
 const sidebarCollapsedKey = 'koda-studio-sidebar-collapsed'
@@ -25,13 +28,35 @@ function loadSidebarCollapsed(): boolean {
 }
 
 export function AppShell() {
+  const navigate = useNavigate()
+  const { sessionId: currentSessionId } = useParams({ strict: false })
+  const queryClient = useQueryClient()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed)
   const [createSessionWorkdir, setCreateSessionWorkdir] = useState<
     string | undefined
   >()
+  const [renamingSession, setRenamingSession] = useState<Session>()
   const sessionsQuery = useQuery({
     queryKey: kodaKeys.sessions,
-    queryFn: listSessions,
+    queryFn: () => listSessions(),
+  })
+  const archiveMutation = useMutation({
+    mutationFn: (sessionId: string) =>
+      kodaClient.updateSession({ sessionId, archived: true }),
+    onSuccess: async ({ session }, sessionId) => {
+      queryClient.setQueryData<Session[]>(kodaKeys.sessions, (sessions) =>
+        sessions?.filter((current) => current.id !== sessionId),
+      )
+      if (session) {
+        queryClient.setQueryData(kodaKeys.session(sessionId), session)
+      }
+      await queryClient.invalidateQueries({
+        queryKey: kodaKeys.archivedSessions,
+      })
+      if (currentSessionId === sessionId) {
+        await navigate({ to: '/' })
+      }
+    },
   })
   const sessionGroups = Object.values(
     (sessionsQuery.data ?? []).reduce<
@@ -97,6 +122,11 @@ export function AppShell() {
             <p className="px-2.5 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               Projects
             </p>
+            {archiveMutation.isError && (
+              <p className="mb-2 px-2.5 text-xs leading-5 text-red-400">
+                {errorMessage(archiveMutation.error)}
+              </p>
+            )}
             {sessionsQuery.isPending ? (
               <LoaderCircle className="mx-auto mt-4 size-4 animate-spin text-muted-foreground" />
             ) : sessionsQuery.isError ? (
@@ -122,20 +152,16 @@ export function AppShell() {
                       </summary>
                       <div className="ml-4 space-y-0.5 border-l border-border pl-2">
                         {group.sessions?.map((session) => (
-                          <Link
-                            activeProps={{
-                              className: 'bg-accent text-accent-foreground',
-                            }}
-                            className="flex min-w-0 items-center gap-2 rounded-md px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          <SessionListItem
+                            archiving={
+                              archiveMutation.isPending &&
+                              archiveMutation.variables === session.id
+                            }
                             key={session.id}
-                            params={{ sessionId: session.id }}
-                            to="/sessions/$sessionId"
-                          >
-                            <MessageSquare className="size-3.5 shrink-0" />
-                            <span className="truncate">
-                              {session.title || 'Untitled session'}
-                            </span>
-                          </Link>
+                            onArchive={() => archiveMutation.mutate(session.id)}
+                            onRename={() => setRenamingSession(session)}
+                            session={session}
+                          />
                         ))}
                       </div>
                     </details>
@@ -196,6 +222,13 @@ export function AppShell() {
           <CreateSessionDialog
             initialWorkdir={createSessionWorkdir}
             onClose={() => setCreateSessionWorkdir(undefined)}
+          />
+        )}
+        {renamingSession && (
+          <RenameSessionDialog
+            key={renamingSession.id}
+            onClose={() => setRenamingSession(undefined)}
+            session={renamingSession}
           />
         )}
       </div>

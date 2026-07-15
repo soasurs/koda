@@ -9,6 +9,7 @@ import { HomePage } from '@/pages/home-page'
 import { MCPSettingsPage } from '@/pages/mcp-settings-page'
 import { ProviderSettingsPage } from '@/pages/provider-settings-page'
 import { SessionPage } from '@/pages/session-page'
+import { SessionSettingsPage } from '@/pages/session-settings-page'
 import { SkillSettingsPage } from '@/pages/skill-settings-page'
 
 const rootRoute = createRootRoute({
@@ -39,6 +40,12 @@ const mcpSettingsRoute = createRoute({
   component: MCPSettingsPage,
 })
 
+const sessionSettingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings/sessions',
+  component: SessionSettingsPage,
+})
+
 const sessionRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sessions/$sessionId',
@@ -49,6 +56,7 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   sessionRoute,
   providerSettingsRoute,
+  sessionSettingsRoute,
   mcpSettingsRoute,
   skillSettingsRoute,
 ])
