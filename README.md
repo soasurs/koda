@@ -2,323 +2,92 @@
 
 `koda` is a local coding-agent service built with Go, Protocol Buffers,
 Connect RPC, and [`github.com/soasurs/adk`](https://github.com/soasurs/adk).
-It provides the runtime and API for clients that need streamed agent turns,
-workspace and MCP tools, approvals, questions, provider configuration, and
-durable conversation history.
+It provides a durable, permission-aware runtime for coding agents and includes
+an embedded local web interface.
 
 [中文说明](README_zh-CN.md)
 
-Koda includes an embedded local web interface whose source lives under
-[`studio/`](studio/).
-
 ![Koda Studio Screenshot](docs/images/screenshot.png)
 
-## Run Koda Studio
+## What Koda provides
+
+- streamed multimodal agent turns with complete tool-call rounds;
+- Build and Plan modes with workspace-aware tools;
+- per-session provider, model, reasoning, workspace, and permission settings;
+- explicit approvals and structured questions during a Run;
+- durable SQLite conversation history with undo and context compaction;
+- built-in Anthropic, OpenAI, Gemini, and DeepSeek adapters;
+- process-level Agent Skills and MCP servers;
+- an embedded React Studio and a Protobuf/Connect API for other local clients.
+
+Koda is a local, single-process service. It listens on loopback only and keeps
+its state under `~/.koda`.
+
+## Quick start
 
 Requirements:
 
 - Go 1.26, or the version declared by `go.mod`;
-- a configured API key for at least one provider.
+- an API key for at least one supported provider;
+- Node.js 24 and pnpm 10 when building Studio from a fresh source checkout.
 
-Start the embedded UI and open it in the default browser:
-
-```bash
-go run ./cmd/koda studio
-```
-
-Studio and the Connect API share the same loopback-only HTTP origin. Koda first
-tries `localhost:8080`, falls back to an available loopback port when needed,
-and prints the actual URL. Use `--addr` to select a port explicitly:
+Set a provider credential, for example:
 
 ```bash
-go run ./cmd/koda studio --addr 127.0.0.1:8787
+export ANTHROPIC_API_KEY=...
 ```
 
-## Run the headless service
-
-Start the Connect API server:
-
-```bash
-go run ./cmd/koda serve
-```
-
-Koda first tries `localhost:8080`. If that port is occupied, it selects another
-loopback port and prints the actual address. To select a port explicitly:
-
-```bash
-go run ./cmd/koda serve --addr 127.0.0.1:8787
-```
-
-The server accepts loopback addresses only and never opens a browser. Koda also
-reads process-level settings from `~/.koda/koda.yaml`; command-line options take
-precedence over the file. The file is optional and can configure the server,
-the process-wide context window budget and compaction policy, diagnostic
-logging, and process-wide MCP servers:
-
-```yaml
-version: 1
-server:
-  address: 127.0.0.1:8080
-log:
-  level: info
-context:
-  window_tokens: 256000
-compaction:
-  enabled: true
-  trigger_percent: 80
-  reserve_tokens: 32768
-  summary_max_tokens: 8192
-  retain_turns: 2
-  retain_tokens: 12000
-  verify: true
-  rebase_interval: 5
-mcp:
-  servers:
-    - id: exa
-      name: Exa
-      transport: http
-      url: https://mcp.exa.ai/mcp
-      read_only: true
-      headers:
-        x-api-key: ${EXA_API_KEY}
-    - id: local-search
-      name: Local search
-      transport: stdio
-      command: npx
-      args: [-y, example-mcp-server]
-      env:
-        SEARCH_TOKEN: ${SEARCH_TOKEN}
-```
-
-`--addr` overrides `server.address`. When neither is set, Koda tries the default
-address and falls back to an available loopback port if it is occupied. Log
-levels are `debug`, `info`, `warn`, and `error`; the default is `info`. Logs at
-every level are diagnostic output written to stderr, while the listening URL
-remains on stdout. Debug logging includes safe ADK runtime metadata such as
-operation durations and tool names, but not prompts, tool arguments, command
-output, file contents, or credentials.
-
-`context.window_tokens` is the shared context budget reported for every model
-and defaults to 256,000. Studio adds the latest provider-reported prompt and
-completion token usage to show used, remaining, and percentage values for each
-session. Usage remains unavailable until a provider reports token accounting.
-
-Automatic durable compaction is enabled by default. Before a new Run, Koda
-attempts compaction when the preceding acknowledged turn used
-`compaction.trigger_percent` of the shared window, or earlier when needed to
-preserve `compaction.reserve_tokens`. It keeps up to `retain_turns` recent
-complete turns within `retain_tokens`, summarizes the older prefix, and injects
-the resulting working-state snapshot only into later model requests. The
-snapshot does not become an ordinary conversation event. Compaction output is
-validated against a versioned JSON schema with explicit objective,
-requirements, constraints, decisions, facts, progress, files, commands,
-failures, questions, and next-step categories; arbitrary text snapshots are
-rejected. One shared repair attempt may correct an invalid draft or verification
-result, so `verify: true` performs at most three compaction model calls. Provider
-errors, cancellation, content filtering, and invalid durable state are not
-repaired. `verify` performs a second model pass, and every `rebase_interval`
-generations Koda rebuilds the snapshot from a bounded structured checkpoint plus
-the subsequent immutable structured segment summaries to limit recursive drift
-without unbounded rebase input growth.
-During a Run, Studio shows transient started, completed, or failed compaction
-status so the extra model work is not mistaken for a stalled response. The
-status is not stored in conversation history. Studio continues to show the
-complete non-deleted conversation after compaction and places a generation
-marker between the display-only compacted prefix and the active event tail.
-Edit and retry are offered only for the server-reported undoable turn; undo
-requests include that expected turn so a stale client cannot remove newer
-history across the compaction boundary.
-
-Below the reserve boundary, a failed compaction is recorded and the Run may
-continue; Koda retries after measured usage increases. At the reserve boundary,
-a failed compaction stops the Run with `RESOURCE_EXHAUSTED` so history cannot
-continue growing unchecked. Set `compaction.enabled: false` to disable new
-compactions; existing durable snapshots are still supplied to the model.
-
-MCP servers are connected once at startup and their discovered tools are
-available to every Build agent. Servers explicitly configured with
-`read_only: true` execute automatically and are also available to Plan agents;
-other MCP tools require per-call approval in Build mode. HTTP entries use MCP
-streamable HTTP; remote endpoints must use HTTPS, while plaintext HTTP is
-accepted for loopback servers. Stdio entries launch `command` directly without
-a shell and may also set `args`, `env`, and `workdir`. Header, argument, and
-environment values use standard `$NAME` or `${NAME}` expansion; startup fails
-when a referenced variable is missing. Koda also fails startup when a
-configured server cannot connect or returns an invalid or conflicting tool
-catalog, rather than silently dropping the capability. Model-visible tool names use
-`mcp__<server-id>__<tool-name>`, and results are limited before entering model
-context. Restart Koda after changing MCP configuration. Clients can inspect the
-connected startup snapshot through `ListMCPServers` and `GetMCPServer`; Studio
-shows the same server and tool details under Settings > MCP. Headers and stdio
-environment values are never returned by these APIs.
-
-Only set `read_only: true` when every tool exposed by that server is
-side-effect-free. A stdio entry is a trusted local process launched with the
-Koda user's permissions; tool-call approval does not sandbox the server process
-itself.
-
-## Providers and local data
-
-The following providers are built in:
-
-| ID | API | Environment variable |
-|---|---|---|
-| `anthropic` | Anthropic Messages | `ANTHROPIC_API_KEY` |
-| `openai` | OpenAI Chat Completions | `OPENAI_API_KEY` |
-| `openai-responses` | OpenAI Responses | `OPENAI_API_KEY` |
-| `gemini` | Gemini GenerateContent | `GEMINI_API_KEY` |
-| `deepseek` | DeepSeek | `DEEPSEEK_API_KEY` |
-
-Environment credentials take precedence over stored credentials and are not
-copied into Koda's configuration file. Custom endpoints and model overrides can
-be managed through `koda.v1.KodaService`.
-
-Koda keeps its state under `~/.koda`:
-
-```text
-~/.koda/koda.yaml       optional process-level configuration
-~/.koda/providers.json   provider definitions and credentials
-~/.koda/koda.db          sessions and ADK conversation history
-~/.koda/skills/          Agent Skills loaded when Koda starts
-```
-
-Provider definitions remain separate because Koda updates them through its API,
-while `koda.yaml` is startup-only user configuration, including process-wide
-MCP servers. Provider/model selection, reasoning effort, workspace, and
-permissions remain session-scoped in the
-database. The provider file is private to the current user. Model listing is
-local-only; network discovery occurs only when a client explicitly calls
-`RefreshModels`. Changing a provider connection invalidates its previously
-discovered snapshot.
-
-Each direct child of `~/.koda/skills` may contain one Agent Skill whose
-`SKILL.md` name matches the directory name. Koda loads the catalog once at
-process startup, exposes matching skills through `load_skill`, and lets agents
-read listed UTF-8 resources through `read_skill_resource`. Restart Koda after
-adding, removing, or changing a skill. A missing skills directory is treated as
-an empty catalog. Invalid skills are logged and skipped without blocking
-startup; if the skills directory itself cannot be loaded, Koda logs the error
-and continues with an empty catalog. Clients can inspect the fixed startup
-snapshot through `ListSkills` and `GetSkill`; Studio exposes the same list and
-complete definitions under Settings > Skills.
-
-## Directory browsing
-
-Local clients can call `ListDirectories` before creating a session to choose a
-working directory. An empty path starts at the current user's home directory;
-each response contains only the selected directory's canonical path, parent
-path, and immediate child directory names and paths. The RPC does not list
-files, read file contents, or modify the filesystem. It remains protected by
-the server's loopback Host and Origin checks.
-
-## Agent runs
-
-`Run` executes one multimodal user turn as a server stream. Inputs may contain
-ordered text parts, HTTPS image URLs, or inline image bytes with a MIME type.
-The stream emits four frame kinds:
-
-- `Event` for model deltas and complete conversation events;
-- `ToolApproval` when an operation needs user consent;
-- `QuestionPrompt` when the agent asks for structured user input;
-- `RunCompleted` after the turn has been committed successfully, including the
-  latest durable `Session` snapshot.
-
-Sessions select their own provider, model, reasoning effort, workspace, and
-permission policy. Runs for the same session are serialized. If a turn cannot
-be acknowledged with `RunCompleted`, its committed history is rolled back.
-Archiving a session removes it from the default active-session listing without
-removing its configuration or conversation history. Clients can request the
-archived listing separately and restore a session through `UpdateSession`.
-Studio exposes session renaming and archiving from each sidebar item's context
-menu. Conversation messages show localized timestamps, using the browser's
-timezone. Studio groups the intermediate tool activity in each turn, keeps it
-visible while the run is active, then folds every earlier agent/tool message
-behind the final agent response without changing the expanded content.
-When a session still has an empty title, its first Run concurrently asks the
-selected model for a concise title from the initial user input. The title is
-stored and returned in `RunCompleted.session`; title-generation failure does
-not fail the agent turn. Clients may display a local excerpt of the first input
-as a temporary title while the Run is active.
-
-## Tools and permissions
-
-Plan agents can read files, list directories, search text, find files, ask
-questions, and use `run_shell` for one allowlisted read-only Git command.
-Other commands and mutating Git operations are rejected in Plan mode.
-
-Build agents additionally receive whole-file creation and writing, Hashline
-editing, and unrestricted command syntax through `run_shell`. Build shell
-execution still follows the session's Shell approval policy.
-
-Filesystem access is configured per session:
-
-| Level | Workspace read | Workspace write | Outside workspace |
-|---|---:|---:|---:|
-| `WORKSPACE_READ` | allowed | approval | approval |
-| `WORKSPACE_WRITE` | allowed | allowed | approval |
-| `UNRESTRICTED` | allowed | allowed | allowed |
-
-Paths are resolved through symlinks before their scope is classified. Shell
-permission is independent because an unrestricted process can effectively
-access the whole filesystem.
-
-`read_file` and `search_text` return a content revision and `LINE:HASH`
-anchors. `edit_file` validates them immediately before applying an atomic edit.
-Predictable writes include a structured diff in both approval and result
-frames.
-
-## Development
-
-The API source of truth is [`proto/koda/v1/service.proto`](proto/koda/v1/service.proto).
-Generated files under `gen/` and `studio/src/gen/` are committed and must not
-be edited manually.
-
-Studio assets under `internal/studio/dist` are generated and ignored by Git.
-Build them from the monorepo source with Node.js 24 and pnpm 10 after changing
-Studio, or from a fresh checkout:
+From a fresh checkout, build the embedded Studio assets once:
 
 ```bash
 ./build/studio.sh
 ```
 
-Then run the Go checks:
+Start Koda Studio:
 
 ```bash
-gofmt -w .
-go build ./...
-go vet ./...
-go test ./...
-go test -cover ./...
-go test -race ./...
-git diff --check
+go run ./cmd/koda studio
 ```
 
-After changing the Protocol Buffer contract, run `buf format -w`, `buf lint`,
-`buf build`, and `buf generate` before the Go checks above.
+Koda prints the selected loopback URL and opens it in the default browser. To
+run only the Connect API server:
 
-## Release
+```bash
+go run ./cmd/koda serve
+```
 
-Pushing a `v*` tag runs the release workflow. It builds Studio from the tagged
-monorepo source, tests and packages native macOS amd64 and arm64 binaries,
-generates SHA-256 checksums, and publishes the completed draft as a GitHub
-Release.
+Both commands try `localhost:8080` and fall back to an available loopback port.
+Pass `--addr 127.0.0.1:8787` to select one explicitly.
 
-Contributor-specific repository rules are in [AGENTS.md](AGENTS.md).
+## Documentation
 
-## Agent instructions
+- [Configuration](docs/configuration.md) describes `koda.yaml`, providers,
+  local state, Agent Skills, MCP servers, and compaction settings.
+- [Architecture](docs/architecture.md) explains the system boundaries, Run
+  protocol, agent construction, tools, storage, compaction, and security model.
+- [Public API](proto/koda/v1/service.proto) is the source of truth for the
+  Protobuf and Connect contract.
+- [Studio](studio/README.md) documents the frontend workspace.
+- [Contributor guide](AGENTS.md) contains repository rules and verification
+  commands.
 
-Koda assembles each coding agent's system instruction in layers. A stable,
-embedded common prompt and Build or Plan mode prompt come first. Each Run then
-adds the normalized working directory, effective session permissions, and
-hierarchical `AGENTS.md` files from the filesystem root to the workspace. The
-workspace instruction snapshot is reused across tool-call iterations in that
-Run and refreshed on the next Run.
+## Development
 
-Runtime and workspace instructions are request-scoped context. They are sent to
-the model for each iteration but are not added to conversation events or stored
-in session history. Durable compaction snapshots are likewise inserted as
-request-only synthetic history before the active event tail and are never
-stored as ordinary ADK events.
+Generated bindings under `gen/` and `studio/src/gen/` are committed and must
+not be edited manually. Build ignored Studio assets before the first Go build
+and after changing Studio:
+
+```bash
+./build/studio.sh
+```
+
+Then run the repository checks described in [AGENTS.md](AGENTS.md). After
+changing `proto/koda/v1/service.proto`, format, lint, build, and generate it
+with Buf before running the Go checks.
+
+Pushing a `v*` tag runs the release workflow, which builds Studio, tests and
+packages native macOS amd64 and arm64 binaries, generates checksums, and creates
+a draft GitHub Release.
 
 ## License
 
