@@ -9,19 +9,25 @@ import type { RunResponse } from '@/gen/koda/v1/service_pb'
 import {
   CompactionProgressSchema,
   CompactionProgressStage,
+  InputSchema,
   QuestionPromptSchema,
   RunResponseSchema,
   ToolApprovalSchema,
+  UndoLastMessageResponseSchema,
 } from '@/gen/koda/v1/service_pb'
 
-const { runMock } = vi.hoisted(() => ({ runMock: vi.fn() }))
+const { runMock, undoLastMessageMock } = vi.hoisted(() => ({
+  runMock: vi.fn(),
+  undoLastMessageMock: vi.fn(),
+}))
 
 vi.mock('@/lib/connect', () => ({
-  kodaClient: { run: runMock },
+  kodaClient: { run: runMock, undoLastMessage: undoLastMessageMock },
 }))
 
 afterEach(() => {
   runMock.mockReset()
+  undoLastMessageMock.mockReset()
 })
 
 describe('useSessionRun interactions', () => {
@@ -107,6 +113,41 @@ describe('useSessionRun interactions', () => {
     await act(async () => runPromise)
     expect(result.current.compactionProgress).toBeNull()
   })
+
+  it('removes an interrupted turn before running its edited message', async () => {
+    undoLastMessageMock.mockResolvedValue(
+      create(UndoLastMessageResponseSchema, {
+        turnId: 'turn-interrupted',
+        deletedEventCount: 2n,
+        input: create(InputSchema, {
+          parts: [{ content: { case: 'text', value: 'original message' } }],
+        }),
+      }),
+    )
+    runMock.mockReturnValue(finishedStream())
+    const { result } = renderSessionRun()
+
+    await act(async () => {
+      await result.current.editLastTurn('turn-interrupted', 'edited message')
+    })
+
+    expect(undoLastMessageMock).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      expectedTurnId: 'turn-interrupted',
+    })
+    expect(runMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'session-1',
+        input: {
+          parts: [{ content: { case: 'text', value: 'edited message' } }],
+        },
+      }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+    expect(undoLastMessageMock.mock.invocationCallOrder[0]).toBeLessThan(
+      runMock.mock.invocationCallOrder[0],
+    )
+  })
 })
 
 function renderSessionRun() {
@@ -163,3 +204,5 @@ function controlledStream(frames: RunResponse[]) {
   }
   return { finish, responses: responses() }
 }
+
+async function* finishedStream() {}
