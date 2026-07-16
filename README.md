@@ -11,7 +11,8 @@ an embedded local web interface.
 
 ## What Koda provides
 
-- streamed multimodal agent turns with complete tool-call rounds;
+- reconnectable, server-owned multimodal agent turns with complete tool-call
+  rounds;
 - Build and Plan modes with workspace-aware tools;
 - per-session provider, model, reasoning, workspace, and permission settings;
 - explicit approvals and structured questions during a Run;
@@ -23,6 +24,11 @@ an embedded local web interface.
 
 Koda is a local, single-process service. It listens on loopback only and keeps
 its state under `~/.koda`.
+
+Closing or refreshing Studio only detaches its Run event subscription. The Run
+continues in the local Koda process and Studio reattaches when the session is
+opened again. Stop is an explicit cancellation action; stopping the Koda
+process still interrupts active Runs.
 
 ## Quick start
 

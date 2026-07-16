@@ -99,8 +99,13 @@ flowchart TD
 - complete or partial `Event` frames;
 - blocking `ToolApproval` interactions;
 - blocking `QuestionPrompt` interactions;
+- `RunInteractionResolved` updates for pending interaction removal;
 - transient `CompactionProgress` frames;
-- the terminal `RunCompleted` acknowledgment.
+- an admission `RunStarted` frame;
+- terminal `RunCompleted` or `RunTerminated` frames.
+
+`Run` starts and initially watches an execution. `WatchRun` resumes observation
+by sequence, while `CancelRun` is the only client action that stops execution.
 
 Changes to observable behavior or commands must update both root READMEs.
 Generated Go and TypeScript bindings are regenerated with Buf rather than

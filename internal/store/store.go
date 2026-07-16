@@ -194,8 +194,8 @@ func (s *Store) LockRun(ctx context.Context, id string) (func(), error) {
 
 // LockRunContext acquires the run lock for id and returns a context that makes
 // nested acquisitions by the ADK Runner reentrant. The caller must invoke the
-// returned unlock function after all post-run persistence and stream work is
-// complete.
+// returned unlock function after all post-run persistence and terminal journal
+// work is complete.
 func (s *Store) LockRunContext(ctx context.Context, id string) (context.Context, func(), error) {
 	id, err := normalizeSessionID(id)
 	if err != nil {

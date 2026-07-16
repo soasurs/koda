@@ -444,13 +444,17 @@ func TestRunInitializesADKSessionBeforeResolvingProvider(t *testing.T) {
 		Mode:      v1.AgentMode_AGENT_MODE_PLAN.Enum(),
 		Input:     input,
 	}.Build())
+	var terminated *v1.RunTerminated
 	if err == nil {
 		for stream.Receive() {
+			if value := stream.Msg().GetTerminated(); value != nil {
+				terminated = value
+			}
 		}
 		err = stream.Err()
 	}
-	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Fatalf("Run(unconfigured provider) code = %v, want failed_precondition; error = %v", connect.CodeOf(err), err)
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition || terminated == nil || terminated.GetState() != v1.RunState_RUN_STATE_FAILED || terminated.GetFailure().GetCode() != connect.CodeFailedPrecondition.String() {
+		t.Fatalf("Run(unconfigured provider) terminated = %+v, error = %v", terminated, err)
 	}
 	adkSession, err := handler.store.ADKSessionService().GetSession(t.Context(), created.GetSession().GetId())
 	if err != nil || adkSession == nil {

@@ -89,8 +89,13 @@ flowchart TD
 - complete 或 partial `Event` frame；
 - 阻塞的 `ToolApproval` 交互；
 - 阻塞的 `QuestionPrompt` 交互；
+- 用于移除 pending interaction 的 `RunInteractionResolved` 更新；
 - 瞬态 `CompactionProgress` frame；
-- 终止的 `RunCompleted` 确认。
+- admission `RunStarted` frame；
+- 终止的 `RunCompleted` 或 `RunTerminated` frame。
+
+`Run` 会启动并初始订阅一次执行；`WatchRun` 按 sequence 恢复观察，`CancelRun` 是客户端
+停止执行的唯一操作。
 
 修改可观察行为或命令时，必须同步更新两份根 README。生成的 Go 和 TypeScript binding
 通过 Buf 重新生成，不能直接编辑。
