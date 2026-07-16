@@ -18,18 +18,24 @@ export function useFollowLatest<T extends HTMLElement>(
 
   useLayoutEffect(() => {
     const container = containerRef.current
-    if (!container || !shouldFollowLatestRef.current) return
+    if (!container) return
     const newHeight = container.scrollHeight
-    if (newHeight <= prevScrollHeightRef.current) return
+    const grew = newHeight > prevScrollHeightRef.current
     prevScrollHeightRef.current = newHeight
-    container.scrollTop = container.scrollHeight
+    if (shouldFollowLatestRef.current && grew) {
+      container.scrollTop = newHeight
+    }
   }, [content, resetKey])
 
   const onScroll = useCallback((event: UIEvent<T>) => {
     const container = event.currentTarget
     const distanceFromBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight
-    shouldFollowLatestRef.current = distanceFromBottom <= bottomThreshold
+    const shouldFollowLatest = distanceFromBottom <= bottomThreshold
+    if (shouldFollowLatest && !shouldFollowLatestRef.current) {
+      prevScrollHeightRef.current = 0
+    }
+    shouldFollowLatestRef.current = shouldFollowLatest
   }, [])
 
   return { containerRef, onScroll }

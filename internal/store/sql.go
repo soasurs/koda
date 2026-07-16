@@ -20,6 +20,7 @@ type queries struct {
 	listAllEventTurnIDs     string
 	latestUserEvent         string
 	deleteTurnEvents        string
+	deleteTurn              string
 	deleteCompactions       string
 	recordCompactionFailure string
 }
@@ -27,6 +28,7 @@ type queries struct {
 func newQueries(adkTablePrefix string) queries {
 	adkEventsTable := adkTablePrefix + "events"
 	adkSessionsTable := adkTablePrefix + "sessions"
+	adkTurnsTable := adkTablePrefix + "turns"
 	const eventColumns = `
 		event_id,
 		session_id,
@@ -208,6 +210,11 @@ func newQueries(adkTablePrefix string) queries {
 				AND turn_id = $3
 				AND deleted_at = 0
 				AND archived_at = 0
+		`,
+		deleteTurn: `
+			DELETE FROM ` + adkTurnsTable + `
+			WHERE session_id = $1
+				AND turn_id = $2
 		`,
 		deleteCompactions: `
 			UPDATE koda_session_compactions

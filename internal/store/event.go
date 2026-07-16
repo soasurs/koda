@@ -249,6 +249,9 @@ func (s *Store) UndoLastMessage(ctx context.Context, id, expectedTurnID string) 
 	if deleted == 0 {
 		return UndoLastMessageResult{}, fmt.Errorf("store: delete turn %q: no active events", userEvent.TurnID)
 	}
+	if _, err := tx.ExecContext(ctx, s.queries.deleteTurn, id, userEvent.TurnID); err != nil {
+		return UndoLastMessageResult{}, fmt.Errorf("store: delete turn metadata %q: %w", userEvent.TurnID, err)
+	}
 	if _, err := tx.ExecContext(ctx, s.queries.touchSession, deletedAt, id); err != nil {
 		return UndoLastMessageResult{}, fmt.Errorf("store: touch session %q after undo: %w", id, err)
 	}

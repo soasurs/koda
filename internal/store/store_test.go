@@ -600,6 +600,13 @@ func TestListHistoryRecoversAndFiltersDurableTurns(t *testing.T) {
 	if _, err := store.UndoLastMessage(t.Context(), "session-1", "turn-running"); err != nil {
 		t.Fatalf("UndoLastMessage() error = %v", err)
 	}
+	removedTurn, err := turns.GetTurn(t.Context(), "turn-running")
+	if err != nil {
+		t.Fatalf("GetTurn(after undo) error = %v", err)
+	}
+	if removedTurn != nil {
+		t.Fatalf("GetTurn(after undo) = %+v, want nil", removedTurn)
+	}
 	history, err = store.ListHistory(t.Context(), "session-1")
 	if err != nil {
 		t.Fatalf("ListHistory(after undo) error = %v", err)

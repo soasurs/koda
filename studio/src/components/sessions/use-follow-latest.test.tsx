@@ -17,10 +17,10 @@ interface Props {
   sessionId?: string
 }
 
-function setDimensions(element: HTMLElement) {
+function setDimensions(element: HTMLElement, scrollHeight = 1_000) {
   Object.defineProperties(element, {
     clientHeight: { configurable: true, value: 400 },
-    scrollHeight: { configurable: true, value: 1_000 },
+    scrollHeight: { configurable: true, value: scrollHeight },
   })
 }
 
@@ -49,5 +49,21 @@ describe('useFollowLatest', () => {
     fireEvent.scroll(scroller)
     rerender(<ScrollContainer content="third" />)
     expect(scroller.scrollTop).toBe(1_000)
+  })
+
+  it('follows growth after content shrinks below an earlier height', () => {
+    const { container, rerender } = render(<ScrollContainer content="first" />)
+    const scroller = container.firstElementChild as HTMLElement
+
+    setDimensions(scroller, 1_000)
+    rerender(<ScrollContainer content="streaming" />)
+    expect(scroller.scrollTop).toBe(1_000)
+
+    setDimensions(scroller, 700)
+    rerender(<ScrollContainer content="settled" />)
+
+    setDimensions(scroller, 800)
+    rerender(<ScrollContainer content="next message" />)
+    expect(scroller.scrollTop).toBe(800)
   })
 })
