@@ -41,6 +41,7 @@ type HTTPServerConfig struct {
 // HTTPServer serves Koda's Connect API and coordinates graceful shutdown.
 type HTTPServer struct {
 	server          *http.Server
+	handler         *Handler
 	shutdownTimeout time.Duration
 	logger          *slog.Logger
 }
@@ -75,6 +76,7 @@ func NewHTTPServer(handler *Handler, config HTTPServerConfig) (*HTTPServer, erro
 			ReadHeaderTimeout: 10 * time.Second,
 			IdleTimeout:       2 * time.Minute,
 		},
+		handler:         handler,
 		shutdownTimeout: shutdownTimeout,
 		logger:          logger,
 	}, nil
@@ -184,8 +186,8 @@ func (s *HTTPServer) Serve(ctx context.Context, listener net.Listener) error {
 	if listener == nil {
 		return errors.New("server: listener must not be nil")
 	}
-	// Request contexts inherit ctx so shutdown also releases Runs blocked on an
-	// approval or question broker before HTTP shutdown waits for them.
+	// Ordinary request contexts inherit ctx. Detached Runs are canceled and
+	// joined explicitly through the Run manager below.
 	s.server.BaseContext = func(net.Listener) context.Context {
 		return ctx
 	}
@@ -196,23 +198,39 @@ func (s *HTTPServer) Serve(ctx context.Context, listener net.Listener) error {
 
 	select {
 	case err := <-errs:
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
+		defer cancel()
+		runErr := s.handler.runs.shutdown(shutdownCtx)
 		if errors.Is(err, http.ErrServerClosed) {
-			return nil
+			return runErr
 		}
+		closeErr := s.server.Close()
 		s.logger.ErrorContext(ctx, "HTTP server stopped unexpectedly", "error", err)
-		return err
+		return errors.Join(err, runErr, closeErr)
 	case <-ctx.Done():
 		startedAt := time.Now()
 		s.logger.InfoContext(ctx, "HTTP server shutting down")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
 		defer cancel()
+		var shutdownErrs []error
+		runErr := s.handler.runs.shutdown(shutdownCtx)
+		if runErr != nil {
+			s.logger.ErrorContext(ctx, "run manager shutdown failed", "error", runErr)
+			shutdownErrs = append(shutdownErrs, fmt.Errorf("server: stop active runs: %w", runErr))
+		}
 		if err := s.server.Shutdown(shutdownCtx); err != nil {
 			s.logger.ErrorContext(ctx, "HTTP server graceful shutdown failed", "error", err)
-			return fmt.Errorf("server: graceful shutdown: %w", err)
+			shutdownErrs = append(shutdownErrs, fmt.Errorf("server: graceful shutdown: %w", err))
+			if closeErr := s.server.Close(); closeErr != nil {
+				shutdownErrs = append(shutdownErrs, fmt.Errorf("server: force close: %w", closeErr))
+			}
 		}
 		if err := <-errs; err != nil && !errors.Is(err, http.ErrServerClosed) {
 			s.logger.ErrorContext(ctx, "HTTP server failed after shutdown", "error", err)
-			return fmt.Errorf("server: serve after shutdown: %w", err)
+			shutdownErrs = append(shutdownErrs, fmt.Errorf("server: serve after shutdown: %w", err))
+		}
+		if err := errors.Join(shutdownErrs...); err != nil {
+			return err
 		}
 		s.logger.InfoContext(ctx, "HTTP server shut down", "duration", time.Since(startedAt))
 		return ctx.Err()

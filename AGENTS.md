@@ -35,8 +35,13 @@ their own domain types or ADK types.
 
 - `proto/koda/v1/service.proto` is the API source of truth. Never edit `gen/`
   directly; regenerate it with Buf.
-- `Run` is server-streaming and emits only `Event`, `ToolApproval`,
-  `QuestionPrompt`, transient `CompactionProgress`, and `RunCompleted` frames.
+- `Run` provides idempotent admission and an initial subscription. Run frames
+  contain `RunStarted`, `Event`, `ToolApproval`, `QuestionPrompt`,
+  `RunInteractionResolved`, transient `CompactionProgress`, `RunCompleted`, or
+  `RunTerminated` payloads.
+- Run execution is owned by the process, not a transport stream. Disconnecting
+  a subscriber must not cancel execution; `WatchRun` reattaches and `CancelRun`
+  explicitly requests cancellation.
 - A successful turn includes every tool-call round through the final assistant
   response. `RunCompleted` is sent only after durable history and session
   metadata are consistent.
@@ -63,8 +68,9 @@ READMEs in the same change.
 - ADK session history is the conversation source of truth.
 - Serialize Run, history mutation, session update, and deletion per session.
   Preserve context cancellation while waiting for a lock.
-- Hold the Run serialization boundary until the completion frame is accepted.
-  Transport acknowledgment failure does not rewrite an already completed Turn.
+- Hold the Run serialization boundary until durable history and session
+  metadata are consistent and the terminal frame is journaled. Transport
+  delivery failure affects only that subscriber.
 - Creating Koda session metadata may lazily create its ADK ledger before the
   first Run. Deleting a session must remove its active metadata and history as
   one logical operation.

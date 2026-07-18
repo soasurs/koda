@@ -22,8 +22,9 @@ var (
 // not persist a decision: cancellation and process exit always discard pending
 // requests.
 type ApprovalBroker struct {
-	mu      sync.Mutex
-	pending map[string]*pendingApproval
+	mu       sync.Mutex
+	pending  map[string]*pendingApproval
+	resolved func(string) interactionResolution
 }
 
 type pendingApproval struct {
@@ -69,8 +70,14 @@ func (b *ApprovalBroker) Await(ctx context.Context, approval *v1.ToolApproval, p
 	case approved := <-pending.decision:
 		return approved, nil
 	case <-ctx.Done():
-		b.remove(id, pending)
-		return false, ctx.Err()
+		b.mu.Lock()
+		if b.pending[id] == pending {
+			delete(b.pending, id)
+			b.mu.Unlock()
+			return false, ctx.Err()
+		}
+		b.mu.Unlock()
+		return <-pending.decision, nil
 	}
 }
 
@@ -84,13 +91,20 @@ func (b *ApprovalBroker) Resolve(id string, approved bool) error {
 	b.mu.Lock()
 	pending, exists := b.pending[id]
 	if exists {
+		if b.resolved != nil {
+			resolution := b.resolved(id)
+			if resolution.managed && !resolution.accepted {
+				b.mu.Unlock()
+				return fmt.Errorf("resolve approval %q: %w", id, ErrApprovalNotFound)
+			}
+		}
+		pending.decision <- approved
 		delete(b.pending, id)
 	}
 	b.mu.Unlock()
 	if !exists {
 		return fmt.Errorf("resolve approval %q: %w", id, ErrApprovalNotFound)
 	}
-	pending.decision <- approved
 	return nil
 }
 

@@ -27,6 +27,7 @@ type Handler struct {
 	store               *store.Store
 	approvals           *ApprovalBroker
 	questions           *QuestionBroker
+	runs                *runManager
 	agentFactory        *agent.Factory
 	skills              *adkskill.Catalog
 	mcp                 MCPCatalog
@@ -118,12 +119,18 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 	if err != nil {
 		return nil, fmt.Errorf("server: construct agent factory: %w", err)
 	}
+	runs := newRunManager(newInteractionID)
+	approvals := NewApprovalBroker()
+	questions := NewQuestionBroker()
+	approvals.resolved = runs.resolveApproval
+	questions.resolved = runs.resolveQuestion
 	return &Handler{
 		registry:            registry,
 		catalog:             catalog,
 		store:               sessionStore,
-		approvals:           NewApprovalBroker(),
-		questions:           NewQuestionBroker(),
+		approvals:           approvals,
+		questions:           questions,
+		runs:                runs,
 		agentFactory:        agentFactory,
 		skills:              skillCatalog,
 		mcp:                 mcpCatalog,

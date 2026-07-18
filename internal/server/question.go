@@ -24,8 +24,9 @@ var (
 // Submitted answers are validated before a prompt is removed, allowing a
 // frontend to correct an invalid response and retry.
 type QuestionBroker struct {
-	mu      sync.Mutex
-	pending map[string]*pendingQuestion
+	mu       sync.Mutex
+	pending  map[string]*pendingQuestion
+	resolved func(string) interactionResolution
 }
 
 type pendingQuestion struct {
@@ -87,8 +88,18 @@ func (b *QuestionBroker) Await(ctx context.Context, prompt *v1.QuestionPrompt, p
 		}
 		return proto.Clone(resolution.answers).(*v1.QuestionAnswers), resolution.canceled, nil
 	case <-ctx.Done():
-		b.removeQuestion(id, pending)
-		return nil, false, ctx.Err()
+		b.mu.Lock()
+		if b.pending[id] == pending {
+			delete(b.pending, id)
+			b.mu.Unlock()
+			return nil, false, ctx.Err()
+		}
+		b.mu.Unlock()
+		resolution := <-pending.resolution
+		if resolution.answers == nil {
+			return nil, resolution.canceled, nil
+		}
+		return proto.Clone(resolution.answers).(*v1.QuestionAnswers), resolution.canceled, nil
 	}
 }
 
@@ -111,9 +122,16 @@ func (b *QuestionBroker) ResolveAnswers(id string, answers *v1.QuestionAnswers) 
 		b.mu.Unlock()
 		return fmt.Errorf("resolve question prompt %q: %w", id, err)
 	}
+	if b.resolved != nil {
+		resolution := b.resolved(id)
+		if resolution.managed && !resolution.accepted {
+			b.mu.Unlock()
+			return fmt.Errorf("resolve question prompt %q: %w", id, ErrQuestionPromptNotFound)
+		}
+	}
+	pending.resolution <- questionResolution{answers: proto.Clone(answers).(*v1.QuestionAnswers)}
 	delete(b.pending, id)
 	b.mu.Unlock()
-	pending.resolution <- questionResolution{answers: proto.Clone(answers).(*v1.QuestionAnswers)}
 	return nil
 }
 
@@ -126,13 +144,20 @@ func (b *QuestionBroker) ResolveCanceled(id string) error {
 	b.mu.Lock()
 	pending, exists := b.pending[id]
 	if exists {
+		if b.resolved != nil {
+			resolution := b.resolved(id)
+			if resolution.managed && !resolution.accepted {
+				b.mu.Unlock()
+				return fmt.Errorf("resolve question prompt %q: %w", id, ErrQuestionPromptNotFound)
+			}
+		}
+		pending.resolution <- questionResolution{canceled: true}
 		delete(b.pending, id)
 	}
 	b.mu.Unlock()
 	if !exists {
 		return fmt.Errorf("resolve question prompt %q: %w", id, ErrQuestionPromptNotFound)
 	}
-	pending.resolution <- questionResolution{canceled: true}
 	return nil
 }
 

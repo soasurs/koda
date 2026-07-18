@@ -10,7 +10,7 @@
 
 ## 核心能力
 
-- 支持多模态输入和完整工具调用轮次的流式 Agent Run；
+- 支持重连、多模态输入和完整工具调用轮次的 Server-owned Agent Run；
 - 带 workspace-aware 工具的 Build 和 Plan 模式；
 - Session 级 Provider、Model、reasoning、workspace 和权限设置；
 - Run 期间的操作审批和结构化提问；
@@ -20,6 +20,10 @@
 - 内嵌 React Studio，以及供其它本地客户端使用的 Protobuf/Connect API。
 
 Koda 是本地单进程服务，只监听 loopback 地址，并将状态保存在 `~/.koda`。
+
+关闭或刷新 Studio 只会断开 Run event 订阅；Run 会继续在本地 Koda 进程中执行，重新进入
+Session 时 Studio 会自动恢复订阅。Stop 是显式取消操作；停止 Koda 进程仍会中断 active
+Run。
 
 ## 快速开始
 

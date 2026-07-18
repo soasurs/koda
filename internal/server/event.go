@@ -2,13 +2,16 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"log/slog"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/soasurs/adk/model"
 	adksession "github.com/soasurs/adk/session"
+	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/agent"
@@ -16,10 +19,69 @@ import (
 	"github.com/soasurs/koda/internal/store"
 )
 
+const titleGenerationTimeout = 10 * time.Second
+
 // Run validates transport input, executes one cached agent turn, and streams
 // events and transient frontend interactions. Durable Turn state is owned by
 // ADK and is not rolled back when transport delivery fails.
 func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *connect.ServerStream[v1.RunResponse]) error {
+	if request == nil {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("run request must not be nil"))
+	}
+	id, err := sessionIDFromRequest(request.GetSessionId())
+	if err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	clientRequestID := strings.TrimSpace(request.GetClientRequestId())
+	if clientRequestID == "" {
+		clientRequestID, err = newInteractionID()
+		if err != nil {
+			return h.internalFailure(ctx, "generate client request ID", errors.New("generate client request ID"), err)
+		}
+	}
+	_, err = agentModeFromProto(request.GetMode())
+	if err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	_, err = inputFromProto(request.GetInput())
+	if err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if _, err := h.store.GetSession(ctx, id); err != nil {
+		return h.sessionFailure(ctx, "load run session", err, slog.String("session_id", id))
+	}
+	ownedRequest := proto.Clone(request).(*v1.RunRequest)
+	ownedRequest.SetClientRequestId(clientRequestID)
+	encoded, err := proto.MarshalOptions{Deterministic: true}.Marshal(ownedRequest)
+	if err != nil {
+		return h.internalFailure(ctx, "fingerprint run request", errors.New("fingerprint run request"), err)
+	}
+	run, _, err := h.runs.admit(runAdmission{
+		sessionID:       id,
+		clientRequestID: clientRequestID,
+		fingerprint:     sha256.Sum256(encoded),
+	}, func(runCtx context.Context, run *managedRun) error {
+		return h.executeRun(runCtx, ownedRequest, run)
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, errRunAlreadyActive):
+			return connect.NewError(connect.CodeAlreadyExists, err)
+		case errors.Is(err, errRunRequestChanged):
+			return connect.NewError(connect.CodeFailedPrecondition, err)
+		case errors.Is(err, errRunManagerClosed):
+			return connect.NewError(connect.CodeUnavailable, err)
+		default:
+			return h.internalFailure(ctx, "admit run", errors.New("admit run"), err, slog.String("session_id", id))
+		}
+	}
+	if err := run.watch(ctx, 0, stream.Send); err != nil {
+		return err
+	}
+	return run.executionError()
+}
+
+func (h *Handler) executeRun(ctx context.Context, request *v1.RunRequest, publisher *managedRun) error {
 	if h.turnRunnerFactory == nil && h.agentFactory == nil {
 		return connect.NewError(connect.CodeUnimplemented, errors.New("agent runtime is not configured"))
 	}
@@ -48,6 +110,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		slog.String("session_id", id),
 		slog.String("mode", mode.String()),
 	)
+	publisher.setState(v1.RunState_RUN_STATE_WAITING_SESSION_LOCK)
 	lockedCtx, unlock, err := h.store.LockRunContext(ctx, id)
 	if err != nil {
 		return h.sessionFailure(ctx, "lock run", err, slog.String("session_id", id))
@@ -55,7 +118,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	defer unlock()
 	runCtx, cancel := context.WithCancel(lockedCtx)
 	defer cancel()
-	publisher := &runPublisher{stream: stream, cancel: cancel}
+	publisher.setState(v1.RunState_RUN_STATE_PREPARING)
 
 	session, err := h.store.GetSession(runCtx, id)
 	if err != nil {
@@ -115,7 +178,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		err := errors.New("agent runtime returned nil runner")
 		return h.internalFailure(runCtx, "construct runner", err, err, slog.String("session_id", id))
 	}
-	runCtx = agent.WithRunInteractions(runCtx, h.runInteractions(publisher.Publish))
+	runCtx = agent.WithRunInteractions(runCtx, h.runInteractions(publisher.publish))
 	runCtx = agent.WithRunEnvironment(runCtx, agent.RunEnvironment{
 		Workdir:     session.Workdir,
 		FileAccess:  session.FileAccess,
@@ -141,6 +204,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		completionTokens int64
 		totalTokens      int64
 	)
+	publisher.setState(v1.RunState_RUN_STATE_EXECUTING)
 	for event, err := range runner.Run(runCtx, id, input) {
 		if err != nil {
 			runErr = h.runtimeFailure(runCtx, "execute run", err, slog.String("session_id", id))
@@ -153,6 +217,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		}
 		if event.TurnID != "" {
 			turnID = event.TurnID
+			publisher.setTurnID(turnID)
 		}
 		converted, err := eventToProto(*event)
 		if err != nil {
@@ -173,7 +238,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		}
 		resp := new(v1.RunResponse)
 		resp.SetEvent(converted)
-		if err := publisher.Publish(resp); err != nil {
+		if err := publisher.publish(resp); err != nil {
 			runErr = h.runtimeFailure(runCtx, "publish run event", err,
 				slog.String("session_id", id),
 				slog.String("turn_id", turnID),
@@ -200,7 +265,8 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		err := errors.New("agent runtime ended without a turn ID")
 		return h.internalFailure(runCtx, "complete run", err, err, slog.String("session_id", id))
 	}
-	title, titleErr := titleResult.wait()
+	publisher.setState(v1.RunState_RUN_STATE_FINALIZING)
+	title, titleErr := titleResult.wait(runCtx)
 	if titleErr != nil && !errors.Is(titleErr, context.Canceled) {
 		h.log(runCtx, slog.LevelWarn, "session title generation failed",
 			slog.String("session_id", id),
@@ -220,7 +286,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 		TurnId:  new(turnID),
 		Session: h.sessionToProto(committedSession),
 	}.Build())
-	if err := publisher.Publish(&completed); err != nil {
+	if err := publisher.publish(&completed); err != nil {
 		mapped := h.runtimeFailure(runCtx, "publish run completion", err,
 			slog.String("session_id", id),
 			slog.String("turn_id", turnID),
@@ -243,7 +309,7 @@ func (h *Handler) Run(ctx context.Context, request *v1.RunRequest, stream *conne
 	return nil
 }
 
-func publishCompactionProgress(publisher *runPublisher, stage v1.CompactionProgressStage, generation, contextTokens int64, compaction *store.Compaction) error {
+func publishCompactionProgress(publisher *managedRun, stage v1.CompactionProgressStage, generation, contextTokens int64, compaction *store.Compaction) error {
 	progress := v1.CompactionProgress_builder{
 		Stage:         stage.Enum(),
 		Generation:    new(generation),
@@ -255,7 +321,7 @@ func publishCompactionProgress(publisher *runPublisher, stage v1.CompactionProgr
 	}
 	response := new(v1.RunResponse)
 	response.SetCompactionProgress(progress.Build())
-	return publisher.Publish(response)
+	return publisher.publish(response)
 }
 
 type generatedTitle struct {
@@ -281,13 +347,21 @@ func (h *Handler) startTitleGeneration(ctx context.Context, session store.Sessio
 	return generatedTitle{result: result, cancel: cancel}
 }
 
-func (r generatedTitle) wait() (string, error) {
+func (r generatedTitle) wait(ctx context.Context) (string, error) {
 	defer r.cancel()
 	if r.result == nil {
 		return "", nil
 	}
-	result := <-r.result
-	return result.title, result.err
+	timer := time.NewTimer(titleGenerationTimeout)
+	defer timer.Stop()
+	select {
+	case result := <-r.result:
+		return result.title, result.err
+	case <-ctx.Done():
+		return "", ctx.Err()
+	case <-timer.C:
+		return "", context.DeadlineExceeded
+	}
 }
 
 func (h *Handler) commitRunMetadata(ctx context.Context, previous store.Session, title string) (store.Session, error) {

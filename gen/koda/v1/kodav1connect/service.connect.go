@@ -35,6 +35,15 @@ const (
 const (
 	// KodaServiceRunProcedure is the fully-qualified name of the KodaService's Run RPC.
 	KodaServiceRunProcedure = "/koda.v1.KodaService/Run"
+	// KodaServiceWatchRunProcedure is the fully-qualified name of the KodaService's WatchRun RPC.
+	KodaServiceWatchRunProcedure = "/koda.v1.KodaService/WatchRun"
+	// KodaServiceGetRunProcedure is the fully-qualified name of the KodaService's GetRun RPC.
+	KodaServiceGetRunProcedure = "/koda.v1.KodaService/GetRun"
+	// KodaServiceGetActiveRunProcedure is the fully-qualified name of the KodaService's GetActiveRun
+	// RPC.
+	KodaServiceGetActiveRunProcedure = "/koda.v1.KodaService/GetActiveRun"
+	// KodaServiceCancelRunProcedure is the fully-qualified name of the KodaService's CancelRun RPC.
+	KodaServiceCancelRunProcedure = "/koda.v1.KodaService/CancelRun"
 	// KodaServiceResolveToolApprovalProcedure is the fully-qualified name of the KodaService's
 	// ResolveToolApproval RPC.
 	KodaServiceResolveToolApprovalProcedure = "/koda.v1.KodaService/ResolveToolApproval"
@@ -93,6 +102,14 @@ const (
 type KodaServiceClient interface {
 	// Run executes one agent turn and streams its observable state.
 	Run(context.Context, *v1.RunRequest) (*connect.ServerStreamForClient[v1.RunResponse], error)
+	// WatchRun attaches to an admitted Run without owning its execution.
+	WatchRun(context.Context, *v1.WatchRunRequest) (*connect.ServerStreamForClient[v1.WatchRunResponse], error)
+	// GetRun returns an active or recently completed Run.
+	GetRun(context.Context, *v1.GetRunRequest) (*v1.GetRunResponse, error)
+	// GetActiveRun returns the Run currently occupying one session, if any.
+	GetActiveRun(context.Context, *v1.GetActiveRunRequest) (*v1.GetActiveRunResponse, error)
+	// CancelRun explicitly requests cancellation of one admitted Run.
+	CancelRun(context.Context, *v1.CancelRunRequest) (*v1.CancelRunResponse, error)
 	// ResolveToolApproval approves or rejects a pending tool call.
 	ResolveToolApproval(context.Context, *v1.ResolveToolApprovalRequest) (*v1.ResolveToolApprovalResponse, error)
 	// SubmitQuestionAnswers returns frontend-authored answers to a pending
@@ -149,6 +166,30 @@ func NewKodaServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+KodaServiceRunProcedure,
 			connect.WithSchema(kodaServiceMethods.ByName("Run")),
+			connect.WithClientOptions(opts...),
+		),
+		watchRun: connect.NewClient[v1.WatchRunRequest, v1.WatchRunResponse](
+			httpClient,
+			baseURL+KodaServiceWatchRunProcedure,
+			connect.WithSchema(kodaServiceMethods.ByName("WatchRun")),
+			connect.WithClientOptions(opts...),
+		),
+		getRun: connect.NewClient[v1.GetRunRequest, v1.GetRunResponse](
+			httpClient,
+			baseURL+KodaServiceGetRunProcedure,
+			connect.WithSchema(kodaServiceMethods.ByName("GetRun")),
+			connect.WithClientOptions(opts...),
+		),
+		getActiveRun: connect.NewClient[v1.GetActiveRunRequest, v1.GetActiveRunResponse](
+			httpClient,
+			baseURL+KodaServiceGetActiveRunProcedure,
+			connect.WithSchema(kodaServiceMethods.ByName("GetActiveRun")),
+			connect.WithClientOptions(opts...),
+		),
+		cancelRun: connect.NewClient[v1.CancelRunRequest, v1.CancelRunResponse](
+			httpClient,
+			baseURL+KodaServiceCancelRunProcedure,
+			connect.WithSchema(kodaServiceMethods.ByName("CancelRun")),
 			connect.WithClientOptions(opts...),
 		),
 		resolveToolApproval: connect.NewClient[v1.ResolveToolApprovalRequest, v1.ResolveToolApprovalResponse](
@@ -271,6 +312,10 @@ func NewKodaServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 // kodaServiceClient implements KodaServiceClient.
 type kodaServiceClient struct {
 	run                   *connect.Client[v1.RunRequest, v1.RunResponse]
+	watchRun              *connect.Client[v1.WatchRunRequest, v1.WatchRunResponse]
+	getRun                *connect.Client[v1.GetRunRequest, v1.GetRunResponse]
+	getActiveRun          *connect.Client[v1.GetActiveRunRequest, v1.GetActiveRunResponse]
+	cancelRun             *connect.Client[v1.CancelRunRequest, v1.CancelRunResponse]
 	resolveToolApproval   *connect.Client[v1.ResolveToolApprovalRequest, v1.ResolveToolApprovalResponse]
 	submitQuestionAnswers *connect.Client[v1.SubmitQuestionAnswersRequest, v1.SubmitQuestionAnswersResponse]
 	listDirectories       *connect.Client[v1.ListDirectoriesRequest, v1.ListDirectoriesResponse]
@@ -295,6 +340,38 @@ type kodaServiceClient struct {
 // Run calls koda.v1.KodaService.Run.
 func (c *kodaServiceClient) Run(ctx context.Context, req *v1.RunRequest) (*connect.ServerStreamForClient[v1.RunResponse], error) {
 	return c.run.CallServerStream(ctx, connect.NewRequest(req))
+}
+
+// WatchRun calls koda.v1.KodaService.WatchRun.
+func (c *kodaServiceClient) WatchRun(ctx context.Context, req *v1.WatchRunRequest) (*connect.ServerStreamForClient[v1.WatchRunResponse], error) {
+	return c.watchRun.CallServerStream(ctx, connect.NewRequest(req))
+}
+
+// GetRun calls koda.v1.KodaService.GetRun.
+func (c *kodaServiceClient) GetRun(ctx context.Context, req *v1.GetRunRequest) (*v1.GetRunResponse, error) {
+	response, err := c.getRun.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// GetActiveRun calls koda.v1.KodaService.GetActiveRun.
+func (c *kodaServiceClient) GetActiveRun(ctx context.Context, req *v1.GetActiveRunRequest) (*v1.GetActiveRunResponse, error) {
+	response, err := c.getActiveRun.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
+// CancelRun calls koda.v1.KodaService.CancelRun.
+func (c *kodaServiceClient) CancelRun(ctx context.Context, req *v1.CancelRunRequest) (*v1.CancelRunResponse, error) {
+	response, err := c.cancelRun.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
 }
 
 // ResolveToolApproval calls koda.v1.KodaService.ResolveToolApproval.
@@ -472,6 +549,14 @@ func (c *kodaServiceClient) RefreshModels(ctx context.Context, req *v1.RefreshMo
 type KodaServiceHandler interface {
 	// Run executes one agent turn and streams its observable state.
 	Run(context.Context, *v1.RunRequest, *connect.ServerStream[v1.RunResponse]) error
+	// WatchRun attaches to an admitted Run without owning its execution.
+	WatchRun(context.Context, *v1.WatchRunRequest, *connect.ServerStream[v1.WatchRunResponse]) error
+	// GetRun returns an active or recently completed Run.
+	GetRun(context.Context, *v1.GetRunRequest) (*v1.GetRunResponse, error)
+	// GetActiveRun returns the Run currently occupying one session, if any.
+	GetActiveRun(context.Context, *v1.GetActiveRunRequest) (*v1.GetActiveRunResponse, error)
+	// CancelRun explicitly requests cancellation of one admitted Run.
+	CancelRun(context.Context, *v1.CancelRunRequest) (*v1.CancelRunResponse, error)
 	// ResolveToolApproval approves or rejects a pending tool call.
 	ResolveToolApproval(context.Context, *v1.ResolveToolApprovalRequest) (*v1.ResolveToolApprovalResponse, error)
 	// SubmitQuestionAnswers returns frontend-authored answers to a pending
@@ -524,6 +609,30 @@ func NewKodaServiceHandler(svc KodaServiceHandler, opts ...connect.HandlerOption
 		KodaServiceRunProcedure,
 		svc.Run,
 		connect.WithSchema(kodaServiceMethods.ByName("Run")),
+		connect.WithHandlerOptions(opts...),
+	)
+	kodaServiceWatchRunHandler := connect.NewServerStreamHandlerSimple(
+		KodaServiceWatchRunProcedure,
+		svc.WatchRun,
+		connect.WithSchema(kodaServiceMethods.ByName("WatchRun")),
+		connect.WithHandlerOptions(opts...),
+	)
+	kodaServiceGetRunHandler := connect.NewUnaryHandlerSimple(
+		KodaServiceGetRunProcedure,
+		svc.GetRun,
+		connect.WithSchema(kodaServiceMethods.ByName("GetRun")),
+		connect.WithHandlerOptions(opts...),
+	)
+	kodaServiceGetActiveRunHandler := connect.NewUnaryHandlerSimple(
+		KodaServiceGetActiveRunProcedure,
+		svc.GetActiveRun,
+		connect.WithSchema(kodaServiceMethods.ByName("GetActiveRun")),
+		connect.WithHandlerOptions(opts...),
+	)
+	kodaServiceCancelRunHandler := connect.NewUnaryHandlerSimple(
+		KodaServiceCancelRunProcedure,
+		svc.CancelRun,
+		connect.WithSchema(kodaServiceMethods.ByName("CancelRun")),
 		connect.WithHandlerOptions(opts...),
 	)
 	kodaServiceResolveToolApprovalHandler := connect.NewUnaryHandlerSimple(
@@ -644,6 +753,14 @@ func NewKodaServiceHandler(svc KodaServiceHandler, opts ...connect.HandlerOption
 		switch r.URL.Path {
 		case KodaServiceRunProcedure:
 			kodaServiceRunHandler.ServeHTTP(w, r)
+		case KodaServiceWatchRunProcedure:
+			kodaServiceWatchRunHandler.ServeHTTP(w, r)
+		case KodaServiceGetRunProcedure:
+			kodaServiceGetRunHandler.ServeHTTP(w, r)
+		case KodaServiceGetActiveRunProcedure:
+			kodaServiceGetActiveRunHandler.ServeHTTP(w, r)
+		case KodaServiceCancelRunProcedure:
+			kodaServiceCancelRunHandler.ServeHTTP(w, r)
 		case KodaServiceResolveToolApprovalProcedure:
 			kodaServiceResolveToolApprovalHandler.ServeHTTP(w, r)
 		case KodaServiceSubmitQuestionAnswersProcedure:
@@ -693,6 +810,22 @@ type UnimplementedKodaServiceHandler struct{}
 
 func (UnimplementedKodaServiceHandler) Run(context.Context, *v1.RunRequest, *connect.ServerStream[v1.RunResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.Run is not implemented"))
+}
+
+func (UnimplementedKodaServiceHandler) WatchRun(context.Context, *v1.WatchRunRequest, *connect.ServerStream[v1.WatchRunResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.WatchRun is not implemented"))
+}
+
+func (UnimplementedKodaServiceHandler) GetRun(context.Context, *v1.GetRunRequest) (*v1.GetRunResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.GetRun is not implemented"))
+}
+
+func (UnimplementedKodaServiceHandler) GetActiveRun(context.Context, *v1.GetActiveRunRequest) (*v1.GetActiveRunResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.GetActiveRun is not implemented"))
+}
+
+func (UnimplementedKodaServiceHandler) CancelRun(context.Context, *v1.CancelRunRequest) (*v1.CancelRunResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("koda.v1.KodaService.CancelRun is not implemented"))
 }
 
 func (UnimplementedKodaServiceHandler) ResolveToolApproval(context.Context, *v1.ResolveToolApprovalRequest) (*v1.ResolveToolApprovalResponse, error) {

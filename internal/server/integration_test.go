@@ -48,24 +48,31 @@ func TestIntegrationRunApprovalPersistsAndRestoresHistory(t *testing.T) {
 	}
 	var approval *v1.ToolApproval
 	var completed *v1.RunCompleted
+	var approvalSequence, resolutionSequence, completionSequence int64
 	for stream.Receive() {
 		frame := stream.Msg()
 		if value := frame.GetApproval(); value != nil {
 			approval = value
+			approvalSequence = frame.GetSequence()
 			if _, err := client.ResolveToolApproval(t.Context(), v1.ResolveToolApprovalRequest_builder{
 				ApprovalId: new(value.GetId()), Approved: new(true),
 			}.Build()); err != nil {
 				t.Fatalf("ResolveToolApproval() error = %v", err)
 			}
 		}
+		if frame.GetInteractionResolved().GetApprovalId() != "" {
+			resolutionSequence = frame.GetSequence()
+		}
 		if value := frame.GetCompleted(); value != nil {
 			completed = value
+			completionSequence = frame.GetSequence()
 		}
 	}
 	if err := stream.Err(); err != nil {
 		t.Fatalf("Run() stream error = %v", err)
 	}
-	if approval == nil || approval.GetToolCallId() != "call-1" || completed == nil {
+	if approval == nil || approval.GetToolCallId() != "call-1" || completed == nil ||
+		approvalSequence >= resolutionSequence || resolutionSequence >= completionSequence {
 		t.Fatalf("Run() approval = %+v, completed = %+v", approval, completed)
 	}
 	contents, err := os.ReadFile(filepath.Join(workspace, "created.txt"))
@@ -143,7 +150,7 @@ func TestIntegrationQuestionAndMultimodalUndo(t *testing.T) {
 	}
 }
 
-func TestIntegrationCanceledApprovalPreservesInterruptedTurn(t *testing.T) {
+func TestIntegrationExplicitCancellationPreservesInterruptedTurn(t *testing.T) {
 	upstream := newOpenAIStub(t, []openAIReply{{toolName: "create_file", toolArguments: `{"path":"never.txt","content":"no"}`}})
 	defer upstream.Close()
 	client, sessionStore, stop := startIntegrationService(t, filepath.Join(t.TempDir(), "providers.json"), filepath.Join(t.TempDir(), "koda.db"), upstream.URL)
@@ -166,6 +173,18 @@ func TestIntegrationCanceledApprovalPreservesInterruptedTurn(t *testing.T) {
 	}
 	if code := connect.CodeOf(stream.Err()); code != connect.CodeCanceled {
 		t.Fatalf("Run() code = %v, error = %v", code, stream.Err())
+	}
+	active, err := client.GetActiveRun(t.Context(), v1.GetActiveRunRequest_builder{SessionId: new(session.GetId())}.Build())
+	if err != nil || active.GetRun() == nil || len(active.GetRun().GetApprovals()) != 1 {
+		t.Fatalf("GetActiveRun() = %+v, %v", active, err)
+	}
+	if _, err := client.CancelRun(t.Context(), v1.CancelRunRequest_builder{RunId: new(active.GetRun().GetRunId())}.Build()); err != nil {
+		t.Fatalf("CancelRun() error = %v", err)
+	}
+	if _, err := client.ResolveToolApproval(t.Context(), v1.ResolveToolApprovalRequest_builder{
+		ApprovalId: new(active.GetRun().GetApprovals()[0].GetId()), Approved: new(true),
+	}.Build()); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("ResolveToolApproval(after cancel) code = %v, error = %v", connect.CodeOf(err), err)
 	}
 	eventually(t, func() bool {
 		history, listErr := client.ListEvents(t.Context(), v1.ListEventsRequest_builder{SessionId: new(session.GetId())}.Build())
@@ -274,8 +293,8 @@ func TestIntegrationSameSessionRunsSerializeAndDifferentSessionsRunConcurrently(
 		t.Fatalf("maximum concurrent Runs = %d, want 2 for different sessions", maximum.Load())
 	}
 	waitingErr := <-waitingDone
-	if connect.CodeOf(waitingErr) != connect.CodeDeadlineExceeded && connect.CodeOf(waitingErr) != connect.CodeCanceled {
-		t.Fatalf("waiting Run error = %v", waitingErr)
+	if connect.CodeOf(waitingErr) != connect.CodeAlreadyExists {
+		t.Fatalf("waiting Run error = %v, want already_exists", waitingErr)
 	}
 	assertSessionMutationWaitsForRun(t, func(ctx context.Context) error {
 		_, err := client.UpdateSession(ctx, v1.UpdateSessionRequest_builder{
@@ -297,6 +316,91 @@ func TestIntegrationSameSessionRunsSerializeAndDifferentSessionsRunConcurrently(
 	}
 	if err := <-otherDone; err != nil {
 		t.Fatalf("other-session Run error = %v", err)
+	}
+}
+
+func TestIntegrationRunSurvivesDisconnectAndIdempotentlyReattaches(t *testing.T) {
+	handler := newHTTPTestHandler(t)
+	handler.newSessionID = func() (string, error) { return "session-1", nil }
+	release := make(chan struct{})
+	started := make(chan string, 1)
+	var active atomic.Int32
+	var maximum atomic.Int32
+	var factoryCalls atomic.Int32
+	handler.turnRunnerFactory = func(_ context.Context, session store.Session, _ v1.AgentMode) (TurnRunner, error) {
+		factoryCalls.Add(1)
+		return gatedTurnRunner{sessionID: session.ID, active: &active, maximum: &maximum, started: started, release: release}, nil
+	}
+	_, client, stop := startHTTPTestServer(t, handler, HTTPServerConfig{Address: "127.0.0.1:0"})
+	defer stop()
+	session := createBuiltinSession(t, client, t.TempDir())
+	request := runRequest(session.GetId(), "hello", v1.AgentMode_AGENT_MODE_PLAN)
+	request.SetClientRequestId("request-1")
+
+	ctx, cancel := context.WithCancel(t.Context())
+	stream, err := client.Run(ctx, request)
+	if err != nil || !stream.Receive() {
+		t.Fatalf("Run() start = %v, %v", err, stream.Err())
+	}
+	runID := stream.Msg().GetRunId()
+	cancel()
+	for stream.Receive() {
+	}
+	waitString(t, started)
+
+	activeRun, err := client.GetActiveRun(t.Context(), v1.GetActiveRunRequest_builder{SessionId: new(session.GetId())}.Build())
+	if err != nil || activeRun.GetRun().GetRunId() != runID {
+		t.Fatalf("GetActiveRun() = %+v, %v", activeRun, err)
+	}
+	retry, err := client.Run(t.Context(), request)
+	if err != nil || !retry.Receive() || retry.Msg().GetRunId() != runID {
+		t.Fatalf("Run(retry) frame = %+v, error = %v, stream error = %v", retry.Msg(), err, retry.Err())
+	}
+	changed := runRequest(session.GetId(), "different", v1.AgentMode_AGENT_MODE_PLAN)
+	changed.SetClientRequestId("request-1")
+	changedStream, err := client.Run(t.Context(), changed)
+	if err == nil {
+		for changedStream.Receive() {
+		}
+		err = changedStream.Err()
+	}
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("Run(changed idempotent request) code = %v, error = %v", connect.CodeOf(err), err)
+	}
+	close(release)
+	completed := false
+	for retry.Receive() {
+		completed = completed || retry.Msg().GetCompleted() != nil
+	}
+	if err := retry.Err(); err != nil || !completed || factoryCalls.Load() != 1 {
+		t.Fatalf("Run(retry) completed = %t, factory calls = %d, error = %v", completed, factoryCalls.Load(), err)
+	}
+
+	watched, err := client.WatchRun(t.Context(), v1.WatchRunRequest_builder{RunId: new(runID), AfterSequence: new(int64(1))}.Build())
+	if err != nil {
+		t.Fatalf("WatchRun() setup error = %v", err)
+	}
+	replayedCompletion := false
+	for watched.Receive() {
+		replayedCompletion = replayedCompletion || watched.Msg().GetFrame().GetCompleted() != nil
+	}
+	if err := watched.Err(); err != nil || !replayedCompletion {
+		t.Fatalf("WatchRun() completed = %t, error = %v", replayedCompletion, err)
+	}
+
+	secondRequest := runRequest(session.GetId(), "second", v1.AgentMode_AGENT_MODE_PLAN)
+	secondRequest.SetClientRequestId("request-2")
+	runToCompletion(t, client, secondRequest)
+	oldRetry, err := client.Run(t.Context(), request)
+	if err != nil {
+		t.Fatalf("Run(old retry) setup error = %v", err)
+	}
+	oldRunID := ""
+	for oldRetry.Receive() {
+		oldRunID = oldRetry.Msg().GetRunId()
+	}
+	if err := oldRetry.Err(); err != nil || oldRunID != runID || factoryCalls.Load() != 2 {
+		t.Fatalf("Run(old retry) ID = %q, factory calls = %d, error = %v", oldRunID, factoryCalls.Load(), err)
 	}
 }
 

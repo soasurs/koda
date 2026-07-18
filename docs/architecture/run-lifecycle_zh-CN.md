@@ -2,8 +2,9 @@
 
 [English](run-lifecycle.md) · [架构导航](../architecture_zh-CN.md)
 
-`Run` 是 Koda 的核心一致性协议。它不只是模型 token stream，还拥有 Session 串行化、
-可选 compaction、所有模型与工具轮次、持久化历史、Session metadata 和最终客户端确认。
+`Run` 是 Koda 的核心一致性协议。它是 Server-owned execution，而不是单个 transport
+stream 的生命周期。它拥有 Session 串行化、可选 compaction、所有模型与工具轮次、
+持久化历史、Session metadata 和可重放终态。
 
 ## 请求与串行化
 
@@ -11,9 +12,11 @@ Server 首先校验 Session ID、mode 和有序多模态输入。文本、HTTPS 
 数据都在这一边界从 Proto 转换。Complete user event 会保留原始 parts，确保 history
 和 undo 可以完整往返输入。
 
-Handler 随后使用请求 context 获取 Session Run lock。该锁与 ADK 历史操作共用，并通过
-locked context 支持可重入调用。锁一直持有到 completion frame 被接受，或者 turn 完成
-终结。不同 Session 的 Run 可以并发；同一 Session 的操作会串行执行。
+Admission 使用 `client_request_id` 保证重试幂等，并在执行前返回 Koda Run ID。进程拥有
+的执行 goroutine 使用自己的 context 获取 Session Run lock。该锁与 ADK 历史操作共用，
+并通过 locked context 支持可重入调用。锁一直持有到持久化终结和 terminal journal 发布
+完成。不同 Session 的 Run 可以并发；一个 Session 存在 active Run 时会拒绝另一个不同
+Run。
 
 ## 执行顺序
 
@@ -26,7 +29,8 @@ sequenceDiagram
     participant T as Tool
     participant P as Provider
 
-    C->>S: Run(session, input, mode)
+    C->>S: Run(client request ID, session, input, mode)
+    S-->>C: RunStarted(run ID, sequence)
     S->>DB: 获取 Session Run lock
     S->>DB: 加载 Session 和可选 compaction
     S->>S: 必要时在 Run 前执行 compaction
@@ -37,7 +41,8 @@ sequenceDiagram
         A->>P: generate
         P-->>A: delta 或 tool call
         A-->>S: partial 和 complete event
-        S-->>C: Event frame
+        S->>S: 写入带 sequence 的 Event frame
+        S-->>C: 向订阅者发送 frame
         A->>T: 执行工具
         opt 审批或提问
             T-->>C: interaction frame
@@ -48,8 +53,12 @@ sequenceDiagram
     end
     A-->>S: terminal assistant event
     S->>DB: 提交标题或更新 Session metadata
-    S-->>C: RunCompleted(turn, session)
+    S->>S: journal RunCompleted(turn, session)
     S->>DB: 释放 Session Run lock
+    opt 订阅者重连
+        C->>S: WatchRun(run ID, after sequence)
+        S-->>C: 重放并继续发送 frame
+    end
 ```
 
 构造 Runner 前，Server 可能压缩之前的 active history。`CompactionProgress` 会让这部分
@@ -65,9 +74,10 @@ Agent factory 根据持久化 Session 设置和请求的 Build 或 Plan mode 选
 
 ## 流式输出与交互
 
-ADK 可以并发执行同一模型轮次中相互独立的 tool call。因此每个 Run 的 publisher 会保护
-所有 `stream.Send`，包括普通 event、approval、question、compaction progress 和
-completion。任何 frame 发送失败都会取消 Run context。
+ADK 可以并发执行同一模型轮次中相互独立的 tool call。每个 Run 的进程内 journal 会为
+普通 event、approval、question、compaction progress 和 terminal frame 分配统一递增
+sequence。订阅从 journal 读取；慢订阅者或断线不会阻塞或取消执行。`WatchRun` 从指定
+exclusive sequence cursor 恢复，`CancelRun` 才会显式请求取消执行。
 
 Partial event 是展示状态。Complete user、assistant 和 tool event 才是持久化 ADK history。
 Server 会流式发送两者，但诊断统计只计算 complete event 和 token usage。
@@ -76,11 +86,12 @@ Server 会流式发送两者，但诊断统计只计算 complete event 和 token
 
 1. 创建 Koda interaction ID，同时保留 Provider tool-call ID；
 2. 在进程 broker 注册 pending request；
-3. 在 active Run stream 发布 `ToolApproval`；
+3. journal `ToolApproval`，并在 active Run snapshot 中暴露；
 4. 阻塞该 tool call，等待 `ResolveToolApproval`、拒绝或取消。
 
-结构化问题通过 `QuestionPrompt` 和 `SubmitQuestionAnswers` 使用相同模式。拒绝审批会成为
-模型可见的 handled tool error，模型可以继续响应；取消或 Run 丢失则是终止错误。
+结构化问题通过 `QuestionPrompt` 和 `SubmitQuestionAnswers` 使用相同模式。Pending
+interaction 会跨订阅断线保留，并由 `GetActiveRun` 返回。拒绝审批会成为模型可见的
+handled tool error；显式取消或进程关闭才是终止错误。
 
 ## 完成协议
 
@@ -89,19 +100,19 @@ Run 才算成功。Tool-call finish reason 不是终止状态，因为 turn 必�
 下一次模型调用。
 
 Handler 要求存在 turn ID，等待可选标题生成，并提交 Session metadata。随后发布包含
-turn ID 和最新持久化 Session snapshot 的 `RunCompleted`。发送该 frame 时仍持有 Run
-lock。
+turn ID 和最新持久化 Session snapshot 的 `RunCompleted`。journal 该 frame 时仍持有
+Run lock，是否成功发送给某个订阅者与执行结果无关。
 
 因此 completion frame 具有明确语义：
 
-> 客户端观察到 `RunCompleted` 时，turn 的所有 complete event 和返回的 Session
+> journal 中出现 `RunCompleted` 时，turn 的所有 complete event 和返回的 Session
 > metadata 都已持久化且相互一致。
 
 客户端可以乐观显示 partial event 或临时标题，但必须以 `RunCompleted` 作为提交边界。
 
 ## 失败与持久化 Turn 状态
 
-在后续 Provider 调用、stream send 或 metadata 更新失败前，ADK 可能已经提交了一些
+在后续 Provider 调用或 metadata 更新失败前，ADK 可能已经提交了一些
 complete event。这些 event 会继续持久化。ADK 将 Turn 终结为 `failed` 或 `interrupted`，
 后续模型上下文通过 projector 只获得安全前缀和瞬态状态说明。读取历史时，会懒恢复旧进程
 遗留的 running Turn，将其标记为 `interrupted/abandoned`。
@@ -111,12 +122,17 @@ complete event。这些 event 会继续持久化。ADK 将 Turn 终结为 `faile
 | 等待锁时取消 | Session 无变化 |
 | reserve 边界以下 compaction 失败 | 记录失败并继续 |
 | hard boundary 上 compaction 失败 | 返回 `RESOURCE_EXHAUSTED` |
-| Provider 或 runtime 失败 | 返回映射后的 Connect error，并保留 failed Turn |
+| Provider 或 runtime 失败 | journal `RunTerminated`，并保留 failed Turn |
 | 审批拒绝 | handled tool result；Run 可以继续 |
-| stream send 失败 | 取消 Run，并保留 interrupted Turn |
+| subscriber send 失败 | 只断开该订阅者；执行继续 |
+| 显式 `CancelRun` | 取消执行并保留 interrupted Turn |
 | 缺少 terminal event | Agent wrapper 返回错误并将 Turn 终结为 failed |
 | 标题生成失败 | 记录日志，使用原有标题完成 |
-| metadata commit 或 `RunCompleted` 失败 | 返回错误，但不重写已经 completed 的 Turn 事实 |
+| metadata commit 或 completion journal 失败 | journal failed 终态，但不重写已经 completed 的 Turn 事实 |
+
+Run journal 和 pending interaction 只存在于进程内。只要 Koda 进程仍存活，网络或 Studio
+重启都可以恢复订阅；Koda 进程重启无法恢复执行，现有持久化恢复逻辑会把遗留 running
+Turn 标记为 abandoned。
 
 ## Run 之外的历史修改
 

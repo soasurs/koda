@@ -110,7 +110,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
         ref={containerRef}
       >
         <div className="mx-auto w-full max-w-4xl px-4 pt-8 sm:px-6">
-          {eventsQuery.isPending ? (
+          {eventsQuery.isPending && !sessionRun.isRunning ? (
             <CenteredLoader />
           ) : eventsQuery.isError ? (
             <p className="error-box">{errorMessage(eventsQuery.error)}</p>

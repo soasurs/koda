@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"sync"
 
 	"connectrpc.com/connect"
 	"github.com/soasurs/adk/model"
@@ -41,25 +40,6 @@ func agentModeToRuntime(mode v1.AgentMode) agent.Mode {
 		return agent.ModePlan
 	}
 	return agent.ModeBuild
-}
-
-// runPublisher serializes all frames written to one Connect stream. ADK may
-// execute same-round tools concurrently, so approval and question callbacks
-// must share the same send lock as ordinary event frames.
-type runPublisher struct {
-	mu     sync.Mutex
-	stream *connect.ServerStream[v1.RunResponse]
-	cancel context.CancelFunc
-}
-
-func (p *runPublisher) Publish(response *v1.RunResponse) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if err := p.stream.Send(response); err != nil {
-		p.cancel()
-		return err
-	}
-	return nil
 }
 
 func runtimeError(err error) error {

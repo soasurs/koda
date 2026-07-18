@@ -10,6 +10,11 @@ last-turn editing and retry, tool approvals, structured question prompts, and
 system-aware light and dark themes. Sessions can be renamed or archived from
 their sidebar context menu and restored from Settings > Sessions.
 
+Run execution is owned by the local Koda service rather than the mounted page.
+Navigating away, refreshing, or closing Studio detaches the event stream without
+canceling the Run. Reopening the session restores streamed frames and pending
+approvals or questions. The Stop button uses the explicit `CancelRun` RPC.
+
 ## Development
 
 Requirements:

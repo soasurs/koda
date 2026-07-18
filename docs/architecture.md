@@ -72,7 +72,7 @@ The design follows several rules:
 | Term | Meaning |
 |---|---|
 | Session | Durable runtime configuration and history ownership boundary. |
-| Run | One streamed execution requested by a client. |
+| Run | One server-owned execution with one or more client subscriptions. |
 | Turn | One durable Run execution, including completed, failed, and interrupted outcomes. |
 | Event | An ADK history record; complete events are durable and partial events are transient. |
 | Frame | One `RunResponse` payload observed by a client. |

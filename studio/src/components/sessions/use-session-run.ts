@@ -1,4 +1,5 @@
 import { create } from '@bufbuild/protobuf'
+import { Code, ConnectError } from '@connectrpc/connect'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -8,8 +9,14 @@ import type {
   QuestionPrompt,
   Session,
   ToolApproval,
+  RunResponse,
 } from '@/gen/koda/v1/service_pb'
-import { AgentMode, EventSchema, Role } from '@/gen/koda/v1/service_pb'
+import {
+  AgentMode,
+  EventSchema,
+  Role,
+  RunState,
+} from '@/gen/koda/v1/service_pb'
 import { kodaClient } from '@/lib/connect'
 import { errorMessage, kodaKeys, replaceSession } from '@/lib/koda'
 import { inputText, mergeConversationEvents } from '@/lib/session-turns'
@@ -18,12 +25,16 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
   const queryClient = useQueryClient()
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const activeRunIdRef = useRef('')
+  const lastSequenceRef = useRef(0n)
+  const terminalRef = useRef(false)
   const [composerInput, setComposerInput] = useState({
     revision: 0,
     value: '',
   })
   const [mode, setMode] = useState(AgentMode.BUILD)
   const [isRunning, setIsRunning] = useState(false)
+  const [isCheckingRun, setIsCheckingRun] = useState(true)
   const [rewindingTurnId, setRewindingTurnId] = useState('')
   const [runError, setRunError] = useState('')
   const [optimisticUserEvent, setOptimisticUserEvent] = useState<Event | null>(
@@ -44,17 +55,219 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     [],
   )
 
-  async function invalidateSession() {
+  const invalidateSession = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: kodaKeys.events(sessionId) }),
       queryClient.invalidateQueries({ queryKey: kodaKeys.session(sessionId) }),
       queryClient.invalidateQueries({ queryKey: kodaKeys.sessions }),
     ])
-  }
+  }, [queryClient, sessionId])
+
+  const handleFrame = useCallback(
+    (frame: RunResponse) => {
+      if (frame.sequence > 0n && frame.sequence <= lastSequenceRef.current) {
+        return
+      }
+      if (frame.runId) activeRunIdRef.current = frame.runId
+      if (frame.sequence > lastSequenceRef.current) {
+        lastSequenceRef.current = frame.sequence
+      }
+      if (frame.payload.case !== 'terminated') setRunError('')
+      switch (frame.payload.case) {
+        case 'event': {
+          const event = frame.payload.value
+          if (event.turnId) {
+            setOptimisticUserEvent((current) =>
+              current && current.turnId !== event.turnId
+                ? create(EventSchema, {
+                    sessionId: current.sessionId,
+                    turnId: event.turnId,
+                    author: current.author,
+                    createdAt: current.createdAt,
+                    message: current.message,
+                  })
+                : current,
+            )
+          }
+          if (event.partial) {
+            if (event.message?.reasoning) {
+              setPartialReasoning(
+                (current) => current + event.message!.reasoning,
+              )
+            }
+            if (event.message?.text) {
+              setPartialText((current) => current + event.message!.text)
+            }
+          } else {
+            setLiveEvents((current) =>
+              current.some(({ id }) => id && id === event.id)
+                ? current
+                : [...current, event],
+            )
+            if (event.message?.role === Role.ASSISTANT) {
+              setPartialReasoning('')
+              setPartialText('')
+            }
+          }
+          break
+        }
+        case 'approval': {
+          const approval = frame.payload.value
+          setApprovals((current) =>
+            current.some(({ id }) => id === approval.id)
+              ? current
+              : [...current, approval],
+          )
+          break
+        }
+        case 'questionPrompt': {
+          const prompt = frame.payload.value
+          setQuestionPrompts((current) =>
+            current.some(({ id }) => id === prompt.id)
+              ? current
+              : [...current, prompt],
+          )
+          break
+        }
+        case 'compactionProgress':
+          setCompactionProgress(frame.payload.value)
+          break
+        case 'completed': {
+          terminalRef.current = true
+          const completedSession = frame.payload.value.session
+          if (completedSession) {
+            queryClient.setQueryData(
+              kodaKeys.session(sessionId),
+              completedSession,
+            )
+            queryClient.setQueryData<Session[]>(kodaKeys.sessions, (sessions) =>
+              replaceSession(sessions, completedSession),
+            )
+          }
+          break
+        }
+        case 'terminated':
+          terminalRef.current = true
+          if (frame.payload.value.state === RunState.FAILED) {
+            setRunError(frame.payload.value.failure?.message || 'Run failed')
+          }
+          break
+        case 'interactionResolved': {
+          const resolved = frame.payload.value.interaction
+          if (resolved.case === 'approvalId') {
+            setApprovals((current) =>
+              current.filter(({ id }) => id !== resolved.value),
+            )
+          } else if (resolved.case === 'questionPromptId') {
+            setQuestionPrompts((current) =>
+              current.filter(({ id }) => id !== resolved.value),
+            )
+          }
+          break
+        }
+      }
+    },
+    [queryClient, sessionId],
+  )
+
+  const watchUntilTerminal = useCallback(
+    async (runId: string, abortController: AbortController) => {
+      let watchedRunId = runId
+      while (!terminalRef.current && !abortController.signal.aborted) {
+        try {
+          const stream = kodaClient.watchRun(
+            {
+              runId: watchedRunId,
+              afterSequence: lastSequenceRef.current,
+            },
+            { signal: abortController.signal },
+          )
+          for await (const response of stream) {
+            if (response.frame) handleFrame(response.frame)
+          }
+        } catch (error) {
+          if (abortController.signal.aborted) return
+          if (ConnectError.from(error).code === Code.NotFound) {
+            const active = await kodaClient.getActiveRun(
+              { sessionId },
+              { signal: abortController.signal },
+            )
+            if (!active.run) {
+              terminalRef.current = true
+              return
+            }
+            if (active.run.runId !== watchedRunId) {
+              watchedRunId = active.run.runId
+              activeRunIdRef.current = watchedRunId
+              lastSequenceRef.current = 0n
+              setApprovals(active.run.approvals)
+              setQuestionPrompts(active.run.questionPrompts)
+            }
+          } else if (!isRetriable(error)) {
+            throw error
+          }
+        }
+        if (!terminalRef.current) {
+          await retryDelay(abortController.signal)
+        }
+      }
+    },
+    [handleFrame, sessionId],
+  )
+
+  useEffect(() => {
+    const abortController = new AbortController()
+    abortRef.current = abortController
+    void (async () => {
+      try {
+        let response
+        for (;;) {
+          try {
+            response = await kodaClient.getActiveRun(
+              { sessionId },
+              { signal: abortController.signal },
+            )
+            setRunError('')
+            break
+          } catch (error) {
+            if (abortController.signal.aborted) return
+            if (!isRetriable(error)) throw error
+            setRunError(errorMessage(error))
+            await retryDelay(abortController.signal)
+          }
+        }
+        const active = response.run
+        setIsCheckingRun(false)
+        if (!active) return
+        activeRunIdRef.current = active.runId
+        lastSequenceRef.current = 0n
+        terminalRef.current = false
+        setApprovals(active.approvals)
+        setQuestionPrompts(active.questionPrompts)
+        setIsRunning(true)
+        await watchUntilTerminal(active.runId, abortController)
+        await invalidateSession()
+        setLiveEvents([])
+      } catch (error) {
+        if (!abortController.signal.aborted) setRunError(errorMessage(error))
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsCheckingRun(false)
+          setIsRunning(false)
+          setCompactionProgress(null)
+          setApprovals([])
+          setQuestionPrompts([])
+          activeRunIdRef.current = ''
+          abortRef.current = null
+        }
+      }
+    })()
+    return () => abortController.abort()
+  }, [invalidateSession, sessionId, watchUntilTerminal])
 
   async function run(input: string) {
     const text = input.trim()
-    if (!text || isRunning) return
+    if (!text || isRunning || isCheckingRun) return
 
     setComposerInput((current) => ({
       revision: current.revision + 1,
@@ -77,106 +290,70 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     setIsRunning(true)
     const abortController = new AbortController()
     abortRef.current = abortController
+    activeRunIdRef.current = ''
+    lastSequenceRef.current = 0n
+    terminalRef.current = false
+
+    const request = {
+      sessionId,
+      input: { parts: [{ content: { case: 'text' as const, value: text } }] },
+      mode,
+      clientRequestId: crypto.randomUUID(),
+    }
 
     try {
-      const stream = kodaClient.run(
-        {
-          sessionId,
-          input: { parts: [{ content: { case: 'text', value: text } }] },
-          mode,
-        },
-        { signal: abortController.signal },
-      )
-
-      for await (const frame of stream) {
-        switch (frame.payload.case) {
-          case 'event': {
-            const event = frame.payload.value
-            if (event.turnId) {
-              setOptimisticUserEvent((current) =>
-                current && current.turnId !== event.turnId
-                  ? create(EventSchema, {
-                      sessionId: current.sessionId,
-                      turnId: event.turnId,
-                      author: current.author,
-                      createdAt: current.createdAt,
-                      message: current.message,
-                    })
-                  : current,
-              )
-            }
-            if (event.partial) {
-              if (event.message?.reasoning) {
-                setPartialReasoning(
-                  (current) => current + event.message!.reasoning,
-                )
-              }
-              if (event.message?.text) {
-                setPartialText((current) => current + event.message!.text)
-              }
-            } else {
-              setLiveEvents((current) => [...current, event])
-              if (event.message?.role === Role.ASSISTANT) {
-                setPartialReasoning('')
-                setPartialText('')
-              }
-            }
-            break
-          }
-          case 'approval': {
-            const approval = frame.payload.value
-            setApprovals((current) => [...current, approval])
-            break
-          }
-          case 'questionPrompt': {
-            const prompt = frame.payload.value
-            setQuestionPrompts((current) => [...current, prompt])
-            break
-          }
-          case 'compactionProgress': {
-            setCompactionProgress(frame.payload.value)
-            break
-          }
-          case 'completed': {
-            const completedSession = frame.payload.value.session
-            if (completedSession) {
-              queryClient.setQueryData(
-                kodaKeys.session(sessionId),
-                completedSession,
-              )
-              queryClient.setQueryData<Session[]>(
-                kodaKeys.sessions,
-                (sessions) => replaceSession(sessions, completedSession),
-              )
-            }
+      while (!terminalRef.current && !abortController.signal.aborted) {
+        try {
+          const stream = kodaClient.run(request, {
+            signal: abortController.signal,
+          })
+          for await (const frame of stream) handleFrame(frame)
+        } catch (error) {
+          if (abortController.signal.aborted) return
+          if (terminalRef.current) break
+          setRunError(errorMessage(error))
+          if (!isRetriable(error)) {
+            if (!activeRunIdRef.current) setOptimisticUserEvent(null)
+            terminalRef.current = true
             break
           }
         }
+        if (terminalRef.current) break
+        if (activeRunIdRef.current) {
+          await watchUntilTerminal(activeRunIdRef.current, abortController)
+        } else {
+          await retryDelay(abortController.signal)
+        }
       }
 
-      await invalidateSession()
-      setLiveEvents([])
+      if (activeRunIdRef.current) {
+        await invalidateSession()
+        setLiveEvents([])
+      }
     } catch (error) {
       setOptimisticUserEvent(null)
       setLiveEvents([])
       setPartialReasoning('')
       setPartialText('')
-      await invalidateSession()
+      if (activeRunIdRef.current) await invalidateSession()
       if (!abortController.signal.aborted) {
         setRunError(errorMessage(error))
       }
     } finally {
-      setIsRunning(false)
-      setCompactionProgress(null)
-      setApprovals([])
-      setQuestionPrompts([])
-      abortRef.current = null
-      inputRef.current?.focus()
+      if (!abortController.signal.aborted) {
+        setIsRunning(false)
+        setCompactionProgress(null)
+        setApprovals([])
+        setQuestionPrompts([])
+        abortRef.current = null
+        activeRunIdRef.current = ''
+        inputRef.current?.focus()
+      }
     }
   }
 
   async function rewindLastTurn(turnId: string, retry: boolean) {
-    if (isRunning || rewindingTurnId) return
+    if (isRunning || isCheckingRun || rewindingTurnId) return
     setRewindingTurnId(turnId)
     setRunError('')
     try {
@@ -206,7 +383,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
   }
 
   async function editLastTurn(turnId: string, newText: string) {
-    if (isRunning || rewindingTurnId) return
+    if (isRunning || isCheckingRun || rewindingTurnId) return
     setRewindingTurnId(turnId)
     setRunError('')
     try {
@@ -250,7 +427,16 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
       ),
     [],
   )
-  const stop = useCallback(() => abortRef.current?.abort(), [])
+  const stop = useCallback(() => {
+    void (async () => {
+      let runId = activeRunIdRef.current
+      if (!runId) {
+        const active = await kodaClient.getActiveRun({ sessionId })
+        runId = active.run?.runId ?? ''
+      }
+      if (runId) await kodaClient.cancelRun({ runId })
+    })().catch((error: unknown) => setRunError(errorMessage(error)))
+  }, [sessionId])
 
   const runRef = useRef(run)
   useEffect(() => {
@@ -269,7 +455,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     events,
     inputRef,
     inputRevision: composerInput.revision,
-    isRunning,
+    isRunning: isRunning || isCheckingRun,
     mode,
     partialReasoning,
     partialText,
@@ -282,5 +468,32 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     runStable: stableRun,
     setMode,
     stop,
+  }
+}
+
+function retryDelay(signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(resolve, 250)
+    signal.addEventListener(
+      'abort',
+      () => {
+        window.clearTimeout(timer)
+        resolve()
+      },
+      { once: true },
+    )
+  })
+}
+
+function isRetriable(error: unknown): boolean {
+  switch (ConnectError.from(error).code) {
+    case Code.Unknown:
+    case Code.Canceled:
+    case Code.DeadlineExceeded:
+    case Code.Aborted:
+    case Code.Unavailable:
+      return true
+    default:
+      return false
   }
 }
