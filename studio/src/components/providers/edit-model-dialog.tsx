@@ -14,6 +14,7 @@ import {
 import type { Model, Provider } from '@/gen/koda/v1/service_pb'
 import { kodaClient } from '@/lib/connect'
 import { errorMessage, kodaKeys } from '@/lib/koda'
+import { parseContextWindowTokens } from '@/components/providers/provider-types'
 
 function parseEfforts(input: string): string[] {
   return input
@@ -41,14 +42,21 @@ export function EditModelDialog({
   const [defaultEffort, setDefaultEffort] = useState(
     model.defaultReasoningEffort || '__default',
   )
+  const [contextWindowInput, setContextWindowInput] = useState(
+    model.contextWindowTokens > 0n ? model.contextWindowTokens.toString() : '',
+  )
 
   const efforts = useMemo(
     () => parseEfforts(reasoningEffortsInput),
     [reasoningEffortsInput],
   )
+  const contextWindowTokens = parseContextWindowTokens(contextWindowInput)
 
   const saveMutation = useMutation({
     mutationFn: () => {
+      if (contextWindowTokens === null) {
+        throw new Error('Context window must be a positive integer')
+      }
       const otherModels = models.filter((m) => m.id !== model.id)
       return kodaClient.saveProvider({
         id: provider.id,
@@ -63,6 +71,7 @@ export function EditModelDialog({
             reasoningEfforts: efforts,
             defaultReasoningEffort:
               defaultEffort === '__default' ? '' : defaultEffort,
+            contextWindowTokens,
           },
         ],
         enabled: provider.enabled !== false,
@@ -120,6 +129,21 @@ export function EditModelDialog({
           </span>
         </label>
 
+        <label className="field-label">
+          Context window tokens
+          <input
+            className="input"
+            inputMode="numeric"
+            onChange={(event) => setContextWindowInput(event.target.value)}
+            placeholder="Uses catalog or Koda fallback"
+            value={contextWindowInput}
+          />
+          <span className="mt-1 text-[11px] text-neutral-600">
+            Optional total input and output capacity. Leave empty to use catalog
+            metadata or Koda's fallback.
+          </span>
+        </label>
+
         {efforts.length > 0 && (
           <label className="field-label">
             Default reasoning effort
@@ -145,12 +169,20 @@ export function EditModelDialog({
         {saveMutation.isError && (
           <p className="error-box">{errorMessage(saveMutation.error)}</p>
         )}
+        {contextWindowTokens === null && (
+          <p className="error-box">
+            Context window must be a positive integer.
+          </p>
+        )}
 
         <footer className="flex justify-end gap-2 pt-1">
           <Button variant="outline" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button disabled={saveMutation.isPending} type="submit">
+          <Button
+            disabled={contextWindowTokens === null || saveMutation.isPending}
+            type="submit"
+          >
             {saveMutation.isPending && (
               <LoaderCircle className="size-4 animate-spin" />
             )}

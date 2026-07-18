@@ -29,6 +29,9 @@ func TestCatalogUsesBundledModelsForDefaultBuiltin(t *testing.T) {
 	if !slices.Contains(model.ReasoningEfforts, "max") {
 		t.Fatalf("gpt-5.6 reasoning efforts = %v, want max", model.ReasoningEfforts)
 	}
+	if model.ContextWindowTokens != 1_050_000 {
+		t.Fatalf("gpt-5.6 context window = %d, want 1050000", model.ContextWindowTokens)
+	}
 }
 
 func TestCatalogDeepSeekReasoningEfforts(t *testing.T) {
@@ -68,7 +71,8 @@ func TestCatalogCustomProviderWithoutSnapshotUsesOnlyOverrides(t *testing.T) {
 		Type:    TypeOpenAIResponses,
 		BaseURL: "https://models.example/v1",
 		ModelOverrides: []Model{{
-			ID: "private-model",
+			ID:                  "private-model",
+			ContextWindowTokens: 128_000,
 		}},
 	}, nil); err != nil {
 		t.Fatalf("Save() error = %v", err)
@@ -82,7 +86,7 @@ func TestCatalogCustomProviderWithoutSnapshotUsesOnlyOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List() error = %v", err)
 	}
-	if len(got.Models) != 1 || got.Models[0].ID != "private-model" || got.Models[0].Name != "private-model" {
+	if len(got.Models) != 1 || got.Models[0].ID != "private-model" || got.Models[0].Name != "private-model" || got.Models[0].ContextWindowTokens != 128_000 {
 		t.Fatalf("List() = %+v", got)
 	}
 }
@@ -122,7 +126,7 @@ func TestCatalogRefreshEnrichesPersistsAndPreservesProviderRevision(t *testing.T
 	if !ok {
 		t.Fatal("Refresh() omitted claude-sonnet-4-6")
 	}
-	if sonnet.Name != "Preferred Sonnet" || !slices.Contains(sonnet.ReasoningEfforts, "max") {
+	if sonnet.Name != "Preferred Sonnet" || !slices.Contains(sonnet.ReasoningEfforts, "max") || sonnet.ContextWindowTokens != 1_000_000 {
 		t.Fatalf("enriched Sonnet = %+v", sonnet)
 	}
 	afterProvider, err := r.Get(t.Context(), "anthropic")

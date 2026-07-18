@@ -15,6 +15,8 @@ import (
 	"github.com/soasurs/koda/internal/store"
 )
 
+var errModelContextWindowIncompatible = errors.New("model context window is incompatible with compaction configuration")
+
 type compactionPolicy struct {
 	enabled          bool
 	triggerTokens    int64
@@ -91,9 +93,20 @@ func (p compactionPolicy) shouldRebase(nextGeneration int64) bool {
 	return nextGeneration > 0 && nextGeneration%p.rebaseInterval == 0
 }
 
-func (h *Handler) prepareRunCompaction(ctx context.Context, session store.Session) (store.Session, *store.Compaction, error) {
-	if h.compaction.shouldAttempt(session) {
-		updated, err := h.compactSession(ctx, session)
+func (h *Handler) compactionPolicyForSession(ctx context.Context, session store.Session) (compactionPolicy, error) {
+	if err := ctx.Err(); err != nil {
+		return compactionPolicy{}, err
+	}
+	policy, err := resolveCompactionPolicy(h.sessionContextWindowTokens(ctx, session), h.compactionConfig)
+	if err != nil {
+		return compactionPolicy{}, fmt.Errorf("%w: %s/%s: %v", errModelContextWindowIncompatible, session.ProviderID, session.ModelID, err)
+	}
+	return policy, nil
+}
+
+func (h *Handler) prepareRunCompaction(ctx context.Context, session store.Session, policy compactionPolicy) (store.Session, *store.Compaction, error) {
+	if policy.shouldAttempt(session) {
+		updated, err := h.compactSession(ctx, session, policy)
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return store.Session{}, nil, runtimeError(err)
@@ -111,7 +124,7 @@ func (h *Handler) prepareRunCompaction(ctx context.Context, session store.Sessio
 				slog.Any("error", err),
 				slog.Any("record_error", recordErr),
 			)
-			if session.ContextTokens >= h.compaction.hardLimitTokens {
+			if session.ContextTokens >= policy.hardLimitTokens {
 				return store.Session{}, nil, connect.NewError(connect.CodeResourceExhausted, errors.New("context compaction failed near the context limit; retry the run"))
 			}
 			session = failed
@@ -136,7 +149,7 @@ func (h *Handler) prepareRunCompaction(ctx context.Context, session store.Sessio
 	return session, current, nil
 }
 
-func (h *Handler) compactSession(ctx context.Context, session store.Session) (store.Session, error) {
+func (h *Handler) compactSession(ctx context.Context, session store.Session, policy compactionPolicy) (store.Session, error) {
 	facts, err := h.store.ListProjectionHistory(ctx, session.ID)
 	if err != nil {
 		return store.Session{}, fmt.Errorf("list compaction history: %w", err)
@@ -146,7 +159,7 @@ func (h *Handler) compactSession(ctx context.Context, session store.Session) (st
 		events[index] = event.ToModel()
 	}
 	selection, err := agent.SelectCompaction(events, agent.CompactionSelectorConfig{
-		RetainTurns: h.compaction.retainTurns, RetainTokens: h.compaction.retainTokens,
+		RetainTurns: policy.retainTurns, RetainTokens: policy.retainTokens,
 	})
 	if err != nil {
 		return store.Session{}, err
@@ -183,10 +196,10 @@ func (h *Handler) compactSession(ctx context.Context, session store.Session) (st
 		return store.Session{}, fmt.Errorf("load previous compaction: %w", err)
 	}
 	nextGeneration := session.CompactionGeneration + 1
-	rebase := h.compaction.shouldRebase(nextGeneration)
+	rebase := policy.shouldRebase(nextGeneration)
 	request := agent.CompactionRequest{
 		ModelID: session.ModelID, Events: projected, Rebase: rebase,
-		Verify: h.compaction.verify, MaxTokens: h.compaction.summaryMaxTokens,
+		Verify: policy.verify, MaxTokens: policy.summaryMaxTokens,
 	}
 	if current != nil && !rebase {
 		previous, err := agent.DecodeCompactionStateSnapshot(current.StateSnapshot)
@@ -200,7 +213,7 @@ func (h *Handler) compactSession(ctx context.Context, session store.Session) (st
 		if err != nil {
 			return store.Session{}, fmt.Errorf("list compaction generations: %w", err)
 		}
-		checkpointGeneration := nextGeneration - h.compaction.rebaseInterval
+		checkpointGeneration := nextGeneration - policy.rebaseInterval
 		if err := configureRebaseRequest(&request, generations, checkpointGeneration); err != nil {
 			return store.Session{}, err
 		}

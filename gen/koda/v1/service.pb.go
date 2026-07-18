@@ -5902,7 +5902,7 @@ type Session_builder struct {
 	// the session is active.
 	ArchivedAt *int64
 	// context_usage reports the most recent provider-measured prompt and
-	// completion size against Koda's process-wide context window budget.
+	// completion size against the selected model's effective context window.
 	ContextUsage *ContextUsage
 }
 
@@ -5962,8 +5962,8 @@ func (b0 Session_builder) Build() *Session {
 	return m0
 }
 
-// ContextUsage describes how much of the process-wide context window budget
-// the session used after its most recent provider-reported model call.
+// ContextUsage describes how much of the selected model's effective context
+// window the session used after its most recent provider-reported model call.
 type ContextUsage struct {
 	state                   protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_UsedTokens   int64                  `protobuf:"varint,1,opt,name=used_tokens,json=usedTokens"`
@@ -10819,6 +10819,7 @@ type Model struct {
 	xxx_hidden_Name                   *string                `protobuf:"bytes,2,opt,name=name"`
 	xxx_hidden_ReasoningEfforts       []string               `protobuf:"bytes,3,rep,name=reasoning_efforts,json=reasoningEfforts"`
 	xxx_hidden_DefaultReasoningEffort *string                `protobuf:"bytes,4,opt,name=default_reasoning_effort,json=defaultReasoningEffort"`
+	xxx_hidden_ContextWindowTokens    int64                  `protobuf:"varint,5,opt,name=context_window_tokens,json=contextWindowTokens"`
 	XXX_raceDetectHookData            protoimpl.RaceDetectHookData
 	XXX_presence                      [1]uint32
 	unknownFields                     protoimpl.UnknownFields
@@ -10887,14 +10888,21 @@ func (x *Model) GetDefaultReasoningEffort() string {
 	return ""
 }
 
+func (x *Model) GetContextWindowTokens() int64 {
+	if x != nil {
+		return x.xxx_hidden_ContextWindowTokens
+	}
+	return 0
+}
+
 func (x *Model) SetId(v string) {
 	x.xxx_hidden_Id = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
 }
 
 func (x *Model) SetName(v string) {
 	x.xxx_hidden_Name = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
 }
 
 func (x *Model) SetReasoningEfforts(v []string) {
@@ -10903,7 +10911,12 @@ func (x *Model) SetReasoningEfforts(v []string) {
 
 func (x *Model) SetDefaultReasoningEffort(v string) {
 	x.xxx_hidden_DefaultReasoningEffort = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+}
+
+func (x *Model) SetContextWindowTokens(v int64) {
+	x.xxx_hidden_ContextWindowTokens = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
 }
 
 func (x *Model) HasId() bool {
@@ -10927,6 +10940,13 @@ func (x *Model) HasDefaultReasoningEffort() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
 }
 
+func (x *Model) HasContextWindowTokens() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
 func (x *Model) ClearId() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_Id = nil
@@ -10942,6 +10962,11 @@ func (x *Model) ClearDefaultReasoningEffort() {
 	x.xxx_hidden_DefaultReasoningEffort = nil
 }
 
+func (x *Model) ClearContextWindowTokens() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_ContextWindowTokens = 0
+}
+
 type Model_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -10953,6 +10978,9 @@ type Model_builder struct {
 	ReasoningEfforts []string
 	// default_reasoning_effort is empty when the provider should choose the default.
 	DefaultReasoningEffort *string
+	// context_window_tokens is the model's total input and output context
+	// capacity. Zero uses Koda's process-level fallback budget.
+	ContextWindowTokens *int64
 }
 
 func (b0 Model_builder) Build() *Model {
@@ -10960,17 +10988,21 @@ func (b0 Model_builder) Build() *Model {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.Id != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
 		x.xxx_hidden_Id = b.Id
 	}
 	if b.Name != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
 		x.xxx_hidden_Name = b.Name
 	}
 	x.xxx_hidden_ReasoningEfforts = b.ReasoningEfforts
 	if b.DefaultReasoningEffort != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
 		x.xxx_hidden_DefaultReasoningEffort = b.DefaultReasoningEffort
+	}
+	if b.ContextWindowTokens != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		x.xxx_hidden_ContextWindowTokens = *b.ContextWindowTokens
 	}
 	return m0
 }
@@ -13969,12 +14001,13 @@ const file_koda_v1_service_proto_rawDesc = "" +
 	"configured\x18\x05 \x01(\bR\n" +
 	"configured\x12\x18\n" +
 	"\abuiltin\x18\x06 \x01(\bR\abuiltin\x12\x18\n" +
-	"\aenabled\x18\a \x01(\bR\aenabled\"\x92\x01\n" +
+	"\aenabled\x18\a \x01(\bR\aenabled\"\xc6\x01\n" +
 	"\x05Model\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12+\n" +
 	"\x11reasoning_efforts\x18\x03 \x03(\tR\x10reasoningEfforts\x128\n" +
-	"\x18default_reasoning_effort\x18\x04 \x01(\tR\x16defaultReasoningEffort\"\x16\n" +
+	"\x18default_reasoning_effort\x18\x04 \x01(\tR\x16defaultReasoningEffort\x122\n" +
+	"\x15context_window_tokens\x18\x05 \x01(\x03R\x13contextWindowTokens\"\x16\n" +
 	"\x14ListProvidersRequest\"H\n" +
 	"\x15ListProvidersResponse\x12/\n" +
 	"\tproviders\x18\x01 \x03(\v2\x11.koda.v1.ProviderR\tproviders\"D\n" +

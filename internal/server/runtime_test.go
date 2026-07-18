@@ -212,15 +212,13 @@ func TestRunCompactsAcknowledgedHistoryAndInjectsSnapshot(t *testing.T) {
 		t.Fatalf("CreateSession() error = %v", err)
 	}
 	seedServerCompactionHistory(t, handler, created.GetSession().GetId(), 700)
-	policy, err := resolveCompactionPolicy(1_000, config.CompactionConfig{
+	compactionConfig := config.CompactionConfig{
 		TriggerPercent: 50, ReserveTokens: 200, SummaryMaxTokens: 100,
 		RetainTurns: 1, RetainTokens: 500, RebaseInterval: 2,
-	})
-	if err != nil {
-		t.Fatalf("resolveCompactionPolicy() error = %v", err)
 	}
 	handler.contextWindowTokens = 1_000
-	handler.compaction = policy
+	handler.compactionConfig = compactionConfig
+	configureTestModelContext(t, handler, "openai-responses", "gpt-5.6", 1_000)
 	projectorCalls := 0
 	handler.projector = adkrunner.ProjectorFunc(func(_ context.Context, input adkrunner.ProjectionInput) ([]model.Event, error) {
 		projectorCalls++
@@ -335,24 +333,23 @@ func TestRunCompactionFailurePolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler.compaction = policy
 	compactor := &fakeSessionCompactor{err: errors.New("summary unavailable")}
 	handler.compactorFactory = func(context.Context, store.Session) (sessionCompactor, error) { return compactor, nil }
 	session, err := handler.store.GetSession(t.Context(), created.GetSession().GetId())
 	if err != nil {
 		t.Fatal(err)
 	}
-	soft, current, err := handler.prepareRunCompaction(t.Context(), session)
+	soft, current, err := handler.prepareRunCompaction(t.Context(), session, policy)
 	if err != nil || current != nil || soft.ConsecutiveCompactionFailures != 1 || soft.LastCompactionAttemptUsage != 700 || compactor.calls != 1 {
 		t.Fatalf("soft failure = session %+v, current %+v, calls %d, error %v", soft, current, compactor.calls, err)
 	}
-	deferred, _, err := handler.prepareRunCompaction(t.Context(), soft)
+	deferred, _, err := handler.prepareRunCompaction(t.Context(), soft, policy)
 	if err != nil || deferred.ConsecutiveCompactionFailures != 1 || compactor.calls != 1 {
 		t.Fatalf("deferred retry = session %+v, calls %d, error %v", deferred, compactor.calls, err)
 	}
 
-	handler.compaction.hardLimitTokens = 600
-	_, _, err = handler.prepareRunCompaction(t.Context(), deferred)
+	policy.hardLimitTokens = 600
+	_, _, err = handler.prepareRunCompaction(t.Context(), deferred, policy)
 	if connect.CodeOf(err) != connect.CodeResourceExhausted || compactor.calls != 2 {
 		t.Fatalf("hard failure = calls %d, code %v, error %v", compactor.calls, connect.CodeOf(err), err)
 	}
@@ -362,7 +359,7 @@ func TestRunCompactionFailurePolicy(t *testing.T) {
 	}
 	compactor.err = nil
 	compactor.result = testServerCompactionResult("recovered", "recovered state")
-	recovered, current, err := handler.prepareRunCompaction(t.Context(), failed)
+	recovered, current, err := handler.prepareRunCompaction(t.Context(), failed, policy)
 	if err != nil || current == nil || compactor.calls != 3 || recovered.CompactionGeneration != 1 ||
 		recovered.ConsecutiveCompactionFailures != 0 || recovered.LastCompactionAttemptUsage != 0 || recovered.ContextMeasured {
 		t.Fatalf("recovered compaction = session %+v, current %+v, calls %d, error %v", recovered, current, compactor.calls, err)
@@ -397,6 +394,31 @@ func TestCompactionPolicySchedulesPeriodicRebase(t *testing.T) {
 	}
 }
 
+func TestCompactionPolicyForSessionUsesModelContextWindow(t *testing.T) {
+	_, _, handler := newTestService(t, staticDiscoverer{})
+	policy, err := handler.compactionPolicyForSession(t.Context(), store.Session{
+		ProviderID: "openai-responses",
+		ModelID:    "gpt-5.4-mini",
+	})
+	if err != nil {
+		t.Fatalf("compactionPolicyForSession() error = %v", err)
+	}
+	if policy.triggerTokens != 320_000 || policy.hardLimitTokens != 367_232 {
+		t.Fatalf("model compaction policy = %+v", policy)
+	}
+
+	fallback, err := handler.compactionPolicyForSession(t.Context(), store.Session{
+		ProviderID: "missing",
+		ModelID:    "unknown",
+	})
+	if err != nil {
+		t.Fatalf("compactionPolicyForSession(fallback) error = %v", err)
+	}
+	if fallback.triggerTokens != 204_800 || fallback.hardLimitTokens != 223_232 {
+		t.Fatalf("fallback compaction policy = %+v", fallback)
+	}
+}
+
 func TestRunUsesExpectedErrorCodes(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	stream, err := client.Run(t.Context(), v1.RunRequest_builder{}.Build())
@@ -420,6 +442,13 @@ func TestRunUsesExpectedErrorCodes(t *testing.T) {
 	}
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("Run(invalid mode) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
+	}
+}
+
+func TestRuntimeErrorMapsIncompatibleModelContextWindow(t *testing.T) {
+	err := fmt.Errorf("resolve policy: %w", errModelContextWindowIncompatible)
+	if got := runtimeError(err); connect.CodeOf(got) != connect.CodeFailedPrecondition {
+		t.Fatalf("runtimeError() code = %v, want failed_precondition; error = %v", connect.CodeOf(got), got)
 	}
 }
 
@@ -509,6 +538,21 @@ func seedServerCompactionHistory(t *testing.T, handler *Handler, sessionID strin
 		}); err != nil {
 			t.Fatalf("CreateEvent(%d) error = %v", index, err)
 		}
+	}
+}
+
+func configureTestModelContext(t *testing.T, handler *Handler, providerID, modelID string, windowTokens int64) {
+	t.Helper()
+	p, err := handler.registry.Get(t.Context(), providerID)
+	if err != nil {
+		t.Fatalf("Registry.Get(%q) error = %v", providerID, err)
+	}
+	p.ModelOverrides = append(p.ModelOverrides, provider.Model{
+		ID:                  modelID,
+		ContextWindowTokens: windowTokens,
+	})
+	if _, err := handler.registry.Save(t.Context(), p, nil); err != nil {
+		t.Fatalf("Registry.Save(%q) error = %v", providerID, err)
 	}
 }
 

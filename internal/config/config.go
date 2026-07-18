@@ -15,8 +15,8 @@ import (
 const (
 	currentVersion = 1
 
-	// DefaultContextWindowTokens is the process-wide context budget used when
-	// koda.yaml does not override it.
+	// DefaultContextWindowTokens is the fallback context budget used when model
+	// metadata and koda.yaml do not provide one.
 	DefaultContextWindowTokens int64 = 256_000
 
 	// DefaultCompactionTriggerPercent is the percentage of the context window
@@ -61,13 +61,13 @@ type LogConfig struct {
 	Output string `yaml:"output,omitempty"`
 }
 
-// ContextConfig configures the process-wide model context budget.
+// ContextConfig configures the fallback model context budget.
 type ContextConfig struct {
 	WindowTokens int64 `yaml:"window_tokens,omitempty"`
 }
 
-// EffectiveWindowTokens returns the configured context budget or the built-in
-// default when no override is present.
+// EffectiveWindowTokens returns the configured fallback context budget or the
+// built-in default when no override is present.
 func (c ContextConfig) EffectiveWindowTokens() int64 {
 	if c.WindowTokens == 0 {
 		return DefaultContextWindowTokens

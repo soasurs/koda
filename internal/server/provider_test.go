@@ -65,6 +65,7 @@ func TestProviderAndModelHandlers(t *testing.T) {
 		Id:                     new("private-model"),
 		ReasoningEfforts:       []string{"low", "max"},
 		DefaultReasoningEffort: new("max"),
+		ContextWindowTokens:    new(int64(128_000)),
 	}.Build()
 	saved, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
 		Id:             new("custom"),
@@ -120,6 +121,9 @@ func TestProviderAndModelHandlers(t *testing.T) {
 	}
 	if !slices.Equal(models.GetModels()[0].GetReasoningEfforts(), []string{"low", "max"}) {
 		t.Fatalf("ListModels().Models[0].ReasoningEfforts = %v", models.GetModels()[0].GetReasoningEfforts())
+	}
+	if models.GetModels()[0].GetContextWindowTokens() != 128_000 {
+		t.Fatalf("ListModels().Models[0].ContextWindowTokens = %d", models.GetModels()[0].GetContextWindowTokens())
 	}
 
 	refreshed, err := client.RefreshModels(t.Context(), v1.RefreshModelsRequest_builder{ProviderId: new("custom")}.Build())

@@ -58,12 +58,16 @@ Koda 会尝试 `localhost:8080`，必要时回退到可用的 loopback 端口。
 
 ## Context 统计与 Compaction
 
-`context.window_tokens` 是所有 Model 共用的进程级 context 预算，默认为 256,000。
-Provider 返回 usage 前，Session 的使用量保持不可用。Studio 会将最近一次返回的 prompt
-和 completion usage 相加后展示。
+Bundled Model metadata 会声明每个已知 Model 的 context window；custom Model override
+也可以通过 Studio 或公共 API 设置同一字段。`context.window_tokens` 是缺少该 metadata
+时使用的进程级 fallback，默认为 256,000。Provider 返回 usage 前，Session 的使用量保持
+不可用。Studio 会将最近一次返回的 prompt 和 completion usage 相加，并按当前选中 Model
+的有效窗口展示。Session 切换 Model 后，有效窗口会立即变化；used-token 值则保留最近一次
+Provider measurement，直到新 Model 返回 usage。
 
-持久化 compaction 默认启用。新 Run 开始前，如果上一个已确认 turn 达到
-`trigger_percent`，或者需要提前为 `reserve_tokens` 留出空间，Koda 会尝试压缩历史。
+持久化 compaction 默认启用。新 Run 开始前，Koda 会解析当前 Model 的有效 context
+window；如果上一个已确认 turn 达到 `trigger_percent`，或者需要提前为
+`reserve_tokens` 留出空间，Koda 会尝试压缩历史。
 它在 `retain_tokens` 范围内最多保留 `retain_turns` 个最近完整 turn，总结更早的 active
 前缀，并将生成的 working-state snapshot 注入后续模型请求。该 snapshot 不是普通的
 conversation event。

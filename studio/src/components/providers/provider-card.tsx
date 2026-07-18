@@ -15,7 +15,10 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { AddModelDialog } from '@/components/providers/add-model-dialog'
 import { EditModelDialog } from '@/components/providers/edit-model-dialog'
-import { providerTypeLabels } from '@/components/providers/provider-types'
+import {
+  formatContextWindowTokens,
+  providerTypeLabels,
+} from '@/components/providers/provider-types'
 import type { Model, Provider } from '@/gen/koda/v1/service_pb'
 import { kodaClient } from '@/lib/connect'
 import { errorMessage, kodaKeys } from '@/lib/koda'
@@ -266,6 +269,12 @@ export function ProviderCard({
                       {model.reasoningEfforts.length > 0 && (
                         <span className="text-[11px] text-muted-foreground">
                           Reasoning: {model.reasoningEfforts.join(', ')}
+                        </span>
+                      )}
+                      {model.contextWindowTokens > 0n && (
+                        <span className="text-[11px] text-muted-foreground">
+                          Context:{' '}
+                          {formatContextWindowTokens(model.contextWindowTokens)}
                         </span>
                       )}
                       <Button

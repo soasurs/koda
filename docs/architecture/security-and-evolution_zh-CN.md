@@ -94,8 +94,7 @@ Server 会在传输边界把预期的取消、deadline、配置和容量条件�
 
 以下是设计问题，不是已实现功能：
 
-- 使用 Provider-specific context window budget 替代单一进程级值；
-- 客户端重连后持久恢复 approval 或 question；
+- Server 重启后持久恢复 active Run、approval 或 question；
 - 为单个 MCP tool 增加显式 capability metadata；
 - 独立发布的客户端与 Server 之间进行版本协商；
 - Session 和 compaction generation 的导出与迁移格式；

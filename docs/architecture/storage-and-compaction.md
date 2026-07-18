@@ -87,8 +87,11 @@ flowchart LR
 ## Selection and scheduling
 
 The server considers compaction before a new Run, using the token usage from a
-previous acknowledged turn. It attempts compaction at the configured trigger
-or at the lower hard limit needed to reserve output and summary capacity.
+previous acknowledged turn. It resolves the Session's selected model metadata
+first, falling back to `context.window_tokens` when no model-specific window is
+known. It attempts compaction at the configured percentage of that effective
+window or at the lower hard limit needed to reserve output and summary
+capacity.
 
 The selector works on complete turns. It retains up to the configured number of
 recent turns while respecting the retained-token budget and chooses an older

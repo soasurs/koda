@@ -528,12 +528,12 @@ message Session {
   // the session is active.
   int64 archived_at = 12;
   // context_usage reports the most recent provider-measured prompt and
-  // completion size against Koda's process-wide context window budget.
+  // completion size against the selected model's effective context window.
   ContextUsage context_usage = 13;
 }
 
-// ContextUsage describes how much of the process-wide context window budget
-// the session used after its most recent provider-reported model call.
+// ContextUsage describes how much of the selected model's effective context
+// window the session used after its most recent provider-reported model call.
 message ContextUsage {
   // used_tokens is valid only when measured is true.
   int64 used_tokens = 1;
@@ -839,6 +839,9 @@ message Model {
   repeated string reasoning_efforts = 3;
   // default_reasoning_effort is empty when the provider should choose the default.
   string default_reasoning_effort = 4;
+  // context_window_tokens is the model's total input and output context
+  // capacity. Zero uses Koda's process-level fallback budget.
+  int64 context_window_tokens = 5;
 }
 
 // ListProvidersRequest requests all registered providers.

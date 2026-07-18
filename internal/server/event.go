@@ -124,7 +124,15 @@ func (h *Handler) executeRun(ctx context.Context, request *v1.RunRequest, publis
 	if err != nil {
 		return h.sessionFailure(runCtx, "load run session", err, slog.String("session_id", id))
 	}
-	compactionAttempted := h.compaction.shouldAttempt(session)
+	compaction, err := h.compactionPolicyForSession(runCtx, session)
+	if err != nil {
+		return h.runtimeFailure(runCtx, "resolve compaction policy", err,
+			slog.String("session_id", id),
+			slog.String("provider_id", session.ProviderID),
+			slog.String("model_id", session.ModelID),
+		)
+	}
+	compactionAttempted := compaction.shouldAttempt(session)
 	compactionGeneration := session.CompactionGeneration + 1
 	compactionContextTokens := session.ContextTokens
 	if compactionAttempted {
@@ -133,7 +141,7 @@ func (h *Handler) executeRun(ctx context.Context, request *v1.RunRequest, publis
 		}
 	}
 	previousCompactionGeneration := session.CompactionGeneration
-	session, currentCompaction, err := h.prepareRunCompaction(runCtx, session)
+	session, currentCompaction, err := h.prepareRunCompaction(runCtx, session, compaction)
 	if err != nil {
 		if compactionAttempted {
 			if publishErr := publishCompactionProgress(publisher, v1.CompactionProgressStage_COMPACTION_PROGRESS_STAGE_FAILED, compactionGeneration, compactionContextTokens, nil); publishErr != nil {
@@ -284,7 +292,7 @@ func (h *Handler) executeRun(ctx context.Context, request *v1.RunRequest, publis
 	completed := v1.RunResponse{}
 	completed.SetCompleted(v1.RunCompleted_builder{
 		TurnId:  new(turnID),
-		Session: h.sessionToProto(committedSession),
+		Session: h.sessionToProto(runCtx, committedSession),
 	}.Build())
 	if err := publisher.publish(&completed); err != nil {
 		mapped := h.runtimeFailure(runCtx, "publish run completion", err,

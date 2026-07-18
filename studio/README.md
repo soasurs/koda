@@ -9,6 +9,8 @@ earlier agent activity behind the final response, localized message timestamps,
 last-turn editing and retry, tool approvals, structured question prompts, and
 system-aware light and dark themes. Sessions can be renamed or archived from
 their sidebar context menu and restored from Settings > Sessions.
+Provider settings expose optional per-model context windows used by Session
+usage reporting and automatic compaction.
 
 Run execution is owned by the local Koda service rather than the mounted page.
 Navigating away, refreshing, or closing Studio detaches the event stream without

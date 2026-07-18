@@ -62,14 +62,20 @@ command output, file contents, and credentials are not logged.
 
 ## Context accounting and compaction
 
-`context.window_tokens` is the process-wide context budget reported for every
-model and defaults to 256,000. Until a provider reports usage, a session's
+Bundled model metadata declares each known model's context window. Custom model
+overrides can set the same value through Studio or the public API.
+`context.window_tokens` is the process-level fallback for models without that
+metadata and defaults to 256,000. Until a provider reports usage, a session's
 usage remains unavailable. Studio displays the sum of the latest reported
-prompt and completion usage.
+prompt and completion usage against the currently selected model's effective
+window. After a Session changes models, the effective window changes
+immediately while the used-token value remains the last provider measurement
+until the new model reports usage.
 
-Durable compaction is enabled by default. Before a new Run, Koda attempts it
-when the preceding acknowledged turn reaches `trigger_percent`, or earlier
-when necessary to preserve `reserve_tokens`. It keeps up to `retain_turns`
+Durable compaction is enabled by default. Before a new Run, Koda resolves the
+selected model's effective context window and attempts compaction when the
+preceding acknowledged turn reaches `trigger_percent`, or earlier when
+necessary to preserve `reserve_tokens`. It keeps up to `retain_turns`
 complete recent turns within `retain_tokens`, summarizes the older active
 prefix, and injects the resulting working-state snapshot into later model
 requests. The snapshot is not an ordinary conversation event.

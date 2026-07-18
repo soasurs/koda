@@ -157,6 +157,9 @@ func (c *Catalog) resolve(p Provider, snapshot ModelSnapshot) ModelCatalog {
 		if override.DefaultReasoningEffort != "" {
 			model.DefaultReasoningEffort = override.DefaultReasoningEffort
 		}
+		if override.ContextWindowTokens != 0 {
+			model.ContextWindowTokens = override.ContextWindowTokens
+		}
 		effective[model.ID] = model
 	}
 
