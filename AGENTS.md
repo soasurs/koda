@@ -111,7 +111,8 @@ READMEs in the same change.
   every call.
 - Disable user ripgrep configuration so tool behavior is determined by Koda's
   arguments.
-- Cancel the full process group for timed-out Build shell commands.
+- Use `sh` for Build shell commands on Unix and Windows PowerShell on Windows.
+  Cancel the full process tree when a Build shell command times out.
 - File approvals must describe the exact target and proposed content revision.
   Re-resolve and re-plan after a blocking approval; request approval again if
   either changes.
@@ -141,8 +142,8 @@ READMEs in the same change.
   prevent DNS-rebinding access to local capabilities.
 - Never log, return, or commit API keys or other credentials.
 - Provider Base URLs must not contain user-info credentials.
-- Preserve `0700` registry directories, `0600` provider files, and atomic
-  replacement.
+- Preserve `0700` registry directories and `0600` provider files on Unix,
+  current-user profile ACL inheritance on Windows, and atomic replacement.
 
 ## Go conventions
 

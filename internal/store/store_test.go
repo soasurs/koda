@@ -6,6 +6,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,6 +17,17 @@ import (
 
 	"github.com/soasurs/koda/internal/permission"
 )
+
+func TestSQLiteDSNUsesFileURLPath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "koda.db")
+	dsn := sqliteDSN(path)
+	if !strings.HasPrefix(dsn, "file:") || strings.Contains(dsn, `%5C`) {
+		t.Fatalf("sqliteDSN() = %q, want portable file URL", dsn)
+	}
+	if runtime.GOOS == "windows" && !strings.HasPrefix(dsn, "file:///"+filepath.VolumeName(path)) {
+		t.Fatalf("sqliteDSN() = %q, want Windows drive in URL path", dsn)
+	}
+}
 
 func TestOpenMigratesVersionTwoStore(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "koda.db")
@@ -112,7 +125,7 @@ func TestOpenInitializesSchemasAndSecuresDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Stat(database) error = %v", err)
 	}
-	if got := info.Mode().Perm(); got != 0o600 {
+	if got := info.Mode().Perm(); runtime.GOOS != "windows" && got != 0o600 {
 		t.Fatalf("database permissions = %o, want 600", got)
 	}
 }

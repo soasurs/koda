@@ -132,9 +132,10 @@ and bounded; it is not a substitute for the final filesystem check.
 
 ## Shell execution
 
-Build shell commands accept general syntax and use a timeout. On timeout, Koda
-cancels the full process group so descendants do not survive the tool call.
-Command output is bounded before it enters model context.
+Build shell commands accept platform-native syntax: `sh` on Unix and Windows
+PowerShell on Windows. Commands use a timeout. On timeout, Koda terminates the
+full process tree so descendants do not survive the tool call. Command output
+is bounded before it enters model context.
 
 Plan shell is a separate parser and policy, not Build shell followed by a
 best-effort read-only check. It accepts one allowlisted Git command and rejects

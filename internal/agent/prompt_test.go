@@ -3,6 +3,7 @@ package agent
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -132,7 +133,11 @@ func TestRuntimeInstructionDescribesWorkingDirectoryBehavior(t *testing.T) {
 
 func TestInstructionProviderValidatesEnvironmentAndEscapesWorkdir(t *testing.T) {
 	root := t.TempDir()
-	workdir := filepath.Join(root, "work`space\n# injected")
+	workdirName := "work`space\n# injected"
+	if runtime.GOOS == "windows" {
+		workdirName = "work`space"
+	}
+	workdir := filepath.Join(root, workdirName)
 	if err := os.Mkdir(workdir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +167,8 @@ func TestInstructionProviderValidatesEnvironmentAndEscapesWorkdir(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(instruction, "Working directory: "+strconv.Quote(resolved)) || strings.Contains(instruction, "\n# injected\n") {
+	if !strings.Contains(instruction, "Working directory: "+strconv.Quote(resolved)) ||
+		(runtime.GOOS != "windows" && strings.Contains(instruction, "\n# injected\n")) {
 		t.Fatalf("instruction = %q, want escaped workdir", instruction)
 	}
 }

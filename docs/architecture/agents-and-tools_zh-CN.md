@@ -112,8 +112,9 @@ edit 通过内容定位，而不是信任可能过期的行号。执行原子写
 
 ## Shell 执行
 
-Build Shell 接受通用命令语法并设置 timeout。超时后 Koda 会取消整个 process group，
-避免子进程在工具调用结束后继续运行。命令输出进入模型 context 前会受到大小限制。
+Build Shell 接受平台原生语法：Unix 使用 `sh`，Windows 使用 Windows PowerShell。
+命令会设置 timeout；超时后 Koda 会终止整个 process tree，避免子进程在工具调用结束后
+继续运行。命令输出进入模型 context 前会受到大小限制。
 
 Plan Shell 是独立 parser 和 policy，不是 Build Shell 加一层尽力而为的只读检查。它只
 接受一条白名单 Git 命令，并拒绝可能引入修改、任意执行或无法分类 repository/worktree

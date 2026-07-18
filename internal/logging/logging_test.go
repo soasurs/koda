@@ -16,10 +16,15 @@ func TestNewWritesToLogFile(t *testing.T) {
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "koda.log")
 	var output bytes.Buffer
-	logger, err := New(&output, "info", logPath)
+	logger, closeLog, err := New(&output, "info", logPath)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
+	t.Cleanup(func() {
+		if err := closeLog(); err != nil {
+			t.Errorf("close log file: %v", err)
+		}
+	})
 	logger.Info("hello")
 	if !strings.Contains(output.String(), "hello") {
 		t.Fatalf("buffer output = %q, want hello", output.String())
@@ -37,10 +42,15 @@ func TestNewCreatesLogFileParentDir(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "logs")
 	logPath := filepath.Join(dir, "koda.log")
 	var output bytes.Buffer
-	logger, err := New(&output, "info", logPath)
+	logger, closeLog, err := New(&output, "info", logPath)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
+	t.Cleanup(func() {
+		if err := closeLog(); err != nil {
+			t.Errorf("close log file: %v", err)
+		}
+	})
 	logger.Info("created")
 	if _, err := os.Stat(logPath); err != nil {
 		t.Fatalf("Stat() error = %v", err)
@@ -48,7 +58,7 @@ func TestNewCreatesLogFileParentDir(t *testing.T) {
 }
 
 func TestNewRejectsNilOutput(t *testing.T) {
-	if _, err := New(nil, "", ""); err == nil {
+	if _, _, err := New(nil, "", ""); err == nil {
 		t.Fatal("New(nil) error = nil")
 	}
 }
@@ -82,7 +92,7 @@ func TestResolveLogPathRelativeToDotKoda(t *testing.T) {
 }
 
 func TestResolveLogPathKeepsAbsolutePath(t *testing.T) {
-	abs := "/var/log/koda.log"
+	abs := filepath.Join(t.TempDir(), "koda.log")
 	got, err := resolveLogPath(abs)
 	if err != nil || got != abs {
 		t.Fatalf("resolveLogPath(absolute) = %q, %v", got, err)
@@ -91,7 +101,7 @@ func TestResolveLogPathKeepsAbsolutePath(t *testing.T) {
 
 func TestNewFiltersConfiguredLevels(t *testing.T) {
 	var output bytes.Buffer
-	logger, err := New(&output, "warn", "")
+	logger, _, err := New(&output, "warn", "")
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -100,14 +110,14 @@ func TestNewFiltersConfiguredLevels(t *testing.T) {
 	if got := output.String(); strings.Contains(got, "hidden") || !strings.Contains(got, "visible") {
 		t.Fatalf("logger output = %q", got)
 	}
-	if _, err := New(&output, "verbose", ""); err == nil {
+	if _, _, err := New(&output, "verbose", ""); err == nil {
 		t.Fatal("New(verbose) error = nil")
 	}
 }
 
 func TestADKTracerUsesDebugForDetailsAndErrorForToolFailures(t *testing.T) {
 	var output bytes.Buffer
-	logger, err := New(&output, "debug", "")
+	logger, _, err := New(&output, "debug", "")
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

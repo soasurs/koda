@@ -72,6 +72,11 @@ go run ./cmd/koda serve
 Both commands try `localhost:8080` and fall back to an available loopback port.
 Pass `--addr 127.0.0.1:8787` to select one explicitly.
 
+Release archives are available for macOS amd64 and arm64 and for Windows
+amd64. The Windows archive contains `koda.exe`; Build shell commands use Windows
+PowerShell there. Git and ripgrep must be available on `PATH` for repository
+inspection and search tools.
+
 ## Documentation
 
 - [Configuration](docs/configuration.md) describes `koda.yaml`, providers,
@@ -99,9 +104,9 @@ changing `proto/koda/v1/service.proto`, format, lint, build, and generate it
 with Buf before running the Go checks.
 
 Pushing a `v*` tag runs the release workflow, which builds Studio, tests and
-packages native macOS amd64 and arm64 binaries, generates checksums, and creates
-a draft GitHub Release with the annotated tag body prepended to the automatically
-generated release notes.
+packages native macOS amd64 and arm64 binaries plus a Windows amd64 executable,
+generates checksums, and publishes a GitHub Release with the annotated tag body
+prepended to the automatically generated release notes.
 
 ## License
 

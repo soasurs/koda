@@ -177,7 +177,7 @@ func TestCompactionDurableSchemaRoundTripsAndRejectsText(t *testing.T) {
 
 func TestCompactorRepairsInvalidSchemaOnce(t *testing.T) {
 	var logs bytes.Buffer
-	logger, err := logging.New(&logs, "debug", "")
+	logger, _, err := logging.New(&logs, "debug", "")
 	if err != nil {
 		t.Fatal(err)
 	}

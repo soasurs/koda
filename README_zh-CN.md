@@ -67,6 +67,10 @@ go run ./cmd/koda serve
 两个命令都会先尝试 `localhost:8080`，端口被占用时回退到可用的 loopback 端口。
 可以通过 `--addr 127.0.0.1:8787` 显式指定地址。
 
+Release archive 提供 macOS amd64、macOS arm64 和 Windows amd64 版本。Windows
+archive 包含 `koda.exe`，Build Shell 在该平台使用 Windows PowerShell。Repository
+检查和搜索工具要求 `PATH` 中存在 Git 和 ripgrep。
+
 ## 文档
 
 - [配置说明](docs/configuration_zh-CN.md)介绍 `koda.yaml`、Provider、本地数据、Agent
@@ -90,9 +94,9 @@ go run ./cmd/koda serve
 `proto/koda/v1/service.proto` 后，需要先使用 Buf 执行格式化、lint、build 和
 generate，再运行 Go 检查。
 
-推送 `v*` tag 会触发 release workflow：构建 Studio、测试并打包原生 macOS
-amd64 和 arm64 binary、生成 checksums，并创建 draft GitHub Release；annotated
-tag 的正文会添加在自动生成的 release notes 前面。
+推送 `v*` tag 会触发 release workflow：构建 Studio、测试并打包原生 macOS amd64、
+macOS arm64 和 Windows amd64 binary、生成 checksums，并发布 GitHub Release；
+annotated tag 的正文会添加在自动生成的 release notes 前面。
 
 ## License
 

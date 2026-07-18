@@ -14,9 +14,10 @@ compaction generation。带 ADK 前缀的 table 保存 Session 和 event。两�
 Koda Session 可以先于 ADK ledger 存在。第一次生产 Run 前，`EnsureADKSession` 会在确认
 Koda Session 仍存在后按需创建 ledger。
 
-数据库启用 foreign key、WAL journal、busy timeout 和 normal synchronous mode。默认目录
-权限为 `0700`；数据库、WAL 和 shared-memory 文件存在时权限为 `0600`。Schema 变更使用
-只追加的编号 migration，并在 transaction 中应用。
+数据库启用 foreign key、WAL journal、busy timeout 和 normal synchronous mode。在 Unix
+上，默认目录权限为 `0700`，数据库、WAL 和 shared-memory 文件存在时权限为 `0600`；
+Windows 默认目录继承当前用户 profile 的 ACL。Schema 变更使用只追加的编号 migration，
+并在 transaction 中应用。
 
 ## Session 串行化
 
