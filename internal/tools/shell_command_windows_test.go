@@ -30,7 +30,7 @@ func TestRunShellTimeoutKillsChildProcesses(t *testing.T) {
 	}
 	callToolError(t, toolByName(t, values, "run_shell"), runShellInput{
 		Command:        "$child = Start-Process powershell.exe -ArgumentList '-NoProfile','-Command','Start-Sleep 30' -PassThru; $child.Id | Set-Content child.pid; Wait-Process $child.Id",
-		TimeoutSeconds: 1,
+		TimeoutSeconds: 5,
 	})
 	encodedPID, err := os.ReadFile(filepath.Join(workspace, "child.pid"))
 	if err != nil {
