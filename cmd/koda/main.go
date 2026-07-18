@@ -149,10 +149,11 @@ func runServer(ctx context.Context, config serveConfig, stdout, stderr io.Writer
 		}
 	}
 	logWriter, logFile := resolveLogOutput(stderr, fileConfig.Log)
-	logger, err := logging.New(logWriter, fileConfig.Log.Level, logFile)
+	logger, closeLog, err := logging.New(logWriter, fileConfig.Log.Level, logFile)
 	if err != nil {
 		return err
 	}
+	defer closeLog() //nolint:errcheck // Process shutdown cannot recover from a log close failure.
 	registry, err := dependencies.openRegistry()
 	if err != nil {
 		return fmt.Errorf("open provider registry: %w", err)

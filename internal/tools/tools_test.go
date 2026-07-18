@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -336,7 +337,7 @@ func TestWriteFileAndListDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Stat(existing) error = %v", err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
 		t.Fatalf("existing mode = %o, want 600", info.Mode().Perm())
 	}
 	callToolError(t, toolByName(t, tools, "write_file"), writeFileInput{

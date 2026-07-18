@@ -212,6 +212,10 @@ func (s *Store) LockRunContext(ctx context.Context, id string) (context.Context,
 }
 
 func sqliteDSN(path string) string {
+	path = filepath.ToSlash(path)
+	if volume := filepath.VolumeName(path); volume != "" && !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
 	u := &url.URL{
 		Scheme:   "file",
 		Path:     path,

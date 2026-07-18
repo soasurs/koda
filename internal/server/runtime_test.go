@@ -68,7 +68,7 @@ func (c *fakeSessionCompactor) Compact(_ context.Context, request agent.Compacti
 func TestRunLogsLifecycleWithoutMessageContent(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	var output bytes.Buffer
-	logger, err := logging.New(&output, "info", "")
+	logger, _, err := logging.New(&output, "info", "")
 	if err != nil {
 		t.Fatalf("logging.New() error = %v", err)
 	}
@@ -199,7 +199,7 @@ func TestRunStreamsInjectedTurnRunner(t *testing.T) {
 func TestRunCompactsAcknowledgedHistoryAndInjectsSnapshot(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	var logOutput bytes.Buffer
-	logger, err := logging.New(&logOutput, "info", "")
+	logger, _, err := logging.New(&logOutput, "info", "")
 	if err != nil {
 		t.Fatalf("logging.New() error = %v", err)
 	}

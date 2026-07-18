@@ -24,7 +24,7 @@ import (
 func TestSaveProviderLogsCredentialActionWithoutCredential(t *testing.T) {
 	client, _, handler := newTestService(t, staticDiscoverer{})
 	var output bytes.Buffer
-	logger, err := logging.New(&output, "info", "")
+	logger, _, err := logging.New(&output, "info", "")
 	if err != nil {
 		t.Fatalf("logging.New() error = %v", err)
 	}

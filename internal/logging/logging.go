@@ -13,39 +13,42 @@ import (
 
 type requestIDContextKey struct{}
 
-// New constructs a text logger writing diagnostic output to output. An empty
-// level uses info. When logFile is non-empty, output is also written to the
-// file. The path supports a leading ~/ for the user home directory. Relative
-// paths are resolved relative to ~/.koda/.
-func New(output io.Writer, level string, logFile string) (*slog.Logger, error) {
+// New constructs a text logger writing diagnostic output to output and returns
+// a function that closes any configured log file. An empty level uses info.
+// When logFile is non-empty, output is also written to the file. The path
+// supports a leading ~/ for the user home directory. Relative paths are
+// resolved relative to ~/.koda/.
+func New(output io.Writer, level string, logFile string) (*slog.Logger, func() error, error) {
 	if output == nil {
-		return nil, fmt.Errorf("logging: output must not be nil")
+		return nil, nil, fmt.Errorf("logging: output must not be nil")
 	}
 	parsed, err := ParseLevel(level)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	closeLog := func() error { return nil }
 	if logFile != "" {
 		resolved, err := resolveLogPath(logFile)
 		if err != nil {
-			return nil, fmt.Errorf("logging: resolve log file path: %w", err)
+			return nil, nil, fmt.Errorf("logging: resolve log file path: %w", err)
 		}
 		file, err := openLogFile(resolved)
 		if err != nil {
-			return nil, fmt.Errorf("logging: open log file: %w", err)
+			return nil, nil, fmt.Errorf("logging: open log file: %w", err)
 		}
 		output = io.MultiWriter(output, file)
+		closeLog = file.Close
 	}
-	return slog.New(slog.NewTextHandler(output, &slog.HandlerOptions{Level: parsed})), nil
+	return slog.New(slog.NewTextHandler(output, &slog.HandlerOptions{Level: parsed})), closeLog, nil
 }
 
 func resolveLogPath(path string) (string, error) {
-	if strings.HasPrefix(path, "~"+string(filepath.Separator)) {
+	if len(path) >= 2 && path[0] == '~' && (path[1] == '/' || path[1] == '\\') {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return "", fmt.Errorf("find home directory: %w", err)
 		}
-		return filepath.Join(home, path[2:]), nil
+		return filepath.Join(home, filepath.FromSlash(strings.ReplaceAll(path[2:], "\\", "/"))), nil
 	}
 	if filepath.IsAbs(path) {
 		return path, nil

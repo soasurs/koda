@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +17,17 @@ import (
 
 	"github.com/soasurs/koda/internal/permission"
 )
+
+func TestSQLiteDSNUsesFileURLPath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "koda.db")
+	dsn := sqliteDSN(path)
+	if !strings.HasPrefix(dsn, "file:") || strings.Contains(dsn, `%5C`) {
+		t.Fatalf("sqliteDSN() = %q, want portable file URL", dsn)
+	}
+	if runtime.GOOS == "windows" && !strings.HasPrefix(dsn, "file:///"+filepath.VolumeName(path)) {
+		t.Fatalf("sqliteDSN() = %q, want Windows drive in URL path", dsn)
+	}
+}
 
 func TestOpenMigratesVersionTwoStore(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "koda.db")
