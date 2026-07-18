@@ -74,8 +74,8 @@ until the new model reports usage.
 
 Durable compaction is enabled by default. Before a new Run, Koda resolves the
 selected model's effective context window and attempts compaction when the
-preceding acknowledged turn reaches `trigger_percent`, or earlier when
-necessary to preserve `reserve_tokens`. It keeps up to `retain_turns`
+preceding completed turn reaches `trigger_percent`, or earlier when necessary
+to preserve `reserve_tokens`. It keeps up to `retain_turns`
 complete recent turns within `retain_tokens`, summarizes the older active
 prefix, and injects the resulting working-state snapshot into later model
 requests. The snapshot is not an ordinary conversation event.

@@ -25,7 +25,7 @@ context 允许通过 ADK Session service 重入。
 
 以下操作共用同一串行化边界：
 
-- 包含持久化 Turn 终结与 completion 确认的完整 Run；
+- 包含持久化 Turn 终结与 terminal journal publication 的完整 Run；
 - Session 设置与 metadata update；
 - history mutation 和 undo；
 - Session delete；
@@ -77,7 +77,7 @@ flowchart LR
 
 ## 选择与调度
 
-Server 会在新 Run 前根据上一次已确认 turn 的 token usage 判断是否 compaction。它会先
+Server 会在新 Run 前根据上一次 completed turn 的 token usage 判断是否 compaction。它会先
 解析 Session 选中 Model 的 metadata；没有已知的 Model-specific window 时回退到
 `context.window_tokens`。达到该有效窗口的配置百分比，或者到达必须为输出和 summary
 预留空间的较低 hard limit 时，会尝试压缩。

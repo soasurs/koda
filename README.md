@@ -25,10 +25,16 @@ an embedded local web interface.
 Koda is a local, single-process service. It listens on loopback only and keeps
 its state under `~/.koda`.
 
-Closing or refreshing Studio only detaches its Run event subscription. The Run
-continues in the local Koda process and Studio reattaches when the session is
-opened again. Stop is an explicit cancellation action; stopping the Koda
-process still interrupts active Runs.
+Each Run has a server-assigned ID and a sequenced in-memory event journal.
+Closing or refreshing Studio only detaches its subscription: the Run continues
+in the local Koda process, and reopening the session restores its frames and
+pending approvals or questions. Stop explicitly cancels the Run. Run journals
+are process-local, so stopping Koda still interrupts active Runs.
+
+Bundled model metadata supplies model-specific context windows for usage
+reporting and automatic compaction. Custom model overrides can declare the same
+capacity; models without one use the process fallback configured by
+`context.window_tokens`.
 
 ## Quick start
 

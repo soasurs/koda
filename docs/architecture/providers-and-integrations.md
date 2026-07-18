@@ -121,9 +121,10 @@ interaction resolution. Studio owns presentation state such as:
 - transient compaction progress.
 
 After refresh, Studio reconstructs durable state through Session and Event
-RPCs. It must not persist partial frames as conversation truth. The
-`RunCompleted.session` snapshot replaces optimistic Session state at the Run
-commit boundary.
+RPCs, checks `GetActiveRun`, and uses `WatchRun` to replay sequenced frames.
+The active Run snapshot restores pending approvals and questions. Studio must
+not persist partial frames as conversation truth. The `RunCompleted.session`
+snapshot replaces optimistic Session state at the Run commit boundary.
 
 Directory browsing is a service-scoped pre-Session capability used by local
 clients to choose a workdir. It returns canonical directory names and paths but

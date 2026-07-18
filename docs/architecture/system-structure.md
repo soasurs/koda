@@ -33,16 +33,17 @@ skipped because skills are optional additions. Missing provider credentials do
 not prevent startup; they are reported when a session tries to use that
 provider.
 
-Shutdown closes the HTTP server, session store, and MCP connections. Stdio MCP
-children belong to the process-level MCP manager.
+Shutdown first stops Run admission and cancels active Runs, then closes the HTTP
+server, session store, and MCP connections. Stdio MCP children belong to the
+process-level MCP manager.
 
 ## Lifecycle scopes
 
 | Scope | Owned state |
 |---|---|
-| Process | config, logging, provider registry, model catalog, skill catalog, MCP connections, HTTP server |
+| Process | config, logging, provider registry, model catalog, skill catalog, MCP connections, Run manager, interaction brokers, HTTP server |
 | Session | provider and model selection, reasoning effort, workdir, permissions, history, context usage, compaction state |
-| Run | mode, user input, captured instructions, interaction adapters, publisher, cancellation, current compaction snapshot |
+| Run | identity, admission state, mode, user input, captured instructions, sequenced frame journal, pending interactions, cancellation, current compaction snapshot |
 
 Process-level catalogs are loaded or connected at startup and remain fixed
 unless their documented API supports mutation. Session settings are persisted
@@ -104,8 +105,9 @@ flowchart TD
 - an admission `RunStarted` frame;
 - terminal `RunCompleted` or `RunTerminated` frames.
 
-`Run` starts and initially watches an execution. `WatchRun` resumes observation
-by sequence, while `CancelRun` is the only client action that stops execution.
+`Run` admits and initially watches an execution. `GetActiveRun` restores its
+current snapshot, `WatchRun` resumes observation by sequence, and `CancelRun`
+is the only client action that stops execution.
 
 Changes to observable behavior or commands must update both root READMEs.
 Generated Go and TypeScript bindings are regenerated with Buf rather than

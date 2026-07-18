@@ -22,9 +22,14 @@
 
 Koda 是本地单进程服务，只监听 loopback 地址，并将状态保存在 `~/.koda`。
 
-关闭或刷新 Studio 只会断开 Run event 订阅；Run 会继续在本地 Koda 进程中执行，重新进入
-Session 时 Studio 会自动恢复订阅。Stop 是显式取消操作；停止 Koda 进程仍会中断 active
-Run。
+每个 Run 都有 Server 分配的 ID 和带 sequence 的进程内 event journal。关闭或刷新 Studio
+只会断开订阅：Run 会继续在本地 Koda 进程中执行，重新进入 Session 时会恢复 frame 和
+pending approval 或 question。Stop 会显式取消 Run。Run journal 只存在于进程内，因此
+停止 Koda 仍会中断 active Run。
+
+Bundled Model metadata 会提供 Model-specific context window，用于 usage 展示和自动
+compaction。Custom Model override 可以声明相同的容量；未声明时使用
+`context.window_tokens` 配置的进程级 fallback。
 
 ## 快速开始
 

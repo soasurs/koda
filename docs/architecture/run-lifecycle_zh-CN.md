@@ -12,11 +12,11 @@ Server 首先校验 Session ID、mode 和有序多模态输入。文本、HTTPS 
 数据都在这一边界从 Proto 转换。Complete user event 会保留原始 parts，确保 history
 和 undo 可以完整往返输入。
 
-Admission 使用 `client_request_id` 保证重试幂等，并在执行前返回 Koda Run ID。进程拥有
-的执行 goroutine 使用自己的 context 获取 Session Run lock。该锁与 ADK 历史操作共用，
-并通过 locked context 支持可重入调用。锁一直持有到持久化终结和 terminal journal 发布
-完成。不同 Session 的 Run 可以并发；一个 Session 存在 active Run 时会拒绝另一个不同
-Run。
+Admission 使用 `client_request_id` 保证重试幂等，并在执行前将 Server 分配的 Run ID
+写入 journal。进程拥有的执行 goroutine 使用自己的 context 获取 Session Run lock。该锁
+与 ADK 历史操作共用，并通过 locked context 支持可重入调用。锁一直持有到持久化终结和
+terminal journal 发布完成。不同 Session 的 Run 可以并发；一个 Session 存在 active Run
+时会拒绝另一个不同 Run。
 
 ## 执行顺序
 
@@ -130,9 +130,9 @@ complete event。这些 event 会继续持久化。ADK 将 Turn 终结为 `faile
 | 标题生成失败 | 记录日志，使用原有标题完成 |
 | metadata commit 或 completion journal 失败 | journal failed 终态，但不重写已经 completed 的 Turn 事实 |
 
-Run journal 和 pending interaction 只存在于进程内。只要 Koda 进程仍存活，网络或 Studio
-重启都可以恢复订阅；Koda 进程重启无法恢复执行，现有持久化恢复逻辑会把遗留 running
-Turn 标记为 abandoned。
+Run journal 和 pending interaction 只存在于进程内。只要 Koda 进程仍存活，网络重连或
+Studio 页面重载都可以恢复订阅；Koda 进程重启无法恢复执行，现有持久化恢复逻辑会把
+遗留 running Turn 标记为 abandoned。
 
 ## Run 之外的历史修改
 

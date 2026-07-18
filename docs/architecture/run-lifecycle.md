@@ -14,13 +14,13 @@ Text, HTTPS image URLs, and inline image data are converted from Proto at this
 boundary. Complete user events retain their original parts so history and undo
 can round-trip the request.
 
-Admission uses `client_request_id` to make retries idempotent and returns a Koda
-Run ID before execution begins. The process-owned execution goroutine acquires
-the session Run lock with its own context. The same lock is shared with ADK
-history operations and is reentrant through the locked context. It remains held
-until durable finalization and terminal journal publication finish. Runs for
-different sessions may proceed concurrently; a second distinct Run for one
-session is rejected while the first is active.
+Admission uses `client_request_id` to make retries idempotent and journals a
+server-assigned Run ID before execution begins. The process-owned execution
+goroutine acquires the session Run lock with its own context. The same lock is
+shared with ADK history operations and is reentrant through the locked context.
+It remains held until durable finalization and terminal journal publication
+finish. Runs for different sessions may proceed concurrently; a second
+distinct Run for one session is rejected while the first is active.
 
 ## Execution sequence
 
@@ -145,10 +145,10 @@ lazily mark running Turns left by an earlier process as `interrupted/abandoned`.
 | title generation failure | log and complete with the previous title |
 | metadata commit or completion journal failure | journal a failed terminal outcome without rewriting completed Turn facts |
 
-Run journals and pending interactions are process-local. A network or Studio
-restart can reattach while the Koda process remains alive; a Koda process
-restart cannot resume execution and existing durable recovery marks leftover
-running Turns abandoned.
+Run journals and pending interactions are process-local. A network reconnect or
+Studio page reload can reattach while the Koda process remains alive; a Koda
+process restart cannot resume execution and existing durable recovery marks
+leftover running Turns abandoned.
 
 ## History mutation outside Run
 

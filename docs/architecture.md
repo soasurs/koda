@@ -42,8 +42,8 @@ The design follows several rules:
 - partial output and frontend interactions are transient;
 - complete events and terminal Turn status remain durable after failure or
   interruption;
-- a successful Run is acknowledged only after history and session metadata are
-  consistent;
+- a successful Run is journaled as complete only after history and session
+  metadata are consistent;
 - file and process capabilities default to the least permissive valid policy;
 - process capabilities loaded at startup are distinct from session and Run
   configuration.
@@ -54,7 +54,7 @@ The design follows several rules:
   package ownership, dependency direction, and lifecycle scopes.
 - [Run lifecycle](architecture/run-lifecycle.md) follows a turn from request
   validation through streaming, interactions, durable finalization, and
-  acknowledgment.
+  terminal publication.
 - [Agents and tools](architecture/agents-and-tools.md) covers runner caching,
   layered instructions, modes, path classification, approvals, and questions.
 - [Storage and context compaction](architecture/storage-and-compaction.md)
@@ -73,7 +73,7 @@ The design follows several rules:
 |---|---|
 | Session | Durable runtime configuration and history ownership boundary. |
 | Run | One server-owned execution with one or more client subscriptions. |
-| Turn | One durable Run execution, including completed, failed, and interrupted outcomes. |
+| Turn | A durable history unit created during Run execution; it may complete, fail, or be interrupted. |
 | Event | An ADK history record; complete events are durable and partial events are transient. |
 | Frame | One `RunResponse` payload observed by a client. |
 | Compaction generation | An immutable summary and working-state snapshot for an archived history prefix. |
