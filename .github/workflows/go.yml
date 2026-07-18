@@ -15,16 +15,6 @@ on:
       - "go.sum"
   pull_request:
     branches: [master]
-    paths:
-      - ".github/workflows/go.yml"
-      - "cmd/**"
-      - "gen/**"
-      - "internal/**"
-      - "proto/**"
-      - "buf.gen.yaml"
-      - "buf.yaml"
-      - "go.mod"
-      - "go.sum"
 
 permissions:
   contents: read

@@ -12,13 +12,6 @@ on:
       - "build/studio.sh"
   pull_request:
     branches: [master]
-    paths:
-      - ".github/workflows/studio.yml"
-      - "studio/**"
-      - "proto/**"
-      - "buf.gen.yaml"
-      - "buf.yaml"
-      - "build/studio.sh"
 
 permissions:
   contents: read
