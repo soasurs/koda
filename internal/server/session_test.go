@@ -14,7 +14,7 @@ import (
 
 func TestSessionToProtoIncludesContextUsage(t *testing.T) {
 	handler := &Handler{contextWindowTokens: 128_000}
-	got := handler.sessionToProto(store.Session{ContextTokens: 32_000, ContextMeasured: true})
+	got := handler.sessionToProto(t.Context(), store.Session{ContextTokens: 32_000, ContextMeasured: true})
 	usage := got.GetContextUsage()
 	if usage == nil || usage.GetUsedTokens() != 32_000 || usage.GetWindowTokens() != 128_000 || !usage.GetMeasured() {
 		t.Fatalf("sessionToProto().ContextUsage = %+v", usage)
@@ -47,7 +47,8 @@ func TestSessionHandlers(t *testing.T) {
 		session.GetReasoningEffort() != "max" ||
 		session.GetFileAccess() != v1.FileAccess_FILE_ACCESS_WORKSPACE_WRITE ||
 		session.GetShellAccess() != v1.ShellAccess_SHELL_ACCESS_UNRESTRICTED ||
-		session.GetCreatedAt() == 0 || session.GetUpdatedAt() == 0 {
+		session.GetCreatedAt() == 0 || session.GetUpdatedAt() == 0 ||
+		session.GetContextUsage().GetWindowTokens() != 1_050_000 {
 		t.Fatalf("CreateSession() = %+v", session)
 	}
 
@@ -86,7 +87,8 @@ func TestSessionHandlers(t *testing.T) {
 	if updatedSession.GetTitle() != title || updatedSession.GetWorkdir() != resolvedUpdatedWorkdir ||
 		updatedSession.GetProviderId() != providerID || updatedSession.GetModelId() != modelID ||
 		updatedSession.GetReasoningEffort() != reasoningEffort ||
-		updatedSession.GetFileAccess() != v1.FileAccess_FILE_ACCESS_UNRESTRICTED || updatedSession.GetShellAccess() != v1.ShellAccess_SHELL_ACCESS_APPROVAL_REQUIRED {
+		updatedSession.GetFileAccess() != v1.FileAccess_FILE_ACCESS_UNRESTRICTED || updatedSession.GetShellAccess() != v1.ShellAccess_SHELL_ACCESS_APPROVAL_REQUIRED ||
+		updatedSession.GetContextUsage().GetWindowTokens() != 1_000_000 {
 		t.Fatalf("UpdateSession() = %+v", updatedSession)
 	}
 
@@ -156,6 +158,21 @@ func TestSessionHandlersValidateConfiguration(t *testing.T) {
 		Workdir: new(workdir), ProviderId: new("openai-responses"), ModelId: new("gpt-5.6"), ReasoningEffort: new("ultra"),
 	}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("CreateSession(unsupported effort) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
+	}
+	if _, err := client.SaveProvider(t.Context(), v1.SaveProviderRequest_builder{
+		Id: new("small-context"), Name: new("Small context"),
+		Type: v1.ProviderType_PROVIDER_TYPE_OPENAI_RESPONSES.Enum(),
+		ModelOverrides: []*v1.Model{v1.Model_builder{
+			Id:                  new("small-model"),
+			ContextWindowTokens: new(int64(16_000)),
+		}.Build()},
+	}.Build()); err != nil {
+		t.Fatalf("SaveProvider(small context) error = %v", err)
+	}
+	if _, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
+		Workdir: new(workdir), ProviderId: new("small-context"), ModelId: new("small-model"),
+	}.Build()); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("CreateSession(incompatible context) code = %v, want invalid_argument; error = %v", connect.CodeOf(err), err)
 	}
 	if _, err := client.CreateSession(t.Context(), v1.CreateSessionRequest_builder{
 		Workdir: new("missing-directory"), ProviderId: new("openai-responses"), ModelId: new("gpt-5.6"),
@@ -254,5 +271,8 @@ func TestSessionRemainsEditableAfterProviderDelete(t *testing.T) {
 	updatedSession := updated.GetSession()
 	if updatedSession.GetTitle() != title || updatedSession.GetProviderId() != "custom" || updatedSession.GetModelId() != "private-model" {
 		t.Fatalf("UpdateSession(title only) = %+v", updatedSession)
+	}
+	if updatedSession.GetContextUsage().GetWindowTokens() != 256_000 {
+		t.Fatalf("UpdateSession(title only) context window = %d, want fallback 256000", updatedSession.GetContextUsage().GetWindowTokens())
 	}
 }

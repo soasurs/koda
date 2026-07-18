@@ -112,8 +112,8 @@ tests because concurrency is part of the storage and streaming contract.
 
 The following are design questions, not implemented features:
 
-- provider-specific context window budgets instead of one process-wide value;
-- durable recovery of approvals or questions across a client reconnect;
+- durable recovery of active Runs, approvals, or questions across a server
+  restart;
 - explicit capability metadata for individual MCP tools;
 - version negotiation between independently released clients and servers;
 - export and migration formats for Sessions and compaction generations;

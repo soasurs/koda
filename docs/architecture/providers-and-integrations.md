@@ -46,6 +46,11 @@ new connection.
 last successful discovery snapshot without network access. Agent construction
 therefore has deterministic local lookup behavior.
 
+Model metadata includes provider-specific reasoning efforts and an optional
+context-window token budget. A non-zero explicit override replaces bundled
+context metadata. Models without a declared window use the process-level
+fallback from `context.window_tokens`.
+
 `Catalog.Refresh` is the explicit network operation. It uses the provider's
 native discovery mechanism, normalizes the response, and atomically commits a
 snapshot if the connection revision is still current. A failed refresh leaves
@@ -62,6 +67,10 @@ Provider ID, model ID, and reasoning effort belong to a Session. There is no
 process-global active provider. The agent factory validates the selected model
 against the local catalog and resolves a missing reasoning effort to the
 model's declared default.
+
+The server also resolves the selected model's effective context window for
+Session usage reporting and before every Run when it derives the compaction
+trigger and hard limit.
 
 This makes concurrent sessions independent and keeps Studio settings from
 silently changing an already configured session.

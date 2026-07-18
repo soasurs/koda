@@ -34,6 +34,7 @@ type Model struct {
 	Name                   string   `json:"name,omitempty"`
 	ReasoningEfforts       []string `json:"reasoning_efforts,omitempty"`
 	DefaultReasoningEffort string   `json:"default_reasoning_effort,omitempty"`
+	ContextWindowTokens    int64    `json:"context_window_tokens,omitempty"`
 }
 
 // ModelSnapshot is the last model list successfully discovered from a
@@ -156,6 +157,9 @@ func normalizeModels(models []Model) ([]Model, error) {
 		}
 		if _, ok := seenModels[model.ID]; ok {
 			return nil, fmt.Errorf("provider: duplicate model id %q", model.ID)
+		}
+		if model.ContextWindowTokens < 0 {
+			return nil, fmt.Errorf("provider: model %q: context window tokens must not be negative", model.ID)
 		}
 		seenModels[model.ID] = struct{}{}
 		var efforts []string

@@ -39,6 +39,10 @@ Revision 参与两套一致性机制：
 `Catalog.List` 会合并 bundled model metadata、显式 override 和最近一次成功 discovery
 snapshot，且不访问网络。因此 Agent 构造具有确定性的本地查询行为。
 
+Model metadata 包含 Provider-specific reasoning effort 和可选的 context-window token
+预算。非零的显式 override 会替换 bundled context metadata；没有声明窗口的 Model 使用
+`context.window_tokens` 提供的进程级 fallback。
+
 `Catalog.Refresh` 是显式网络操作。它使用 Provider 原生 discovery 机制，规范化响应，
 并在 connection revision 仍为当前值时原子提交 snapshot。Refresh 失败会保留之前的
 snapshot。没有 snapshot 的 custom endpoint 只展示显式 override。
@@ -51,6 +55,9 @@ OpenAI Chat Completions 和 OpenAI Responses 保持为不同 Provider type。即
 Provider ID、Model ID 和 reasoning effort 都属于 Session。不存在进程级 active Provider。
 Agent factory 会根据本地 catalog 校验选中的 Model，并在 reasoning effort 为空时使用
 Model 声明的默认值。
+
+Server 还会为 Session usage 展示解析选中 Model 的有效 context window，并在每个新 Run
+前据此计算 compaction trigger 和 hard limit。
 
 这样并发 Session 可以相互独立，Studio 设置也不会静默改变已经配置的 Session。
 

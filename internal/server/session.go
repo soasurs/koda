@@ -14,6 +14,7 @@ import (
 
 	v1 "github.com/soasurs/koda/gen/koda/v1"
 	"github.com/soasurs/koda/internal/permission"
+	"github.com/soasurs/koda/internal/provider"
 	"github.com/soasurs/koda/internal/store"
 )
 
@@ -61,7 +62,7 @@ func (h *Handler) CreateSession(ctx context.Context, request *v1.CreateSessionRe
 		slog.String("file_access", string(session.FileAccess)),
 		slog.String("shell_access", string(session.ShellAccess)),
 	)
-	return v1.CreateSessionResponse_builder{Session: h.sessionToProto(session)}.Build(), nil
+	return v1.CreateSessionResponse_builder{Session: h.sessionToProto(ctx, session)}.Build(), nil
 }
 
 // GetSession returns one session by ID.
@@ -77,7 +78,7 @@ func (h *Handler) GetSession(ctx context.Context, request *v1.GetSessionRequest)
 	if err != nil {
 		return nil, h.sessionFailure(ctx, "get session", err, slog.String("session_id", id))
 	}
-	return v1.GetSessionResponse_builder{Session: h.sessionToProto(session)}.Build(), nil
+	return v1.GetSessionResponse_builder{Session: h.sessionToProto(ctx, session)}.Build(), nil
 }
 
 // ListSessions returns a page of sessions ordered by last update time.
@@ -100,7 +101,7 @@ func (h *Handler) ListSessions(ctx context.Context, request *v1.ListSessionsRequ
 		return nil, h.sessionFailure(ctx, "list sessions", err)
 	}
 	return v1.ListSessionsResponse_builder{
-		Sessions: h.sessionsToProto(sessions),
+		Sessions: h.sessionsToProto(ctx, sessions),
 		Total:    new(total),
 	}.Build(), nil
 }
@@ -150,7 +151,7 @@ func (h *Handler) UpdateSession(ctx context.Context, request *v1.UpdateSessionRe
 		slog.String("session_id", id),
 		slog.Any("changed_fields", changedSessionFields(request)),
 	)
-	return v1.UpdateSessionResponse_builder{Session: h.sessionToProto(session)}.Build(), nil
+	return v1.UpdateSessionResponse_builder{Session: h.sessionToProto(ctx, session)}.Build(), nil
 }
 
 // DeleteSession deletes one session and hides its ADK history.
@@ -233,6 +234,13 @@ func (h *Handler) validateSessionConfiguration(
 			return sessionConfiguration{}, connect.NewError(
 				connect.CodeInvalidArgument,
 				fmt.Errorf("model %q does not support reasoning effort %q", modelID, reasoningEffort),
+			)
+		}
+		windowTokens := contextWindowTokensForModel(model, h.contextWindowTokens)
+		if _, err := resolveCompactionPolicy(windowTokens, h.compactionConfig); err != nil {
+			return sessionConfiguration{}, connect.NewError(
+				connect.CodeInvalidArgument,
+				fmt.Errorf("model %q context window is incompatible with compaction configuration: %w", modelID, err),
 			)
 		}
 		return sessionConfiguration{
@@ -339,7 +347,7 @@ func sessionIDFromRequest(id string) (string, error) {
 	return id, nil
 }
 
-func (h *Handler) sessionToProto(session store.Session) *v1.Session {
+func (h *Handler) sessionToProto(ctx context.Context, session store.Session) *v1.Session {
 	var archivedAt int64
 	if !session.ArchivedAt.IsZero() {
 		archivedAt = session.ArchivedAt.UnixMilli()
@@ -359,18 +367,41 @@ func (h *Handler) sessionToProto(session store.Session) *v1.Session {
 		ArchivedAt:      new(archivedAt),
 		ContextUsage: v1.ContextUsage_builder{
 			UsedTokens:   new(session.ContextTokens),
-			WindowTokens: new(h.contextWindowTokens),
+			WindowTokens: new(h.sessionContextWindowTokens(ctx, session)),
 			Measured:     new(session.ContextMeasured),
 		}.Build(),
 	}.Build()
 }
 
-func (h *Handler) sessionsToProto(sessions []store.Session) []*v1.Session {
+func (h *Handler) sessionsToProto(ctx context.Context, sessions []store.Session) []*v1.Session {
 	result := make([]*v1.Session, len(sessions))
 	for i, session := range sessions {
-		result[i] = h.sessionToProto(session)
+		result[i] = h.sessionToProto(ctx, session)
 	}
 	return result
+}
+
+func (h *Handler) sessionContextWindowTokens(ctx context.Context, session store.Session) int64 {
+	if h.catalog == nil {
+		return h.contextWindowTokens
+	}
+	catalog, err := h.catalog.List(ctx, session.ProviderID)
+	if err != nil {
+		return h.contextWindowTokens
+	}
+	for _, model := range catalog.Models {
+		if model.ID == session.ModelID {
+			return contextWindowTokensForModel(model, h.contextWindowTokens)
+		}
+	}
+	return h.contextWindowTokens
+}
+
+func contextWindowTokensForModel(model provider.Model, fallback int64) int64 {
+	if model.ContextWindowTokens > 0 {
+		return model.ContextWindowTokens
+	}
+	return fallback
 }
 
 func fileAccessFromProto(value v1.FileAccess) (permission.FileAccess, error) {

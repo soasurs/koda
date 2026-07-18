@@ -52,6 +52,8 @@ func runtimeError(err error) error {
 		return connect.NewError(connect.CodeDeadlineExceeded, err)
 	case errors.Is(err, agent.ErrProviderNotConfigured):
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("provider is not configured"))
+	case errors.Is(err, errModelContextWindowIncompatible):
+		return connect.NewError(connect.CodeFailedPrecondition, errModelContextWindowIncompatible)
 	default:
 		return connect.NewError(connect.CodeInternal, fmt.Errorf("agent runtime failed: %w", err))
 	}

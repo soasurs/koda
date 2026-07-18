@@ -77,8 +77,10 @@ flowchart LR
 
 ## 选择与调度
 
-Server 会在新 Run 前根据上一次已确认 turn 的 token usage 判断是否 compaction。达到配置
-trigger，或者到达必须为输出和 summary 预留空间的较低 hard limit 时，会尝试压缩。
+Server 会在新 Run 前根据上一次已确认 turn 的 token usage 判断是否 compaction。它会先
+解析 Session 选中 Model 的 metadata；没有已知的 Model-specific window 时回退到
+`context.window_tokens`。达到该有效窗口的配置百分比，或者到达必须为输出和 summary
+预留空间的较低 hard limit 时，会尝试压缩。
 
 Selector 以完整 turn 为单位工作。它在 retained-token budget 范围内最多保留配置数量的
 最近 turn，并选择更早的 active 前缀。Boundary 按 event ID 持久化，而不是数组 offset。

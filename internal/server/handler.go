@@ -33,7 +33,7 @@ type Handler struct {
 	mcp                 MCPCatalog
 	logger              *slog.Logger
 	contextWindowTokens int64
-	compaction          compactionPolicy
+	compactionConfig    config.CompactionConfig
 	projector           runner.Projector
 
 	newSessionID      func() (string, error)
@@ -58,8 +58,8 @@ func WithCompactionConfig(value config.CompactionConfig) HandlerOption {
 // HandlerOption configures one Handler.
 type HandlerOption func(*handlerOptions) error
 
-// WithContextWindowTokens configures the process-wide context window budget
-// reported for every session.
+// WithContextWindowTokens configures the fallback context window budget used
+// when the selected model has no declared capacity.
 func WithContextWindowTokens(tokens int64) HandlerOption {
 	return func(options *handlerOptions) error {
 		if tokens <= 0 {
@@ -101,8 +101,7 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 			return nil, err
 		}
 	}
-	compaction, err := resolveCompactionPolicy(options.contextWindowTokens, options.compaction)
-	if err != nil {
+	if _, err := resolveCompactionPolicy(options.contextWindowTokens, options.compaction); err != nil {
 		return nil, err
 	}
 	logger = logging.OrDiscard(logger)
@@ -136,7 +135,7 @@ func NewHandler(registry *provider.Registry, catalog *provider.Catalog, sessionS
 		mcp:                 mcpCatalog,
 		logger:              logger,
 		contextWindowTokens: options.contextWindowTokens,
-		compaction:          compaction,
+		compactionConfig:    options.compaction,
 		projector:           projector,
 		newSessionID:        newSessionID,
 		titleGenerator:      agentFactory.GenerateTitle,

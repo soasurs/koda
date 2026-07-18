@@ -17,7 +17,7 @@ an embedded local web interface.
 - per-session provider, model, reasoning, workspace, and permission settings;
 - explicit approvals and structured questions during a Run;
 - durable SQLite conversation history with failed/interrupted Turn status,
-  undo, replay, and context compaction;
+  undo, replay, and model-aware context compaction;
 - built-in Anthropic, OpenAI, Gemini, and DeepSeek adapters;
 - process-level Agent Skills and MCP servers;
 - an embedded React Studio and a Protobuf/Connect API for other local clients.

@@ -198,6 +198,7 @@ func modelFromProto(model *v1.Model) provider.Model {
 		Name:                   model.GetName(),
 		ReasoningEfforts:       slices.Clone(model.GetReasoningEfforts()),
 		DefaultReasoningEffort: model.GetDefaultReasoningEffort(),
+		ContextWindowTokens:    model.GetContextWindowTokens(),
 	}
 }
 
@@ -209,6 +210,7 @@ func modelsToProto(models []provider.Model) []*v1.Model {
 			Name:                   new(model.Name),
 			ReasoningEfforts:       slices.Clone(model.ReasoningEfforts),
 			DefaultReasoningEffort: new(model.DefaultReasoningEffort),
+			ContextWindowTokens:    new(model.ContextWindowTokens),
 		}.Build()
 	}
 	return result

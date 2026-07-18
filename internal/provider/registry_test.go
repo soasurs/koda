@@ -66,6 +66,7 @@ func TestRegistrySavesAndReopensCustomProvider(t *testing.T) {
 			ID:                     "example/model",
 			ReasoningEfforts:       []string{"low", "high", "max", "ultra"},
 			DefaultReasoningEffort: "high",
+			ContextWindowTokens:    128_000,
 		}},
 	}, &key)
 	if err != nil {
@@ -96,7 +97,7 @@ func TestRegistrySavesAndReopensCustomProvider(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
-	if got.APIKey() != key || got.BaseURL != saved.BaseURL || len(got.ModelOverrides) != 1 {
+	if got.APIKey() != key || got.BaseURL != saved.BaseURL || len(got.ModelOverrides) != 1 || got.ModelOverrides[0].ContextWindowTokens != 128_000 {
 		t.Fatalf("reopened provider = %+v, want persisted provider", got)
 	}
 
@@ -207,6 +208,7 @@ func TestRegistryModelSnapshotPersistsReturnsClonesAndPreservesRevision(t *testi
 			ID:                     "custom-model",
 			ReasoningEfforts:       []string{"high", "ultra"},
 			DefaultReasoningEffort: "ultra",
+			ContextWindowTokens:    400_000,
 		}},
 		RefreshedAt: refreshedAt,
 	})
@@ -226,7 +228,7 @@ func TestRegistryModelSnapshotPersistsReturnsClonesAndPreservesRevision(t *testi
 	if err != nil {
 		t.Fatalf("ModelSnapshot() error = %v", err)
 	}
-	if got.RefreshedAt != refreshedAt || got.Models[0].ReasoningEfforts[0] != "high" {
+	if got.RefreshedAt != refreshedAt || got.Models[0].ReasoningEfforts[0] != "high" || got.Models[0].ContextWindowTokens != 400_000 {
 		t.Fatalf("ModelSnapshot() = %+v", got)
 	}
 	got.Models[0].ReasoningEfforts[0] = "mutated-again"
@@ -246,7 +248,7 @@ func TestRegistryModelSnapshotPersistsReturnsClonesAndPreservesRevision(t *testi
 	if err != nil {
 		t.Fatalf("reopened ModelSnapshot() error = %v", err)
 	}
-	if reopenedSnapshot.RefreshedAt != refreshedAt || len(reopenedSnapshot.Models) != 1 {
+	if reopenedSnapshot.RefreshedAt != refreshedAt || len(reopenedSnapshot.Models) != 1 || reopenedSnapshot.Models[0].ContextWindowTokens != 400_000 {
 		t.Fatalf("reopened snapshot = %+v", reopenedSnapshot)
 	}
 }
@@ -333,6 +335,10 @@ func TestRegistryRejectsInvalidProviders(t *testing.T) {
 		{name: "unsupported default effort", provider: Provider{
 			ID: "valid", Name: "Valid", Type: TypeOpenAIChatCompletions,
 			ModelOverrides: []Model{{ID: "model", ReasoningEfforts: []string{"low"}, DefaultReasoningEffort: "high"}},
+		}},
+		{name: "negative context window", provider: Provider{
+			ID: "valid", Name: "Valid", Type: TypeOpenAIChatCompletions,
+			ModelOverrides: []Model{{ID: "model", ContextWindowTokens: -1}},
 		}},
 	}
 
