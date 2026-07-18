@@ -18,9 +18,10 @@ creates the ledger before the first production Run, after confirming the Koda
 session still exists.
 
 The database enables foreign keys, WAL journaling, a busy timeout, and normal
-synchronous mode. The default directory is restricted to `0700`; database,
-WAL, and shared-memory files are restricted to `0600` when present. Schema
-changes are append-only numbered migrations applied transactionally.
+synchronous mode. On Unix, the default directory is restricted to `0700` and
+database, WAL, and shared-memory files are restricted to `0600` when present.
+On Windows, the default directory inherits the current user's profile ACL.
+Schema changes are append-only numbered migrations applied transactionally.
 
 ## Session serialization
 

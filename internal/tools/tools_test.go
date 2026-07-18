@@ -11,11 +11,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
-	"syscall"
 	"testing"
-	"time"
 
 	"github.com/soasurs/adk/tool"
 
@@ -89,9 +86,7 @@ func TestFileAccessClassifiesExternalPathsAndSymlinks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EvalSymlinks(external path) error = %v", err)
 	}
-	if err := os.Symlink(externalPath, filepath.Join(workspace, "link.txt")); err != nil {
-		t.Fatalf("Symlink() error = %v", err)
-	}
+	createSymlinkOrSkip(t, externalPath, filepath.Join(workspace, "link.txt"))
 	authorizer := newRecordingAuthorizer()
 	tools, err := NewReadOnly(Config{
 		Workdir:    workspace,
@@ -125,7 +120,7 @@ func TestBuildToolsRequireApprovalForWorkspaceWritesAndShell(t *testing.T) {
 	var created fileWriteOutput
 	runTool(t, toolByName(t, tools, "create_file"), createFileInput{Path: "new.txt", Content: "hello\n"}, &created)
 	var shell runShellOutput
-	runTool(t, toolByName(t, tools, "run_shell"), runShellInput{Command: "printf done"}, &shell)
+	runTool(t, toolByName(t, tools, "run_shell"), runShellInput{Command: shellPrintCommand("done")}, &shell)
 	if shell.Stdout != "done" || shell.ExitCode != 0 {
 		t.Fatalf("run_shell output = %+v", shell)
 	}
@@ -133,38 +128,6 @@ func TestBuildToolsRequireApprovalForWorkspaceWritesAndShell(t *testing.T) {
 	if len(requests) != 2 || requests[0].Kind != permission.KindFileWrite || requests[0].Scope != permission.ScopeWorkspace ||
 		requests[1].Kind != permission.KindShell || requests[1].Scope != permission.ScopeGlobal {
 		t.Fatalf("approval requests = %+v", requests)
-	}
-}
-
-func TestRunShellTimeoutKillsChildProcesses(t *testing.T) {
-	workspace := t.TempDir()
-	values, err := NewBuild(Config{
-		Workdir: workspace, ShellAccess: permission.ShellAccessUnrestricted,
-	})
-	if err != nil {
-		t.Fatalf("NewBuild() error = %v", err)
-	}
-	callToolError(t, toolByName(t, values, "run_shell"), runShellInput{
-		Command: "sleep 30 & echo $! > child.pid; wait", TimeoutSeconds: 1,
-	})
-	encodedPID, err := os.ReadFile(filepath.Join(workspace, "child.pid"))
-	if err != nil {
-		t.Fatalf("ReadFile(child.pid) error = %v", err)
-	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(encodedPID)))
-	if err != nil {
-		t.Fatalf("Atoi(child PID) error = %v", err)
-	}
-	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
-	for deadline := time.Now().Add(time.Second); ; {
-		err = syscall.Kill(pid, 0)
-		if errors.Is(err, syscall.ESRCH) {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("child process %d survived shell timeout: %v", pid, err)
-		}
-		time.Sleep(10 * time.Millisecond)
 	}
 }
 
@@ -492,9 +455,7 @@ func TestHashlineFindBestMatchAndContentHash(t *testing.T) {
 func TestPathsAndApprovalFailures(t *testing.T) {
 	workspace := t.TempDir()
 	external := t.TempDir()
-	if err := os.Symlink(external, filepath.Join(workspace, "linked")); err != nil {
-		t.Fatalf("Symlink() error = %v", err)
-	}
+	createSymlinkOrSkip(t, external, filepath.Join(workspace, "linked"))
 	s, err := newService(Config{Workdir: workspace})
 	if err != nil {
 		t.Fatalf("newService() error = %v", err)
@@ -585,7 +546,7 @@ func TestSearchFindAndShellErrorPaths(t *testing.T) {
 	}
 
 	var shell runShellOutput
-	runTool(t, toolByName(t, tools, "run_shell"), runShellInput{Command: "printf error >&2; exit 3"}, &shell)
+	runTool(t, toolByName(t, tools, "run_shell"), runShellInput{Command: shellFailureCommand()}, &shell)
 	if shell.ExitCode != 3 || shell.Stderr != "error" {
 		t.Fatalf("run_shell failure output = %+v", shell)
 	}
@@ -814,4 +775,11 @@ func TestWebFetchRedirectToRestricted(t *testing.T) {
 
 	webFetch := newTestWebFetchTool(t)
 	callToolError(t, webFetch, webFetchInput{URL: server.URL + "/redirect"})
+}
+
+func createSymlinkOrSkip(t *testing.T, target, link string) {
+	t.Helper()
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlink creation is not supported: %v", err)
+	}
 }

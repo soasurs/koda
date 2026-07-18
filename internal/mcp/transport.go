@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -106,7 +105,7 @@ func newStdioTransport(value config.MCPServerConfig) (resolvedServer, sdkmcp.Tra
 		return resolvedServer{}, nil, fmt.Errorf("resolve stdio env: %w", err)
 	}
 	command := exec.Command(value.Command, args...)
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	configureStdioCommand(command)
 	if len(environment) > 0 {
 		command.Env = os.Environ()
 		for name, envValue := range environment {

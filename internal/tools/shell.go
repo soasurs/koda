@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/soasurs/adk/tool"
@@ -59,21 +57,7 @@ func (s service) runShell(ctx context.Context, input runShellInput) (runShellOut
 	timeout := shellTimeout(s.commandTimeout, input.TimeoutSeconds)
 	commandCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	command := exec.CommandContext(commandCtx, "sh", "-c", input.Command)
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	command.Cancel = func() error {
-		if command.Process == nil {
-			return os.ErrProcessDone
-		}
-		if err := syscall.Kill(-command.Process.Pid, syscall.SIGKILL); err != nil {
-			if errors.Is(err, syscall.ESRCH) {
-				return os.ErrProcessDone
-			}
-			return err
-		}
-		return nil
-	}
-	command.WaitDelay = time.Second
+	command := newShellCommand(commandCtx, input.Command)
 	command.Dir = workdir.real
 	stdout := newTruncatingBuffer(clamp(input.MaxChars, defaultMaxChars, defaultMaxChars))
 	stderr := newTruncatingBuffer(clamp(input.MaxChars, defaultMaxChars, defaultMaxChars))

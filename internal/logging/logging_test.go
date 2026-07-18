@@ -82,7 +82,7 @@ func TestResolveLogPathRelativeToDotKoda(t *testing.T) {
 }
 
 func TestResolveLogPathKeepsAbsolutePath(t *testing.T) {
-	abs := "/var/log/koda.log"
+	abs := filepath.Join(t.TempDir(), "koda.log")
 	got, err := resolveLogPath(abs)
 	if err != nil || got != abs {
 		t.Fatalf("resolveLogPath(absolute) = %q, %v", got, err)
