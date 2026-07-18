@@ -35,7 +35,7 @@ flowchart LR
 - 可以缓存不可变的 Agent 结构，但 Run 特有状态必须通过 context 传递；
 - partial output 和前端交互都是瞬态状态；
 - complete event 与终态 Turn status 在失败或中断后仍会持久化；
-- 只有历史和 Session metadata 一致后，成功 Run 才能被确认；
+- 只有历史和 Session metadata 一致后，成功 Run 才会以 complete 终态写入 journal；
 - 文件和进程能力默认采用权限最小的有效策略；
 - 启动时加载的进程能力与 Session、Run 配置相互独立。
 
@@ -44,7 +44,7 @@ flowchart LR
 - [系统结构](architecture/system-structure_zh-CN.md)：进程启动、包职责、依赖方向和
   生命周期范围。
 - [Run 生命周期](architecture/run-lifecycle_zh-CN.md)：从请求校验到流式输出、交互、
-  持久化终结和确认的完整 turn。
+  持久化终结和 terminal publication 的完整 turn。
 - [Agent 与工具](architecture/agents-and-tools_zh-CN.md)：Runner 缓存、分层指令、模式、
   路径分类、审批和提问。
 - [存储与 Context Compaction](architecture/storage-and-compaction_zh-CN.md)：SQLite
@@ -59,8 +59,8 @@ flowchart LR
 | 术语 | 含义 |
 |---|---|
 | Session | 持久化运行配置和历史所有权边界。 |
-| Run | 客户端请求的一次流式执行。 |
-| Turn | 一次成功 Run 提交的完整用户、助手与工具交互。 |
+| Run | 一次 Server-owned execution，可以有一个或多个客户端订阅。 |
+| Turn | Run 执行期间创建的持久化历史单元，可以是 completed、failed 或 interrupted 状态。 |
 | Event | ADK 历史记录；complete event 持久化，partial event 只在瞬时存在。 |
 | Frame | 客户端观察到的一条 `RunResponse` payload。 |
 | Compaction generation | 针对已归档历史前缀生成的不可变 summary 和 working-state snapshot。 |

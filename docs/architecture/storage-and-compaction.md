@@ -30,7 +30,8 @@ calls through the ADK session service.
 
 The same boundary serializes:
 
-- full Runs, including durable Turn finalization and completion acknowledgment;
+- full Runs, including durable Turn finalization and terminal journal
+  publication;
 - session settings and metadata updates;
 - history mutation and undo;
 - session deletion;
@@ -87,7 +88,7 @@ flowchart LR
 ## Selection and scheduling
 
 The server considers compaction before a new Run, using the token usage from a
-previous acknowledged turn. It resolves the Session's selected model metadata
+previous completed turn. It resolves the Session's selected model metadata
 first, falling back to `context.window_tokens` when no model-specific window is
 known. It attempts compaction at the configured percentage of that effective
 window or at the lower hard limit needed to reserve output and summary

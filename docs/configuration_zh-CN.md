@@ -66,7 +66,7 @@ Bundled Model metadata 会声明每个已知 Model 的 context window；custom M
 Provider measurement，直到新 Model 返回 usage。
 
 持久化 compaction 默认启用。新 Run 开始前，Koda 会解析当前 Model 的有效 context
-window；如果上一个已确认 turn 达到 `trigger_percent`，或者需要提前为
+window；如果上一个 completed turn 达到 `trigger_percent`，或者需要提前为
 `reserve_tokens` 留出空间，Koda 会尝试压缩历史。
 它在 `retain_tokens` 范围内最多保留 `retain_turns` 个最近完整 turn，总结更早的 active
 前缀，并将生成的 working-state snapshot 注入后续模型请求。该 snapshot 不是普通的

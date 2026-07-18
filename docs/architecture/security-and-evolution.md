@@ -120,4 +120,4 @@ The following are design questions, not implemented features:
 - a remote or multi-user deployment model with authentication and isolation.
 
 Any such change must preserve or deliberately replace the current ownership,
-acknowledgment, and security invariants rather than bypass them locally.
+terminal-publication, and security invariants rather than bypass them locally.

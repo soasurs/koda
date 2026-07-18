@@ -97,9 +97,10 @@ Provider definition、catalog 和 interaction resolution。Studio 拥有以下�
 - 本地化时间戳和当前 theme；
 - 瞬态 compaction progress。
 
-页面刷新后，Studio 通过 Session 和 Event RPC 重建持久化状态，不能把 partial frame 保存
-成对话事实。在 Run commit boundary，`RunCompleted.session` snapshot 会替换乐观 Session
-状态。
+页面刷新后，Studio 通过 Session 和 Event RPC 重建持久化状态，再调用 `GetActiveRun`
+检查 active Run，并使用 `WatchRun` 重放带 sequence 的 frame。Active Run snapshot 会恢复
+pending approval 和 question。Studio 不能把 partial frame 保存成对话事实。在 Run commit
+boundary，`RunCompleted.session` snapshot 会替换乐观 Session 状态。
 
 目录浏览是创建 Session 前供本地客户端选择 workdir 的 service-scoped 能力。它只返回
 canonical 目录名和路径，不返回文件内容，也不修改文件系统。
