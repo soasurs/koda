@@ -2,8 +2,20 @@ name: Release
 
 on:
   push:
+    branches:
+      - master
     tags:
       - "v*"
+    paths:
+      - ".github/workflows/release.yml"
+      - "build/studio.sh"
+      - "cmd/**"
+      - "gen/**"
+      - "internal/**"
+      - "proto/**"
+      - "studio/**"
+      - "go.mod"
+      - "go.sum"
 
 permissions:
   contents: read
@@ -108,7 +120,7 @@ jobs:
           ./dist/$bin --help
 
       - name: Package (Unix)
-        if: matrix.goos != 'windows'
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.goos != 'windows'
         run: |
           package="koda_${GITHUB_REF_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}"
           mkdir -p "dist/${package}" release
@@ -116,7 +128,7 @@ jobs:
           tar -C dist -czf "$GITHUB_WORKSPACE/release/${package}.tar.gz" "${package}"
 
       - name: Package (Windows)
-        if: matrix.goos == 'windows'
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.goos == 'windows'
         shell: pwsh
         run: |
           $package = "koda_${env:GITHUB_REF_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}"
@@ -127,6 +139,7 @@ jobs:
           Compress-Archive -Path "dist/$package" -DestinationPath "$release/$package.zip"
 
       - name: Upload binary archive
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: koda-${{ matrix.goos }}-${{ matrix.goarch }}
@@ -137,6 +150,7 @@ jobs:
   release:
     name: Publish GitHub Release
     needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     env:
       GH_REPO: ${{ github.repository }}
