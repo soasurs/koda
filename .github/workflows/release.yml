@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version for test artifacts (e.g. v0.0.0-test)"
+        required: true
+        default: "v0.0.0-test"
 
 permissions:
   contents: read
@@ -42,17 +48,21 @@ jobs:
           retention-days: 1
 
   build:
-    name: Build macOS ${{ matrix.goarch }}
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
     needs: studio
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15-intel
-            goarch: amd64
-          - runner: macos-15
-            goarch: arm64
+          - { goos: darwin,  goarch: amd64, runner: macos-15-intel }
+          - { goos: darwin,  goarch: arm64, runner: macos-15       }
+          - { goos: linux,   goarch: amd64, runner: ubuntu-24.04   }
+          - { goos: linux,   goarch: arm64, runner: ubuntu-24.04   }
+          - { goos: windows, goarch: amd64, runner: windows-2025   }
+          - { goos: windows, goarch: arm64, runner: windows-2025   }
     runs-on: ${{ matrix.runner }}
+    env:
+      CGO_ENABLED: "0"
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -72,73 +82,44 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build binary
         env:
-          CGO_ENABLED: "1"
-          GOARCH: ${{ matrix.goarch }}
-          GOOS: darwin
-        run: go build -buildvcs=true -trimpath -ldflags="-s -w" -o dist/koda ./cmd/koda
-
-      - name: Smoke test
-        run: ./dist/koda --help
-
-      - name: Package binary
-        env:
+          GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          version=${GITHUB_REF_NAME#v}
-          package="koda_${version}_darwin_${GOARCH}"
+          bin=koda
+          [ "$GOOS" = "windows" ] && bin=koda.exe
+          go build -buildvcs=true -trimpath -ldflags="-s -w" -o "dist/$bin" ./cmd/koda
+
+      - name: Smoke test
+        if: (matrix.goarch == 'amd64' && runner.arch == 'X64') || (matrix.goarch == 'arm64' && runner.arch == 'ARM64')
+        run: |
+          bin=koda
+          [ "${{ matrix.goos }}" = "windows" ] && bin=koda.exe
+          ./dist/$bin --help
+
+      - name: Package (Unix)
+        if: matrix.goos != 'windows'
+        run: |
+          package="koda_${{ steps.ver.outputs.version }}_${{ matrix.goos }}_${{ matrix.goarch }}"
           mkdir -p "dist/${package}"
           cp dist/koda README.md README_zh-CN.md LICENSE "dist/${package}/"
           tar -C dist -czf "dist/${package}.tar.gz" "${package}"
 
-      - name: Upload binary archive
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: koda-darwin-${{ matrix.goarch }}
-          path: dist/koda_*_darwin_${{ matrix.goarch }}.tar.gz
-          if-no-files-found: error
-          retention-days: 1
-
-  windows:
-    name: Build Windows amd64
-    needs: studio
-    runs-on: windows-2025
-    env:
-      CGO_ENABLED: "1"
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Set up Go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Verify GCC
-        run: gcc --version
-
-      - name: Download Studio assets
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: studio-dist
-          path: internal/studio/dist
-
-      - name: Test
-        run: go test ./...
-
-      - name: Build binary
-        run: go build -buildvcs=true -trimpath -ldflags="-s -w" -o dist/koda.exe ./cmd/koda
-
-      - name: Smoke test
-        run: .\dist\koda.exe --help
-
-      - name: Package binary
+      - name: Package (Windows)
+        if: matrix.goos == 'windows'
         shell: pwsh
         run: |
-          $version = $env:GITHUB_REF_NAME.Substring(1)
-          $package = "koda_${version}_windows_amd64"
+          $package = "koda_${{ steps.ver.outputs.version }}_${{ matrix.goos }}_${{ matrix.goarch }}"
           New-Item -ItemType Directory -Force "dist/$package" | Out-Null
           Copy-Item dist/koda.exe, README.md, README_zh-CN.md, LICENSE "dist/$package/"
           Compress-Archive -Path "dist/$package" -DestinationPath "dist/$package.zip"
@@ -146,14 +127,15 @@ jobs:
       - name: Upload binary archive
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: koda-windows-amd64
-          path: dist/koda_*_windows_amd64.zip
+          name: koda-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/koda_*_${{ matrix.goos }}_${{ matrix.goarch }}.*
           if-no-files-found: error
           retention-days: 1
 
   release:
     name: Publish GitHub Release
-    needs: [build, windows]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [build]
     runs-on: ubuntu-24.04
     env:
       GH_REPO: ${{ github.repository }}
@@ -174,7 +156,7 @@ jobs:
 
       - name: Generate checksums
         working-directory: release
-        run: sha256sum *.tar.gz *.zip > checksums.txt
+        run: sha256sum * > checksums.txt
 
       - name: Create draft release
         env:

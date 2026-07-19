@@ -31,7 +31,7 @@ func TestSQLiteDSNUsesFileURLPath(t *testing.T) {
 
 func TestOpenMigratesVersionTwoStore(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "koda.db")
-	db, err := sql.Open("sqlite3", sqliteDSN(path))
+	db, err := sql.Open("sqlite", sqliteDSN(path))
 	if err != nil {
 		t.Fatalf("open version two database: %v", err)
 	}
