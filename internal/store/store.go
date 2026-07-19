@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
 	adksession "github.com/soasurs/adk/session"
 	"github.com/soasurs/adk/session/database"
+	_ "modernc.org/sqlite"
 )
 
 const (
@@ -69,7 +69,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		return nil, fmt.Errorf("store: create database directory: %w", err)
 	}
 
-	db, err := sqlx.Open("sqlite3", sqliteDSN(path))
+	db, err := sqlx.Open("sqlite", sqliteDSN(path))
 	if err != nil {
 		return nil, fmt.Errorf("store: open database: %w", err)
 	}
@@ -219,7 +219,7 @@ func sqliteDSN(path string) string {
 	u := &url.URL{
 		Scheme:   "file",
 		Path:     path,
-		RawQuery: "_busy_timeout=5000&_foreign_keys=on&_journal_mode=WAL&_synchronous=NORMAL",
+		RawQuery: "_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)",
 	}
 	return u.String()
 }

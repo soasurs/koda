@@ -23,6 +23,8 @@ jobs:
   build:
     name: Go
     runs-on: ubuntu-24.04
+    env:
+      CGO_ENABLED: "0"
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -45,33 +47,4 @@ jobs:
       - name: Test
         run: go test -v ./...
 
-  windows:
-    name: Windows
-    runs-on: windows-2025
-    env:
-      CGO_ENABLED: "1"
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Set up Go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
-        with:
-          go-version-file: go.mod
-          cache: true
-          cache-dependency-path: go.sum
-
-      - name: Verify GCC
-        run: gcc --version
-
-      - name: Prepare Studio test assets
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force internal/studio/dist | Out-Null
-          Copy-Item internal/studio/testdata/index.html internal/studio/dist/index.html
-
-      - name: Build
-        run: go build -v ./...
-
-      - name: Test
-        run: go test -v ./...
