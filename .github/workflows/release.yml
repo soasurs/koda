@@ -48,24 +48,37 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { goos: darwin,  goarch: amd64, runner: macos-15-intel, archive: tar.gz }
-          - { goos: darwin,  goarch: arm64, runner: macos-15,       archive: tar.gz }
-          - { goos: linux,   goarch: amd64, runner: ubuntu-24.04,   archive: tar.gz }
-          - { goos: linux,   goarch: arm64, runner: ubuntu-24.04,   archive: tar.gz }
-          - { goos: windows, goarch: amd64, runner: windows-2025,   archive: zip    }
-          - { goos: windows, goarch: arm64, runner: windows-2025,   archive: zip    }
+          - { goos: darwin,  goarch: amd64, runner: macos-15-intel }
+          - { goos: darwin,  goarch: arm64, runner: macos-15       }
+          - { goos: linux,   goarch: amd64, runner: ubuntu-24.04   }
+          - { goos: linux,   goarch: arm64, runner: ubuntu-24.04   }
+          - { goos: windows, goarch: amd64, runner: windows-2025   }
+          - { goos: windows, goarch: arm64, runner: windows-2025   }
     runs-on: ${{ matrix.runner }}
     env:
       CGO_ENABLED: "0"
+      GOCACHE: ${{ runner.temp }}/go-build-${{ matrix.goos }}-${{ matrix.goarch }}
+      GOMODCACHE: ${{ runner.temp }}/go-mod-${{ matrix.goos }}-${{ matrix.goarch }}
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Set up Go
+        id: setup-go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
+
+      - name: Cache Go modules and build outputs
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.GOMODCACHE }}
+            ${{ env.GOCACHE }}
+          key: go-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-${{ matrix.goos }}-${{ matrix.goarch }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ runner.arch }}-${{ steps.setup-go.outputs.go-version }}-${{ matrix.goos }}-${{ matrix.goarch }}-
 
       - name: Download Studio assets
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -98,24 +111,26 @@ jobs:
         if: matrix.goos != 'windows'
         run: |
           package="koda_$GITHUB_REF_NAME_${{ matrix.goos }}_${{ matrix.goarch }}"
-          mkdir -p "dist/${package}"
+          mkdir -p "dist/${package}" release
           cp dist/koda README.md README_zh-CN.md LICENSE "dist/${package}/"
-          tar -C dist -czf "dist/${package}.tar.gz" "${package}"
+          tar -C dist -czf "$GITHUB_WORKSPACE/release/${package}.tar.gz" "${package}"
 
       - name: Package (Windows)
         if: matrix.goos == 'windows'
         shell: pwsh
         run: |
           $package = "koda_$env:GITHUB_REF_NAME_${{ matrix.goos }}_${{ matrix.goarch }}"
+          $release = Join-Path $env:GITHUB_WORKSPACE "release"
           New-Item -ItemType Directory -Force "dist/$package" | Out-Null
+          New-Item -ItemType Directory -Force $release | Out-Null
           Copy-Item dist/koda.exe, README.md, README_zh-CN.md, LICENSE "dist/$package/"
-          Compress-Archive -Path "dist/$package" -DestinationPath "dist/$package.zip"
+          Compress-Archive -Path "dist/$package" -DestinationPath "$release/$package.zip"
 
       - name: Upload binary archive
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: koda-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/koda_${{ github.ref_name }}_${{ matrix.goos }}_${{ matrix.goarch }}.${{ matrix.archive }}
+          path: release
           if-no-files-found: error
           retention-days: 1
 
