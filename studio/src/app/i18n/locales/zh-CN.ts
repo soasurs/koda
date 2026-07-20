@@ -137,6 +137,29 @@ export const zhCN: EnDictionary = {
   'session.tool.output.empty': '无输出',
   'session.tool.diff.truncated': '已截断',
 
+  // Tool names (present tense)
+  'tools.name.ask_questions': '提问',
+  'tools.name.create_file': '创建文件',
+  'tools.name.edit_file': '编辑文件',
+  'tools.name.find_files': '查找文件',
+  'tools.name.list_directory': '列出目录',
+  'tools.name.read_file': '读取文件',
+  'tools.name.run_shell': '执行命令',
+  'tools.name.search_text': '搜索文本',
+  'tools.name.web_fetch': '抓取网页',
+  'tools.name.write_file': '写入文件',
+  // Tool names (past tense)
+  'tools.namePast.ask_questions': '已提问',
+  'tools.namePast.create_file': '已创建文件',
+  'tools.namePast.edit_file': '已编辑文件',
+  'tools.namePast.find_files': '已查找文件',
+  'tools.namePast.list_directory': '已列出目录',
+  'tools.namePast.read_file': '已读取文件',
+  'tools.namePast.run_shell': '已执行命令',
+  'tools.namePast.search_text': '已搜索文本',
+  'tools.namePast.web_fetch': '已抓取网页',
+  'tools.namePast.write_file': '已写入文件',
+
   // Session turn
   'session.turn.failed': '本轮失败',
   'session.turn.interrupted': '本轮已中断',

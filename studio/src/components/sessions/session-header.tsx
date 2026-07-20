@@ -24,11 +24,11 @@ export function SessionHeader({ session }: { session: Session }) {
 function useTokenFormatters(locale: string) {
   return useMemo(
     () => ({
-      compact: new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'zh', {
+      compact: new Intl.NumberFormat(locale, {
         notation: 'compact',
         maximumFractionDigits: 1,
       }),
-      exact: new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'zh'),
+      exact: new Intl.NumberFormat(locale),
     }),
     [locale],
   )

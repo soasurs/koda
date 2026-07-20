@@ -22,7 +22,7 @@ export const ApprovalCard = memo(function ApprovalCard({
   onResolved: () => void
 }) {
   const { t } = useI18n()
-  const tool = toolPresentation(approval.toolName, approval.argumentsJson)
+  const tool = toolPresentation(t, approval.toolName, approval.argumentsJson)
   const location =
     approval.toolName === 'run_shell' ? approval.targetPaths[0] : ''
   const mutation = useMutation({

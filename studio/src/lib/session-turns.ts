@@ -5,6 +5,7 @@ import type {
   Turn as DurableTurn,
 } from '@/gen/koda/v1/service_pb'
 import { Role } from '@/gen/koda/v1/service_pb'
+import type { TKey } from '@/app/i18n'
 
 export type Turn = { id: string; events: Event[]; metadata?: DurableTurn }
 export type TurnActivity = { assistant: Event; tools: Event[] }
@@ -93,54 +94,9 @@ export function inputText(input?: Input) {
   )
 }
 
-const toolLabels: Record<string, string> = {
-  ask_questions: 'Ask questions',
-  create_file: 'Create file',
-  edit_file: 'Edit file',
-  find_files: 'Find files',
-  list_directory: 'List directory',
-  read_file: 'Read file',
-  run_shell: 'Run command',
-  search_text: 'Search text',
-  web_fetch: 'Web fetch',
-  write_file: 'Write file',
-}
+// --- Tool detail extraction (non-translated) ---
 
-const toolPastLabels: Record<string, string> = {
-  ask_questions: 'Asked questions',
-  create_file: 'Created file',
-  edit_file: 'Edited file',
-  find_files: 'Found files',
-  list_directory: 'Listed directory',
-  read_file: 'Read file',
-  run_shell: 'Ran command',
-  search_text: 'Searched text',
-  web_fetch: 'Fetched web page',
-  write_file: 'Wrote file',
-}
-
-export function toolCallPresentation(
-  toolCall: ToolCall,
-  past = false,
-): { label: string; detail: string } {
-  return toolPresentation(toolCall.name, toolCall.argumentsJson, past)
-}
-
-export function toolPresentation(
-  name: string,
-  argumentsJson: string,
-  past = false,
-) {
-  const label =
-    (past ? toolPastLabels[name] : toolLabels[name]) ??
-    toolLabels[name] ??
-    name
-      .split(/[_-]+/)
-      .filter(Boolean)
-      .map((part) => part[0]?.toUpperCase() + part.slice(1))
-      .join(' ')
-
-  let detail = ''
+export function toolDetail(argumentsJson: string): string {
   try {
     const input = JSON.parse(argumentsJson) as Record<string, unknown>
     const value =
@@ -150,11 +106,58 @@ export function toolPresentation(
       input.pattern ??
       input.query ??
       input.globs
-    if (Array.isArray(value)) detail = value.join(', ')
-    else if (typeof value === 'string') detail = value
+    if (Array.isArray(value)) return value.join(', ')
+    if (typeof value === 'string') return value
+    return ''
   } catch {
-    // A malformed argument payload should not prevent the call from rendering.
+    return ''
   }
+}
 
-  return { label, detail }
+// --- Tool label translation ---
+
+export function toolLabel(
+  t: (key: TKey, params?: Record<string, string | number>) => string,
+  name: string,
+  past = false,
+): string {
+  const presentKey = `tools.name.${name}` as TKey
+  const pastKey = `tools.namePast.${name}` as TKey
+  if (past) {
+    const translated = t(pastKey)
+    if (translated !== pastKey) return translated
+  }
+  const translated = t(presentKey)
+  if (translated !== presentKey) return translated
+  // Fallback: human-readable from the tool name
+  return name
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+// --- Convenience wrappers ---
+
+export function toolCallPresentation(
+  t: (key: TKey, params?: Record<string, string | number>) => string,
+  toolCall: ToolCall,
+  past = false,
+): { label: string; detail: string } {
+  return {
+    label: toolLabel(t, toolCall.name, past),
+    detail: toolDetail(toolCall.argumentsJson),
+  }
+}
+
+export function toolPresentation(
+  t: (key: TKey, params?: Record<string, string | number>) => string,
+  name: string,
+  argumentsJson: string,
+  past = false,
+): { label: string; detail: string } {
+  return {
+    label: toolLabel(t, name, past),
+    detail: toolDetail(argumentsJson),
+  }
 }

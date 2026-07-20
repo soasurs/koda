@@ -34,8 +34,14 @@ describe('I18nProvider', () => {
     const { result } = renderHook(() => useI18n(), { wrapper: I18nProvider })
     act(() => result.current.setLocale('en'))
     expect(result.current.t('settings.general.title')).toBe('General')
-    // Keys without params return as-is; the {name} placeholder is replaced.
-    expect(result.current.t('theme.toggle.label')).toBe('Theme')
+    expect(
+      result.current.t('settings.mcp.card.toolCount.one', { count: 1 }),
+    ).toBe('1 tool')
+    expect(
+      result.current.t('settings.mcp.card.openAria', {
+        name: 'my-server',
+      }),
+    ).toBe('Open my-server')
   })
 
   it('switches locales and persists the choice', () => {

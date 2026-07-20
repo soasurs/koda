@@ -77,7 +77,7 @@ const ToolCallRow = memo(function ToolCallRow({
 }) {
   const { t } = useI18n()
   const finished = Boolean(response)
-  const { label, detail } = toolCallPresentation(toolCall, finished)
+  const { label, detail } = toolCallPresentation(t, toolCall, finished)
   const failed = response?.outcome.case === 'error'
   const status = failed
     ? t('session.tool.status.failed')

@@ -147,6 +147,29 @@ export const en = {
   'session.tool.output.empty': 'No output',
   'session.tool.diff.truncated': 'Truncated',
 
+  // Tool names (present tense)
+  'tools.name.ask_questions': 'Ask questions',
+  'tools.name.create_file': 'Create file',
+  'tools.name.edit_file': 'Edit file',
+  'tools.name.find_files': 'Find files',
+  'tools.name.list_directory': 'List directory',
+  'tools.name.read_file': 'Read file',
+  'tools.name.run_shell': 'Run command',
+  'tools.name.search_text': 'Search text',
+  'tools.name.web_fetch': 'Web fetch',
+  'tools.name.write_file': 'Write file',
+  // Tool names (past tense)
+  'tools.namePast.ask_questions': 'Asked questions',
+  'tools.namePast.create_file': 'Created file',
+  'tools.namePast.edit_file': 'Edited file',
+  'tools.namePast.find_files': 'Found files',
+  'tools.namePast.list_directory': 'Listed directory',
+  'tools.namePast.read_file': 'Read file',
+  'tools.namePast.run_shell': 'Ran command',
+  'tools.namePast.search_text': 'Searched text',
+  'tools.namePast.web_fetch': 'Fetched web page',
+  'tools.namePast.write_file': 'Wrote file',
+
   // Session turn
   'session.turn.failed': 'Turn failed',
   'session.turn.interrupted': 'Turn interrupted',

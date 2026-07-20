@@ -17,7 +17,10 @@ vi.mock('@/components/layout/sidebar-expand-button', () => ({
 afterEach(cleanup)
 
 describe('GeneralSettingsPage', () => {
-  beforeEach(() => window.localStorage.clear())
+  beforeEach(() => {
+    window.localStorage.clear()
+    window.localStorage.setItem('koda-studio-locale', 'en')
+  })
 
   it('renders appearance and conversation sections', () => {
     render(

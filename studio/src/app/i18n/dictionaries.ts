@@ -21,7 +21,6 @@ export const localeLabels: Record<Locale, string> = {
   'zh-CN': '中文(简体)',
   'zh-TW': '中文(繁體)',
 }
-
 export function translate(
   locale: Locale,
   key: TKey,

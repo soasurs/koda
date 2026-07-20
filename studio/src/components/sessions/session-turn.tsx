@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 
-import { useI18n } from '@/app/i18n'
+import { useI18n, type TKey } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import { EventView, ReasoningView } from '@/components/sessions/session-message'
 import { ToolGroup } from '@/components/sessions/tool-activity'
@@ -227,30 +227,24 @@ function interruptionLabel(
   }
 }
 
+const FAILURE_LOCATION_KEYS = {
+  [TurnFailureStage.UNSPECIFIED]: '' as const,
+  [TurnFailureStage.AGENT]: 'session.turn.failure.location.agent' as const,
+  [TurnFailureStage.PROVIDER]:
+    'session.turn.failure.location.provider' as const,
+  [TurnFailureStage.TOOL]: 'session.turn.failure.location.tool' as const,
+  [TurnFailureStage.PERSISTENCE]:
+    'session.turn.failure.location.storage' as const,
+  [TurnFailureStage.CONSUMER]: 'session.turn.failure.location.client' as const,
+}
+
 function failureLabel(
   t: ReturnType<typeof useI18n>['t'],
   code = '',
   stage = TurnFailureStage.UNSPECIFIED,
 ) {
-  let locationKey: string = ''
-  switch (stage) {
-    case TurnFailureStage.AGENT:
-      locationKey = 'session.turn.failure.location.agent'
-      break
-    case TurnFailureStage.PROVIDER:
-      locationKey = 'session.turn.failure.location.provider'
-      break
-    case TurnFailureStage.TOOL:
-      locationKey = 'session.turn.failure.location.tool'
-      break
-    case TurnFailureStage.PERSISTENCE:
-      locationKey = 'session.turn.failure.location.storage'
-      break
-    case TurnFailureStage.CONSUMER:
-      locationKey = 'session.turn.failure.location.client'
-      break
-  }
-  const location = locationKey ? t(locationKey as never) : ''
+  const locationKey = FAILURE_LOCATION_KEYS[stage]
+  const location = locationKey ? t(locationKey as TKey) : ''
   const normalizedCode = code.replaceAll('_', ' ').trim()
   if (normalizedCode && location) return `${normalizedCode} · ${location}`
   if (normalizedCode) return normalizedCode

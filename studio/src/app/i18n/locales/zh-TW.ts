@@ -137,6 +137,29 @@ export const zhTW: EnDictionary = {
   'session.tool.output.empty': '無輸出',
   'session.tool.diff.truncated': '已截斷',
 
+  // Tool names (present tense)
+  'tools.name.ask_questions': '提問',
+  'tools.name.create_file': '建立檔案',
+  'tools.name.edit_file': '編輯檔案',
+  'tools.name.find_files': '尋找檔案',
+  'tools.name.list_directory': '列出目錄',
+  'tools.name.read_file': '讀取檔案',
+  'tools.name.run_shell': '執行命令',
+  'tools.name.search_text': '搜尋文字',
+  'tools.name.web_fetch': '擷取網頁',
+  'tools.name.write_file': '寫入檔案',
+  // Tool names (past tense)
+  'tools.namePast.ask_questions': '已提問',
+  'tools.namePast.create_file': '已建立檔案',
+  'tools.namePast.edit_file': '已編輯檔案',
+  'tools.namePast.find_files': '已尋找檔案',
+  'tools.namePast.list_directory': '已列出目錄',
+  'tools.namePast.read_file': '已讀取檔案',
+  'tools.namePast.run_shell': '已執行命令',
+  'tools.namePast.search_text': '已搜尋文字',
+  'tools.namePast.web_fetch': '已擷取網頁',
+  'tools.namePast.write_file': '已寫入檔案',
+
   // Session turn
   'session.turn.failed': '本輪失敗',
   'session.turn.interrupted': '本輪已中斷',
