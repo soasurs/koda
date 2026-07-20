@@ -204,7 +204,11 @@ export const zhCN: EnDictionary = {
   'session.composer.disclaimer': 'Koda 可能出错。请审查命令与文件变更。',
   'session.composer.mode.build': '构建',
   'session.composer.mode.plan': '规划',
-
+  'session.composer.fileAccess.read': '读取',
+  'session.composer.fileAccess.write': '写入',
+  'session.composer.fileAccess.full': '完全',
+  'session.composer.shellAccess.ask': '询问',
+  'session.composer.shellAccess.free': '自由',
   // Session model picker
   'session.modelPicker.settingsAria': '会话模型设置',
   'session.modelPicker.provider': '提供方',

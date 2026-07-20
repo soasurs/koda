@@ -217,6 +217,11 @@ export const en = {
     'Koda can make mistakes. Review commands and file changes.',
   'session.composer.mode.build': 'Build',
   'session.composer.mode.plan': 'Plan',
+  'session.composer.fileAccess.read': 'Read',
+  'session.composer.fileAccess.write': 'Write',
+  'session.composer.fileAccess.full': 'Full',
+  'session.composer.shellAccess.ask': 'Ask',
+  'session.composer.shellAccess.free': 'Free',
 
   // Session model picker
   'session.modelPicker.settingsAria': 'Session model settings',

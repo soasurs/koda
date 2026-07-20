@@ -204,7 +204,11 @@ export const zhTW: EnDictionary = {
   'session.composer.disclaimer': 'Koda 可能出錯。請審查命令與檔案變更。',
   'session.composer.mode.build': '建構',
   'session.composer.mode.plan': '規劃',
-
+  'session.composer.fileAccess.read': '讀取',
+  'session.composer.fileAccess.write': '寫入',
+  'session.composer.fileAccess.full': '完全',
+  'session.composer.shellAccess.ask': '詢問',
+  'session.composer.shellAccess.free': '自由',
   // Session model picker
   'session.modelPicker.settingsAria': '對話模型設定',
   'session.modelPicker.provider': '提供方',

@@ -347,7 +347,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
         setQuestionPrompts([])
         abortRef.current = null
         activeRunIdRef.current = ''
-        inputRef.current?.focus()
+        requestAnimationFrame(() => inputRef.current?.focus())
       }
     }
   }

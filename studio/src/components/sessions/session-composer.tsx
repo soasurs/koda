@@ -2,10 +2,17 @@ import {
   ChevronUp,
   CircleStop,
   ClipboardList,
+  Eye,
+  FilePen,
+  Folder,
+  Globe,
   Hammer,
   Send,
+  ShieldQuestion,
+  Terminal,
+  Zap,
 } from 'lucide-react'
-import { memo, useState, type RefObject } from 'react'
+import { memo, useEffect, useRef, useState, type RefObject } from 'react'
 
 import { useI18n } from '@/app/i18n'
 import type { SendShortcut } from '@/app/preferences-context'
@@ -28,7 +35,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Session } from '@/gen/koda/v1/service_pb'
-import { AgentMode } from '@/gen/koda/v1/service_pb'
+import { AgentMode, FileAccess, ShellAccess } from '@/gen/koda/v1/service_pb'
+import { kodaClient } from '@/lib/connect'
 
 function matchesSendShortcut(
   event: React.KeyboardEvent<HTMLTextAreaElement>,
@@ -72,6 +80,31 @@ export const SessionComposer = memo(function SessionComposer({
   const { t } = useI18n()
   const { sendShortcut, setPreference } = usePreferences()
   const [input, setInput] = useState(initialInput)
+  const [fileAccess, setFileAccess] = useState(session.fileAccess)
+  const [shellAccess, setShellAccess] = useState(session.shellAccess)
+  const wasRunningRef = useRef(false)
+
+  useEffect(() => {
+    if (wasRunningRef.current && !isRunning) {
+      requestAnimationFrame(() => inputRef.current?.focus())
+    }
+    wasRunningRef.current = isRunning
+  }, [isRunning, inputRef])
+
+  function updatePermission(
+    kind: 'fileAccess' | 'shellAccess',
+    value: FileAccess | ShellAccess,
+  ) {
+    if (isRunning) return
+    if (kind === 'fileAccess') setFileAccess(value as FileAccess)
+    else setShellAccess(value as ShellAccess)
+    kodaClient
+      .updateSession({ sessionId: session.id, [kind]: value })
+      .catch(() => {
+        setFileAccess(session.fileAccess)
+        setShellAccess(session.shellAccess)
+      })
+  }
 
   const shortcutOptions: { label: string; shortcut: SendShortcut }[] = [
     {
@@ -123,33 +156,98 @@ export const SessionComposer = memo(function SessionComposer({
             value={input}
           />
           <div className="flex items-center justify-between px-2.5 pb-2.5">
-            <div className="relative">
-              <Select
-                disabled={isRunning}
-                onValueChange={(value) =>
-                  onModeChange(Number(value) as AgentMode)
-                }
-                value={String(mode)}
-              >
-                <SelectTrigger className="inline-flex h-auto w-auto items-center gap-1 whitespace-nowrap rounded-md border border-border bg-background py-1.5 pl-3 pr-7 text-xs font-medium text-foreground hover:border-border/80 [&>svg]:hidden">
-                  <SelectValue />
-                </SelectTrigger>
-                <ChevronUp className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
-                <SelectContent side="top">
-                  <SelectItem value={String(AgentMode.BUILD)}>
-                    <span className="flex items-center gap-2">
-                      <Hammer className="size-4 shrink-0" />
-                      {t('session.composer.mode.build')}
-                    </span>
-                  </SelectItem>
-                  <SelectItem value={String(AgentMode.PLAN)}>
-                    <span className="flex items-center gap-2">
-                      <ClipboardList className="size-4 shrink-0" />
-                      {t('session.composer.mode.plan')}
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-1.5">
+              <div className="relative">
+                <Select
+                  disabled={false}
+                  onValueChange={(value) =>
+                    onModeChange(Number(value) as AgentMode)
+                  }
+                  value={String(mode)}
+                >
+                  <SelectTrigger className="inline-flex h-auto w-auto items-center gap-1 whitespace-nowrap rounded-md border border-border bg-background py-1.5 pl-3 pr-7 text-xs font-medium text-foreground hover:border-border/80 [&>svg]:hidden">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <ChevronUp className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
+                  <SelectContent side="top">
+                    <SelectItem value={String(AgentMode.BUILD)}>
+                      <span className="flex items-center gap-2">
+                        <Hammer className="size-4 shrink-0" />
+                        {t('session.composer.mode.build')}
+                      </span>
+                    </SelectItem>
+                    <SelectItem value={String(AgentMode.PLAN)}>
+                      <span className="flex items-center gap-2">
+                        <ClipboardList className="size-4 shrink-0" />
+                        {t('session.composer.mode.plan')}
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <span className="relative inline-flex rounded-md border border-border">
+                <Select
+                  disabled={isRunning}
+                  onValueChange={(value) =>
+                    updatePermission('fileAccess', Number(value) as FileAccess)
+                  }
+                  value={String(fileAccess)}
+                >
+                  <SelectTrigger className="inline-flex h-auto w-auto items-center gap-1 whitespace-nowrap rounded-none rounded-l-md border-0 border-r border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 [&>svg:last-child]:rotate-180">
+                    <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent side="top">
+                    <SelectItem value={String(FileAccess.WORKSPACE_READ)}>
+                      <span className="flex items-center gap-2">
+                        <Eye className="size-4 shrink-0" />
+                        {t('session.composer.fileAccess.read')}
+                      </span>
+                    </SelectItem>
+                    <SelectItem value={String(FileAccess.WORKSPACE_WRITE)}>
+                      <span className="flex items-center gap-2">
+                        <FilePen className="size-4 shrink-0" />
+                        {t('session.composer.fileAccess.write')}
+                      </span>
+                    </SelectItem>
+                    <SelectItem value={String(FileAccess.UNRESTRICTED)}>
+                      <span className="flex items-center gap-2">
+                        <Globe className="size-4 shrink-0" />
+                        {t('session.composer.fileAccess.full')}
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  disabled={isRunning}
+                  onValueChange={(value) =>
+                    updatePermission(
+                      'shellAccess',
+                      Number(value) as ShellAccess,
+                    )
+                  }
+                  value={String(shellAccess)}
+                >
+                  <SelectTrigger className="inline-flex h-auto w-auto items-center gap-1 whitespace-nowrap rounded-none rounded-r-md border-0 bg-background px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 [&>svg:last-child]:rotate-180">
+                    <Terminal className="size-3.5 shrink-0 text-muted-foreground" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent side="top">
+                    <SelectItem value={String(ShellAccess.APPROVAL_REQUIRED)}>
+                      <span className="flex items-center gap-2">
+                        <ShieldQuestion className="size-4 shrink-0" />
+                        {t('session.composer.shellAccess.ask')}
+                      </span>
+                    </SelectItem>
+                    <SelectItem value={String(ShellAccess.UNRESTRICTED)}>
+                      <span className="flex items-center gap-2">
+                        <Zap className="size-4 shrink-0" />
+                        {t('session.composer.shellAccess.free')}
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </span>
             </div>
             <div className="flex items-center gap-1.5">
               <SessionModelPicker
