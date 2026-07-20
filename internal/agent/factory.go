@@ -124,7 +124,9 @@ func New(config Config) (*Factory, error) {
 	var skillTools []tool.Tool
 	if config.Skills != nil && len(config.Skills.Skills()) > 0 {
 		var err error
-		skillInstruction, err = config.Skills.Instruction()
+		skillInstruction, err = config.Skills.Instruction(
+			adkskill.WithUsageInstruction("Call `load_skill` only when the task genuinely falls within the skill's described domain. If no skill matches, proceed without loading any skill."),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("agent: render skill catalog: %w", err)
 		}
