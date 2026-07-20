@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { I18nProvider } from '@/app/i18n'
+import { PreferencesProvider } from '@/app/preferences-provider'
 import { CompactionProgressStage } from '@/gen/koda/v1/service_pb'
 import { SessionPage } from '@/pages/session-page'
 
@@ -129,6 +130,10 @@ vi.mock('@/components/sessions/use-follow-latest', () => ({
   }),
 }))
 
+vi.mock('@/components/sessions/use-run-completion-notification', () => ({
+  useRunCompletionNotification: () => {},
+}))
+
 describe('SessionPage', () => {
   beforeEach(() => {
     route.history = undefined
@@ -138,9 +143,11 @@ describe('SessionPage', () => {
 
   function renderPage() {
     return render(
-      <I18nProvider>
-        <SessionPage />
-      </I18nProvider>,
+      <PreferencesProvider>
+        <I18nProvider>
+          <SessionPage />
+        </I18nProvider>
+      </PreferencesProvider>,
     )
   }
 

@@ -20,6 +20,7 @@ import { ApprovalCard, QuestionCard } from '@/components/sessions/run-prompts'
 import { SessionTurn } from '@/components/sessions/session-turn'
 import { useFollowLatest } from '@/components/sessions/use-follow-latest'
 import { useSessionRun } from '@/components/sessions/use-session-run'
+import { useRunCompletionNotification } from '@/components/sessions/use-run-completion-notification'
 import { kodaClient } from '@/lib/connect'
 import type {
   CompactionProgress,
@@ -87,6 +88,11 @@ function SessionContent({ sessionId }: { sessionId: string }) {
     sessionId,
   )
 
+  const sessionLabel = sessionQuery.data?.title || t('session.untitled')
+  useRunCompletionNotification(
+    sessionRun.isRunning,
+    t('session.notification.completed', { label: sessionLabel }),
+  )
   if (sessionQuery.isPending) return <CenteredLoader />
 
   const session = sessionQuery.data

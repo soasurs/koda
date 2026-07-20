@@ -49,6 +49,10 @@ function loadPreferences(): Preferences {
         ? parsed.expandToolCalls
         : defaultPreferences.expandToolCalls,
     sendShortcut,
+    notifyOnCompletion:
+      typeof parsed.notifyOnCompletion === 'boolean'
+        ? parsed.notifyOnCompletion
+        : defaultPreferences.notifyOnCompletion,
   }
 
   // Persist the resolved preferences so a migrated legacy value lands in the
