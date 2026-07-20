@@ -51,8 +51,9 @@ export function AppShell() {
     string | undefined
   >()
   const [renamingSession, setRenamingSession] = useState<Session>()
-  const [collapsedWorkdirs, setCollapsedWorkdirs] =
-    useState<Set<string>>(loadCollapsedWorkdirs)
+  const [collapsedWorkdirs, setCollapsedWorkdirs] = useState<Set<string>>(
+    loadCollapsedWorkdirs,
+  )
   // Populate the MCP tool cache for display-name lookups.
   useQuery({
     queryKey: ['mcp-tool-cache'],
@@ -99,15 +100,11 @@ export function AppShell() {
       return groups
     }, {}),
   ).sort((a, b) => {
-      const aEarliest = Math.min(
-        ...a.sessions!.map((s) => Number(s.createdAt)),
-      )
-      const bEarliest = Math.min(
-        ...b.sessions!.map((s) => Number(s.createdAt)),
-      )
-      // Descending: newer (later) workdirs first.
-      return bEarliest - aEarliest
-    })
+    const aEarliest = Math.min(...a.sessions!.map((s) => Number(s.createdAt)))
+    const bEarliest = Math.min(...b.sessions!.map((s) => Number(s.createdAt)))
+    // Descending: newer (later) workdirs first.
+    return bEarliest - aEarliest
+  })
 
   return (
     <SidebarContext.Provider
