@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SessionComposer } from '@/components/sessions/session-composer'
 import type { Session } from '@/gen/koda/v1/service_pb'
 import { AgentMode } from '@/gen/koda/v1/service_pb'
+import { AllProviders } from '@/test/providers'
 
 vi.mock('@/components/sessions/session-model-picker', () => ({
   SessionModelPicker: () => null,
@@ -13,19 +14,32 @@ vi.mock('@/components/sessions/session-model-picker', () => ({
 
 function renderComposer(onRun = vi.fn()) {
   render(
-    <SessionComposer
-      initialInput="Hello"
-      inputRef={createRef<HTMLTextAreaElement>()}
-      isRunning={false}
-      mode={AgentMode.BUILD}
-      onModeChange={vi.fn()}
-      onRun={onRun}
-      onStop={vi.fn()}
-      runError=""
-      session={{ id: 'session-1' } as Session}
-    />,
+    <AllProviders>
+      <SessionComposer
+        initialInput="Hello"
+        inputRef={createRef<HTMLTextAreaElement>()}
+        isRunning={false}
+        mode={AgentMode.BUILD}
+        onModeChange={vi.fn()}
+        onRun={onRun}
+        onStop={vi.fn()}
+        runError=""
+        session={{ id: 'session-1' } as Session}
+      />
+    </AllProviders>,
   )
   return { input: screen.getByRole('textbox', { name: 'Message' }), onRun }
+}
+
+function readStoredShortcut(): string | null {
+  const raw = window.localStorage.getItem('koda-studio-preferences')
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as { sendShortcut?: string }
+    return parsed.sendShortcut ?? null
+  } catch {
+    return null
+  }
 }
 
 describe('SessionComposer send shortcut', () => {
@@ -72,12 +86,10 @@ describe('SessionComposer send shortcut', () => {
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: true })
 
     expect(onRun).toHaveBeenCalledTimes(1)
-    expect(window.localStorage.getItem('koda-studio-send-shortcut')).toBe(
-      'shift-enter',
-    )
+    expect(readStoredShortcut()).toBe('shift-enter')
   })
 
-  it('loads Command + Enter from local storage', () => {
+  it('migrates the legacy send-shortcut storage key on first load', () => {
     window.localStorage.setItem('koda-studio-send-shortcut', 'command-enter')
     const { input, onRun } = renderComposer()
 
@@ -85,5 +97,7 @@ describe('SessionComposer send shortcut', () => {
     fireEvent.keyDown(input, { key: 'Enter', metaKey: true })
 
     expect(onRun).toHaveBeenCalledTimes(1)
+    expect(readStoredShortcut()).toBe('command-enter')
+    expect(window.localStorage.getItem('koda-studio-send-shortcut')).toBeNull()
   })
 })

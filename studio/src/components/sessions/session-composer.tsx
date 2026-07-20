@@ -7,6 +7,9 @@ import {
 } from 'lucide-react'
 import { memo, useState, type RefObject } from 'react'
 
+import { useI18n } from '@/app/i18n'
+import type { SendShortcut } from '@/app/preferences-context'
+import { usePreferences } from '@/app/preferences-context-value'
 import { Button } from '@/components/ui/button'
 import { SessionModelPicker } from '@/components/sessions/session-model-picker'
 import {
@@ -26,25 +29,6 @@ import {
 } from '@/components/ui/select'
 import type { Session } from '@/gen/koda/v1/service_pb'
 import { AgentMode } from '@/gen/koda/v1/service_pb'
-
-type SendShortcut = 'enter' | 'shift-enter' | 'command-enter'
-
-const sendShortcutStorageKey = 'koda-studio-send-shortcut'
-const sendShortcutOptions: {
-  label: string
-  shortcut: SendShortcut
-}[] = [
-  { label: 'Enter', shortcut: 'enter' },
-  { label: 'Shift + Enter', shortcut: 'shift-enter' },
-  { label: 'Command + Enter', shortcut: 'command-enter' },
-]
-
-function loadSendShortcut(): SendShortcut {
-  const stored = window.localStorage.getItem(sendShortcutStorageKey)
-  return stored === 'shift-enter' || stored === 'command-enter'
-    ? stored
-    : 'enter'
-}
 
 function matchesSendShortcut(
   event: React.KeyboardEvent<HTMLTextAreaElement>,
@@ -85,16 +69,30 @@ export const SessionComposer = memo(function SessionComposer({
   runError: string
   session: Session
 }) {
+  const { t } = useI18n()
+  const { sendShortcut, setPreference } = usePreferences()
   const [input, setInput] = useState(initialInput)
-  const [sendShortcut, setSendShortcut] =
-    useState<SendShortcut>(loadSendShortcut)
-  const sendShortcutLabel = sendShortcutOptions.find(
+
+  const shortcutOptions: { label: string; shortcut: SendShortcut }[] = [
+    {
+      label: t('settings.general.conversation.sendShortcut.enter'),
+      shortcut: 'enter',
+    },
+    {
+      label: t('settings.general.conversation.sendShortcut.shiftEnter'),
+      shortcut: 'shift-enter',
+    },
+    {
+      label: t('settings.general.conversation.sendShortcut.commandEnter'),
+      shortcut: 'command-enter',
+    },
+  ]
+  const sendShortcutLabel = shortcutOptions.find(
     (option) => option.shortcut === sendShortcut,
   )!.label
 
   function selectSendShortcut(shortcut: SendShortcut) {
-    setSendShortcut(shortcut)
-    window.localStorage.setItem(sendShortcutStorageKey, shortcut)
+    setPreference('sendShortcut', shortcut)
     requestAnimationFrame(() => inputRef.current?.focus())
   }
 
@@ -201,7 +199,7 @@ export const SessionComposer = memo(function SessionComposer({
                         }
                         value={sendShortcut}
                       >
-                        {sendShortcutOptions.map((option) => (
+                        {shortcutOptions.map((option) => (
                           <DropdownMenuRadioItem
                             key={option.shortcut}
                             value={option.shortcut}

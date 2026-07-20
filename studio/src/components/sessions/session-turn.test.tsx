@@ -12,6 +12,7 @@ import {
   TurnSchema,
   TurnStatus,
 } from '@/gen/koda/v1/service_pb'
+import { AllProviders } from '@/test/providers'
 
 vi.mock('@/components/markdown-text', () => ({
   default: ({ text }: { text: string }) => <span>{text}</span>,
@@ -69,13 +70,21 @@ describe('SessionTurn', () => {
       onRetry: vi.fn(),
       turn,
     }
-    const { rerender } = render(<SessionTurn {...props} isRunning />)
+    const { rerender } = render(
+      <AllProviders>
+        <SessionTurn {...props} isRunning />
+      </AllProviders>,
+    )
 
     expect(screen.queryByText('Earlier activity')).not.toBeInTheDocument()
     expect(screen.getByText('I will inspect the file.')).toBeInTheDocument()
     expect(screen.getByText('The change is complete.')).toBeInTheDocument()
 
-    rerender(<SessionTurn {...props} isRunning={false} />)
+    rerender(
+      <AllProviders>
+        <SessionTurn {...props} isRunning={false} />
+      </AllProviders>,
+    )
 
     const earlierActivity = screen
       .getByText('Earlier activity')
@@ -104,17 +113,19 @@ describe('SessionTurn', () => {
     }
 
     render(
-      <SessionTurn
-        canRevise={false}
-        isEditing={false}
-        isRewinding={false}
-        isRunning={false}
-        onEditCancel={vi.fn()}
-        onEditStart={vi.fn()}
-        onEditSubmit={vi.fn()}
-        onRetry={vi.fn()}
-        turn={turn}
-      />,
+      <AllProviders>
+        <SessionTurn
+          canRevise={false}
+          isEditing={false}
+          isRewinding={false}
+          isRunning={false}
+          onEditCancel={vi.fn()}
+          onEditStart={vi.fn()}
+          onEditSubmit={vi.fn()}
+          onRetry={vi.fn()}
+          turn={turn}
+        />
+      </AllProviders>,
     )
 
     expect(screen.getByText('Turn failed')).toBeInTheDocument()

@@ -190,7 +190,7 @@ export function AppShell() {
             <Link
               aria-label="Settings"
               className={buttonVariants({ variant: 'ghost', size: 'icon' })}
-              to="/settings/providers"
+              to="/settings"
             >
               <Settings2 className="size-4" aria-hidden="true" />
             </Link>

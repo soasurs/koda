@@ -1,6 +1,7 @@
 import { Bot, ChevronRight, LoaderCircle } from 'lucide-react'
 import { lazy, memo, Suspense, useState } from 'react'
 
+import { usePreferences } from '@/app/preferences-context-value'
 import type { Event } from '@/gen/koda/v1/service_pb'
 import { Role } from '@/gen/koda/v1/service_pb'
 import { eventText } from '@/lib/session-turns'
@@ -14,18 +15,22 @@ export const ReasoningView = memo(function ReasoningView({
   reasoning?: string
   streaming?: boolean
 }) {
-  const [open, setOpen] = useState(streaming)
+  const { expandReasoning } = usePreferences()
+  const [open, setOpen] = useState(streaming || expandReasoning)
+  const [userToggled, setUserToggled] = useState(false)
 
   if (!reasoning) return null
+  const effectiveOpen = userToggled ? open : streaming || expandReasoning
   return (
     <details
       className="group/reasoning ml-9 text-xs leading-5 text-muted-foreground"
-      open={open}
+      open={effectiveOpen}
     >
       <summary
         className="flex w-fit cursor-pointer list-none items-center gap-1.5 font-medium text-muted-foreground hover:text-foreground"
         onClick={(event) => {
           event.preventDefault()
+          setUserToggled(true)
           setOpen((value) => !value)
         }}
       >

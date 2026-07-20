@@ -1,6 +1,7 @@
 import { Check, ChevronRight, LoaderCircle, Wrench, X } from 'lucide-react'
 import { memo, useState } from 'react'
 
+import { usePreferences } from '@/app/preferences-context-value'
 import type { Event, FileChange } from '@/gen/koda/v1/service_pb'
 import { DiffLineKind } from '@/gen/koda/v1/service_pb'
 import { parseShellOutput, type ShellOutput } from '@/lib/shell-output'
@@ -13,6 +14,7 @@ export const ToolGroup = memo(function ToolGroup({
   assistant: Event
   toolEvents: Event[]
 }) {
+  const { expandToolCalls } = usePreferences()
   const message = assistant.message
   const responses = new Map(
     toolEvents.flatMap((event) => {
@@ -22,21 +24,24 @@ export const ToolGroup = memo(function ToolGroup({
   )
   const hasPending =
     message?.toolCalls.some((toolCall) => !responses.has(toolCall.id)) ?? false
-  const [open, setOpen] = useState(hasPending)
+  const [open, setOpen] = useState(hasPending || expandToolCalls)
+  const [userToggled, setUserToggled] = useState(false)
 
   if (!message) return null
   const toolCount = message.toolCalls.length || toolEvents.length
   if (toolCount === 0) return null
 
+  const effectiveOpen = userToggled ? open : hasPending || expandToolCalls
   return (
     <details
       className="group ml-9 rounded-lg border border-border bg-muted/30"
-      open={open}
+      open={effectiveOpen}
     >
       <summary
         className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
         onClick={(event) => {
           event.preventDefault()
+          setUserToggled(true)
           setOpen((value) => !value)
         }}
       >

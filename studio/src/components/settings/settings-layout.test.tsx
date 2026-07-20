@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SidebarContext } from '@/components/layout/sidebar-context'
+import { AllProviders } from '@/test/providers'
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: ReactNode }) => <a href="/">{children}</a>,
@@ -18,9 +19,11 @@ describe('SettingsLayout', () => {
     const setCollapsed = vi.fn()
 
     render(
-      <SidebarContext.Provider value={{ collapsed: true, setCollapsed }}>
-        <SettingsLayout active="providers">Settings content</SettingsLayout>
-      </SidebarContext.Provider>,
+      <AllProviders>
+        <SidebarContext.Provider value={{ collapsed: true, setCollapsed }}>
+          <SettingsLayout active="providers">Settings content</SettingsLayout>
+        </SidebarContext.Provider>
+      </AllProviders>,
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }))
@@ -33,11 +36,13 @@ describe('SettingsLayout', () => {
 
   it('hides the expand control while the app sidebar is open', () => {
     render(
-      <SidebarContext.Provider
-        value={{ collapsed: false, setCollapsed: vi.fn() }}
-      >
-        <SettingsLayout active="skills">Settings content</SettingsLayout>
-      </SidebarContext.Provider>,
+      <AllProviders>
+        <SidebarContext.Provider
+          value={{ collapsed: false, setCollapsed: vi.fn() }}
+        >
+          <SettingsLayout active="skills">Settings content</SettingsLayout>
+        </SidebarContext.Provider>
+      </AllProviders>,
     )
 
     expect(

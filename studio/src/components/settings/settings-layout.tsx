@@ -1,16 +1,24 @@
 import { Link } from '@tanstack/react-router'
-import { Archive, Blocks, Network, Settings2 } from 'lucide-react'
+import {
+  Archive,
+  Blocks,
+  Network,
+  Settings2,
+  SlidersHorizontal,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { SidebarExpandButton } from '@/components/layout/sidebar-expand-button'
 
 export function SettingsLayout({
   active,
   children,
 }: {
-  active: 'providers' | 'skills' | 'mcp' | 'sessions'
+  active: 'general' | 'providers' | 'skills' | 'mcp' | 'sessions'
   children: ReactNode
 }) {
+  const { t } = useI18n()
   const itemClass = (selected: boolean) =>
     `flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition ${
       selected
@@ -38,6 +46,14 @@ export function SettingsLayout({
 
       <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-8 pt-6 md:grid-cols-[12rem_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)]">
         <nav aria-label="Settings" className="grid gap-1 self-start">
+          <Link
+            aria-current={active === 'general' ? 'page' : undefined}
+            className={itemClass(active === 'general')}
+            to="/settings/general"
+          >
+            <SlidersHorizontal className="size-4" aria-hidden="true" />
+            {t('settings.general.title')}
+          </Link>
           <Link
             aria-current={active === 'providers' ? 'page' : undefined}
             className={itemClass(active === 'providers')}
