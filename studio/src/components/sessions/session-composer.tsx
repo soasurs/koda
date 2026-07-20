@@ -109,7 +109,7 @@ export const SessionComposer = memo(function SessionComposer({
         <div className="rounded-xl border border-border bg-card shadow-xl focus-within:border-ring">
           <textarea
             ref={inputRef}
-            aria-label="Message"
+            aria-label={t('session.composer.message')}
             className="max-h-48 min-h-20 w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground"
             disabled={isRunning}
             onChange={(event) => setInput(event.target.value)}
@@ -119,7 +119,7 @@ export const SessionComposer = memo(function SessionComposer({
                 submit()
               }
             }}
-            placeholder="Ask Koda to work in this directory…"
+            placeholder={t('session.composer.placeholder')}
             value={input}
           />
           <div className="flex items-center justify-between px-2.5 pb-2.5">
@@ -139,13 +139,13 @@ export const SessionComposer = memo(function SessionComposer({
                   <SelectItem value={String(AgentMode.BUILD)}>
                     <span className="flex items-center gap-2">
                       <Hammer className="size-4 shrink-0" />
-                      Build
+                      {t('session.composer.mode.build')}
                     </span>
                   </SelectItem>
                   <SelectItem value={String(AgentMode.PLAN)}>
                     <span className="flex items-center gap-2">
                       <ClipboardList className="size-4 shrink-0" />
-                      Plan
+                      {t('session.composer.mode.plan')}
                     </span>
                   </SelectItem>
                 </SelectContent>
@@ -158,18 +158,22 @@ export const SessionComposer = memo(function SessionComposer({
                 session={session}
               />
               {isRunning ? (
-                <Button aria-label="Stop" onClick={onStop} size="icon">
+                <Button
+                  aria-label={t('session.composer.stop')}
+                  onClick={onStop}
+                  size="icon"
+                >
                   <CircleStop className="size-4" />
                 </Button>
               ) : (
                 <div className="flex overflow-hidden rounded-md bg-primary text-primary-foreground">
                   <Button
-                    aria-label="Send"
+                    aria-label={t('session.composer.send')}
                     className="border-0 bg-transparent hover:bg-primary/90 rounded-none"
                     disabled={!input.trim()}
                     onClick={submit}
                     size="icon"
-                    title={`Send (${sendShortcutLabel})`}
+                    title={`${t('session.composer.send')} (${sendShortcutLabel})`}
                   >
                     <Send
                       className={`size-4 ${input.trim() ? '' : 'opacity-50'}`}
@@ -183,16 +187,18 @@ export const SessionComposer = memo(function SessionComposer({
                   >
                     <DropdownMenuTrigger asChild>
                       <Button
-                        aria-label="Choose send shortcut"
+                        aria-label={t('session.composer.chooseSendShortcut')}
                         className="border-0 border-l border-primary-foreground/30 bg-transparent text-primary-foreground/70 hover:bg-primary/90 hover:text-primary-foreground rounded-none"
                         size="icon"
-                        title={`Send shortcut: ${sendShortcutLabel}`}
+                        title={`${t('session.composer.chooseSendShortcut')}: ${sendShortcutLabel}`}
                       >
                         <ChevronUp className="size-3" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" side="top" sideOffset={8}>
-                      <DropdownMenuLabel>Send message with</DropdownMenuLabel>
+                      <DropdownMenuLabel>
+                        {t('session.composer.sendWith')}
+                      </DropdownMenuLabel>
                       <DropdownMenuRadioGroup
                         onValueChange={(value) =>
                           selectSendShortcut(value as SendShortcut)
@@ -216,7 +222,7 @@ export const SessionComposer = memo(function SessionComposer({
           </div>
         </div>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          Koda can make mistakes. Review commands and file changes.
+          {t('session.composer.disclaimer')}
         </p>
       </div>
     </footer>

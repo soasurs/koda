@@ -128,6 +128,220 @@ export const en = {
 
   // Shared session labels
   'session.untitled': 'Untitled session',
+  'session.header.untitled': 'Untitled',
+
+  // Reasoning view
+  'session.reasoning.thinking': 'Thinking',
+  'session.reasoning.thought': 'Thought',
+
+  // Tool activity
+  'session.tool.tools': 'Tools',
+  'session.tool.steps.one': '{count} tool step',
+  'session.tool.steps.other': '{count} tool steps',
+  'session.tool.status.completed': 'Completed',
+  'session.tool.status.failed': 'Failed',
+  'session.tool.status.running': 'Running...',
+  'session.tool.output.title': 'Output',
+  'session.tool.output.exit': 'Exit {code}',
+  'session.tool.output.truncated': ' · Truncated',
+  'session.tool.output.empty': 'No output',
+  'session.tool.diff.truncated': 'Truncated',
+
+  // Session turn
+  'session.turn.failed': 'Turn failed',
+  'session.turn.interrupted': 'Turn interrupted',
+  'session.turn.earlierActivity': 'Earlier activity',
+  'session.turn.editMessage': 'Edit message',
+  'session.turn.retryTurn': 'Retry turn',
+  'session.turn.copyResponse': 'Copy response',
+  'session.turn.copied': 'Copied!',
+  'session.turn.cancelEditing': 'Cancel editing',
+  'session.turn.send': 'Send',
+  'session.turn.interruption.canceled': 'Canceled by the user',
+  'session.turn.interruption.deadline': 'Execution timed out',
+  'session.turn.interruption.consumer': 'The client stopped receiving the turn',
+  'session.turn.interruption.abandoned':
+    'Recovered after an earlier Koda process stopped',
+  'session.turn.interruption.default': 'Execution stopped before completion',
+  'session.turn.failure.location.agent': 'agent',
+  'session.turn.failure.location.provider': 'provider',
+  'session.turn.failure.location.tool': 'tool',
+  'session.turn.failure.location.storage': 'storage',
+  'session.turn.failure.location.client': 'client',
+  'session.turn.failure.inLocation': 'Execution failed in the {location}',
+  'session.turn.failure.generic': 'Execution failed',
+  'session.turn.shortcut.shiftEnter': 'Shift + Enter',
+  'session.turn.shortcut.commandEnter': '⌘ + Enter',
+  'session.turn.shortcut.enter': 'Enter',
+
+  // Session composer
+  'session.composer.message': 'Message',
+  'session.composer.stop': 'Stop',
+  'session.composer.send': 'Send',
+  'session.composer.chooseSendShortcut': 'Choose send shortcut',
+  'session.composer.sendWith': 'Send message with',
+  'session.composer.placeholder': 'Ask Koda to work in this directory…',
+  'session.composer.disclaimer':
+    'Koda can make mistakes. Review commands and file changes.',
+  'session.composer.mode.build': 'Build',
+  'session.composer.mode.plan': 'Plan',
+
+  // Session model picker
+  'session.modelPicker.settingsAria': 'Session model settings',
+  'session.modelPicker.provider': 'Provider',
+  'session.modelPicker.model': 'Model',
+  'session.modelPicker.reasoningEffort': 'Reasoning effort',
+  'session.modelPicker.providerDefault': 'Provider default',
+  'session.modelPicker.sessionProvider': 'Session provider',
+  'session.modelPicker.sessionModel': 'Session model',
+  'session.modelPicker.sessionReasoningEffort': 'Session reasoning effort',
+  'session.modelPicker.cancel': 'Cancel',
+  'session.modelPicker.apply': 'Apply',
+  'session.modelPicker.default': 'default',
+
+  // Session header
+  'session.header.contextUsageUnavailable':
+    'Context usage unavailable · {window} window',
+  'session.header.contextShort': 'Context — / {window}',
+  'session.header.usageLabel':
+    '{used} tokens used, {remaining} remaining, {percentage}% of {window}',
+  'session.header.usageSummary':
+    '{used} used · {remaining} left · {percentage}% of {window}',
+
+  // Session list item
+  'session.listItem.rename': 'Rename',
+  'session.listItem.archive': 'Archive',
+  'session.listItem.actionsAria': 'Actions for {label}',
+
+  // Directory picker
+  'directory.picker.description':
+    'Browse directories on the machine running Koda.',
+  'directory.picker.title': 'Choose workspace',
+  'directory.picker.home': 'Home',
+  'directory.picker.parent': 'Parent directory',
+  'directory.picker.noChildren': 'No child directories',
+  'directory.picker.cancel': 'Cancel',
+  'directory.picker.select': 'Select this directory',
+
+  // Create session dialog
+  'createSession.description':
+    'Select a workspace and model for the new coding session.',
+  'createSession.title': 'New session',
+  'createSession.workspace': 'Workspace',
+  'createSession.chooseDirectory': 'Choose a local directory',
+  'createSession.provider': 'Provider',
+  'createSession.noProviders': 'No configured providers',
+  'createSession.model': 'Model',
+  'createSession.noModels': 'No models available',
+  'createSession.reasoningEffort': 'Reasoning effort',
+  'createSession.providerDefault': 'Provider default',
+  'createSession.fileAccess': 'File access',
+  'createSession.fileAccess.workspaceRead': 'Workspace read',
+  'createSession.fileAccess.workspaceWrite': 'Workspace write',
+  'createSession.fileAccess.unrestricted': 'Unrestricted',
+  'createSession.shellAccess': 'Shell access',
+  'createSession.shellAccess.askEveryTime': 'Ask every time',
+  'createSession.shellAccess.unrestricted': 'Unrestricted',
+  'createSession.cancel': 'Cancel',
+  'createSession.submit': 'Create session',
+
+  // Rename session dialog
+  'renameSession.title': 'Rename session',
+  'renameSession.description':
+    'Choose a name that makes this session easy to find.',
+  'renameSession.name': 'Name',
+  'renameSession.placeholder': 'Session name',
+  'renameSession.cancel': 'Cancel',
+  'renameSession.submit': 'Rename',
+
+  // Run prompts
+  'runPrompt.permissionRequired': 'Permission required',
+  'runPrompt.permissionBody': 'Koda wants to perform the following action.',
+  'runPrompt.reviewChanges': 'Review proposed changes',
+  'runPrompt.approve': 'Approve',
+  'runPrompt.reject': 'Reject',
+  'runPrompt.submitAnswers': 'Submit answers',
+  'runPrompt.cancel': 'Cancel',
+  'runPrompt.freeformPlaceholder': 'Or write your own answer',
+
+  // Provider card
+  'provider.card.builtIn': 'Built in',
+  'provider.card.loadingModels': 'Loading models…',
+  'provider.card.modelCount': '{count} models',
+  'provider.card.ready': 'Ready',
+  'provider.card.notConfigured': 'Not configured',
+  'provider.card.refreshAria': 'Refresh {name} models',
+  'provider.card.refreshTitle': 'Refresh models',
+  'provider.card.configure': 'Configure',
+  'provider.card.deleteAria': 'Delete {name}',
+  'provider.card.deleteConfirm': 'Delete {name}?',
+  'provider.card.models': 'Models',
+  'provider.card.addModel': 'Add model',
+  'provider.card.noModels': 'No models available',
+  'provider.card.deleteModelPrompt': 'Delete this model?',
+  'provider.card.confirmDeleteAria': 'Confirm delete',
+  'provider.card.cancelDeleteAria': 'Cancel delete',
+  'provider.card.reasoning': 'Reasoning: {efforts}',
+  'provider.card.context': 'Context: {tokens}',
+  'provider.card.editModelAria': 'Edit {id}',
+  'provider.card.deleteModelAria': 'Delete {id}',
+  'provider.card.enableGeneration': 'Enable this provider for agent generation',
+
+  // Provider dialog
+  'provider.dialog.editDescription':
+    'Leave the API key empty to keep the existing credential.',
+  'provider.dialog.addDescription':
+    'Add a provider or an API-compatible endpoint.',
+  'provider.dialog.editTitle': 'Configure {name}',
+  'provider.dialog.addTitle': 'Add provider',
+  'provider.dialog.id': 'ID',
+  'provider.dialog.displayName': 'Display name',
+  'provider.dialog.apiType': 'API type',
+  'provider.dialog.selectApi': 'Select an API',
+  'provider.dialog.baseUrl': 'Base URL',
+  'provider.dialog.baseUrlPlaceholder': 'Use provider default',
+  'provider.dialog.apiKey': 'API key',
+  'provider.dialog.apiKeyKeep': 'Keep existing key',
+  'provider.dialog.apiKeyRequired': 'Required',
+  'provider.dialog.cancel': 'Cancel',
+  'provider.dialog.save': 'Save provider',
+
+  // Add model dialog
+  'addModel.description':
+    'The model ID is sent to the provider API exactly as entered.',
+  'addModel.title': 'Add model to {name}',
+  'addModel.modelId': 'Model ID',
+  'addModel.displayName': 'Display name',
+  'addModel.displayNamePlaceholder': 'Defaults to model ID',
+  'addModel.contextWindow': 'Context window tokens',
+  'addModel.contextPlaceholder': 'Uses catalog or Koda fallback',
+  'addModel.contextHelp':
+    "Optional total input and output capacity. Leave empty to use catalog metadata or Koda's fallback.",
+  'addModel.duplicate': 'A model with this ID already exists.',
+  'addModel.contextInvalid': 'Context window must be a positive integer.',
+  'addModel.cancel': 'Cancel',
+  'addModel.submit': 'Add model',
+
+  // Edit model dialog
+  'editModel.description':
+    'Edit model metadata. Changes take effect immediately.',
+  'editModel.title': 'Edit {id}',
+  'editModel.modelId': 'Model ID',
+  'editModel.displayName': 'Display name',
+  'editModel.displayNamePlaceholder': 'Defaults to model ID',
+  'editModel.reasoningEfforts': 'Reasoning efforts',
+  'editModel.reasoningPlaceholder': 'e.g. low, medium, high, max',
+  'editModel.reasoningHelp':
+    'Comma-separated; leave empty to disable reasoning.',
+  'editModel.contextWindow': 'Context window tokens',
+  'editModel.contextPlaceholder': 'Uses catalog or Koda fallback',
+  'editModel.contextHelp':
+    "Optional total input and output capacity. Leave empty to use catalog metadata or Koda's fallback.",
+  'editModel.defaultReasoningEffort': 'Default reasoning effort',
+  'editModel.providerDefault': 'Provider default',
+  'editModel.contextInvalid': 'Context window must be a positive integer.',
+  'editModel.cancel': 'Cancel',
+  'editModel.save': 'Save',
 
   // Theme toggle
   'theme.toggle.label': 'Theme',

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import { AddModelDialog } from '@/components/providers/add-model-dialog'
 import { EditModelDialog } from '@/components/providers/edit-model-dialog'
@@ -32,6 +33,7 @@ export function ProviderCard({
   onEdit: () => void
   provider: Provider
 }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [expanded, setExpanded] = useState(false)
   const [showAddModel, setShowAddModel] = useState(false)
@@ -125,15 +127,19 @@ export function ProviderCard({
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <h2 className="truncate text-sm font-medium">{provider.name}</h2>
-              {provider.builtin && <span className="badge">Built in</span>}
+              {provider.builtin && (
+                <span className="badge">{t('provider.card.builtIn')}</span>
+              )}
             </div>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
               {providerTypeLabels[provider.type]}
               {provider.baseUrl ? ` · ${provider.baseUrl}` : ''}
               {' · '}
               {modelsQuery.isPending
-                ? 'Loading models…'
-                : `${modelsQuery.data?.models.length ?? 0} models`}
+                ? t('provider.card.loadingModels')
+                : t('provider.card.modelCount', {
+                    count: modelsQuery.data?.models.length ?? 0,
+                  })}
             </p>
           </div>
         </Button>
@@ -150,7 +156,9 @@ export function ProviderCard({
                 provider.configured ? 'bg-emerald-500' : 'bg-muted-foreground'
               }`}
             />
-            {provider.configured ? 'Ready' : 'Not configured'}
+            {provider.configured
+              ? t('provider.card.ready')
+              : t('provider.card.notConfigured')}
           </span>
           <label className="flex cursor-pointer items-center">
             <input
@@ -167,11 +175,11 @@ export function ProviderCard({
             <span className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-border bg-muted transition-colors after:absolute after:inset-s-0.75 after:size-4 after:rounded-full after:bg-muted-foreground after:transition-transform peer-checked:border-emerald-700 peer-checked:bg-emerald-900/60 peer-checked:after:translate-x-3.75 peer-checked:after:bg-emerald-400 peer-disabled:cursor-not-allowed peer-disabled:opacity-50" />
           </label>
           <Button
-            aria-label={`Refresh ${provider.name} models`}
+            aria-label={t('provider.card.refreshAria', { name: provider.name })}
             disabled={!provider.configured || refreshMutation.isPending}
             onClick={() => refreshMutation.mutate()}
             size="icon"
-            title="Refresh models"
+            title={t('provider.card.refreshTitle')}
             variant="ghost"
           >
             <RefreshCw
@@ -179,13 +187,20 @@ export function ProviderCard({
             />
           </Button>
           <Button onClick={onEdit} variant="outline">
-            Configure
+            {t('provider.card.configure')}
           </Button>
           {!provider.builtin && (
             <Button
-              aria-label={`Delete ${provider.name}`}
+              aria-label={t('provider.card.deleteAria', {
+                name: provider.name,
+              })}
               onClick={() => {
-                if (window.confirm(`Delete ${provider.name}?`)) onDelete()
+                if (
+                  window.confirm(
+                    t('provider.card.deleteConfirm', { name: provider.name }),
+                  )
+                )
+                  onDelete()
               }}
               size="icon"
               variant="ghost"
@@ -199,7 +214,9 @@ export function ProviderCard({
       {expanded && (
         <div className="ml-6 mt-3 border-t border-border/80 pt-3">
           <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-xs font-medium text-muted-foreground">Models</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              {t('provider.card.models')}
+            </p>
             <Button
               disabled={modelsQuery.isPending || modelsQuery.isError}
               onClick={() => setShowAddModel(true)}
@@ -207,7 +224,7 @@ export function ProviderCard({
               variant="outline"
             >
               <Plus className="size-3.5" />
-              Add model
+              {t('provider.card.addModel')}
             </Button>
           </div>
           {modelsQuery.isPending ? (
@@ -218,7 +235,7 @@ export function ProviderCard({
             <p className="error-box">{errorMessage(modelsQuery.error)}</p>
           ) : modelsQuery.data.models.length === 0 ? (
             <p className="py-4 text-center text-xs text-muted-foreground">
-              No models available
+              {t('provider.card.noModels')}
             </p>
           ) : (
             <div className="divide-y divide-border/70 rounded-md border border-border/80">
@@ -240,10 +257,10 @@ export function ProviderCard({
                   {deletingModelId === model.id ? (
                     <div className="flex shrink-0 items-center gap-1.5">
                       <span className="text-[11px] text-muted-foreground">
-                        Delete this model?
+                        {t('provider.card.deleteModelPrompt')}
                       </span>
                       <Button
-                        aria-label="Confirm delete"
+                        aria-label={t('provider.card.confirmDeleteAria')}
                         disabled={deleteModelMutation.isPending}
                         onClick={() => deleteModelMutation.mutate()}
                         size="icon-xs"
@@ -256,7 +273,7 @@ export function ProviderCard({
                         )}
                       </Button>
                       <Button
-                        aria-label="Cancel delete"
+                        aria-label={t('provider.card.cancelDeleteAria')}
                         onClick={() => setDeletingModelId(null)}
                         size="icon-xs"
                         variant="ghost"
@@ -268,17 +285,24 @@ export function ProviderCard({
                     <>
                       {model.reasoningEfforts.length > 0 && (
                         <span className="text-[11px] text-muted-foreground">
-                          Reasoning: {model.reasoningEfforts.join(', ')}
+                          {t('provider.card.reasoning', {
+                            efforts: model.reasoningEfforts.join(', '),
+                          })}
                         </span>
                       )}
                       {model.contextWindowTokens > 0n && (
                         <span className="text-[11px] text-muted-foreground">
-                          Context:{' '}
-                          {formatContextWindowTokens(model.contextWindowTokens)}
+                          {t('provider.card.context', {
+                            tokens: formatContextWindowTokens(
+                              model.contextWindowTokens,
+                            ),
+                          })}
                         </span>
                       )}
                       <Button
-                        aria-label={`Edit ${model.id}`}
+                        aria-label={t('provider.card.editModelAria', {
+                          id: model.id,
+                        })}
                         onClick={() => setEditingModel(model)}
                         size="icon-xs"
                         variant="ghost"
@@ -286,7 +310,9 @@ export function ProviderCard({
                         <Pencil className="size-3" />
                       </Button>
                       <Button
-                        aria-label={`Delete ${model.id}`}
+                        aria-label={t('provider.card.deleteModelAria', {
+                          id: model.id,
+                        })}
                         onClick={() => setDeletingModelId(model.id)}
                         size="icon-xs"
                         variant="ghost"

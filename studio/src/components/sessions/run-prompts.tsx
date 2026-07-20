@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Check, Folder, ShieldAlert, User, Wrench, X } from 'lucide-react'
 import { memo, useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import { FileChangesView } from '@/components/sessions/tool-activity'
 import type {
@@ -20,6 +21,7 @@ export const ApprovalCard = memo(function ApprovalCard({
   approval: ToolApproval
   onResolved: () => void
 }) {
+  const { t } = useI18n()
   const tool = toolPresentation(approval.toolName, approval.argumentsJson)
   const location =
     approval.toolName === 'run_shell' ? approval.targetPaths[0] : ''
@@ -35,10 +37,10 @@ export const ApprovalCard = memo(function ApprovalCard({
         <ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-500" />
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
-            Permission required
+            {t('runPrompt.permissionRequired')}
           </h3>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Koda wants to perform the following action.
+            {t('runPrompt.permissionBody')}
           </p>
           <div className="mt-3 overflow-hidden rounded-lg border border-amber-200/80 bg-white/60 dark:border-amber-900/60 dark:bg-background/50">
             <div className="flex items-center gap-2 border-b border-amber-200/70 px-3 py-2.5 text-sm dark:border-amber-900/50">
@@ -68,7 +70,7 @@ export const ApprovalCard = memo(function ApprovalCard({
           {approval.fileChanges.length > 0 && (
             <details className="mt-3 text-xs">
               <summary className="cursor-pointer text-muted-foreground">
-                Review proposed changes
+                {t('runPrompt.reviewChanges')}
               </summary>
               <div className="mt-2">
                 <FileChangesView changes={approval.fileChanges} />
@@ -85,14 +87,14 @@ export const ApprovalCard = memo(function ApprovalCard({
               disabled={mutation.isPending}
               onClick={() => mutation.mutate(true)}
             >
-              <Check className="size-4" /> Approve
+              <Check className="size-4" /> {t('runPrompt.approve')}
             </Button>
             <Button
               disabled={mutation.isPending}
               onClick={() => mutation.mutate(false)}
               variant="outline"
             >
-              <X className="size-4" /> Reject
+              <X className="size-4" /> {t('runPrompt.reject')}
             </Button>
           </div>
         </div>
@@ -108,6 +110,7 @@ export const QuestionCard = memo(function QuestionCard({
   onResolved: () => void
   prompt: QuestionPrompt
 }) {
+  const { t } = useI18n()
   const [answers, setAnswers] = useState<Record<string, QuestionAnswer>>({})
   const mutation = useMutation({
     mutationFn: (canceled: boolean) =>
@@ -215,7 +218,7 @@ export const QuestionCard = memo(function QuestionCard({
                         } as QuestionAnswer,
                       }))
                     }
-                    placeholder="Or write your own answer"
+                    placeholder={t('runPrompt.freeformPlaceholder')}
                     value={answers[question.id]?.freeform ?? ''}
                   />
                 )}
@@ -232,14 +235,14 @@ export const QuestionCard = memo(function QuestionCard({
               disabled={mutation.isPending || !canSubmit}
               onClick={() => mutation.mutate(false)}
             >
-              Submit answers
+              {t('runPrompt.submitAnswers')}
             </Button>
             <Button
               disabled={mutation.isPending}
               onClick={() => mutation.mutate(true)}
               variant="outline"
             >
-              Cancel
+              {t('runPrompt.cancel')}
             </Button>
           </div>
         </div>

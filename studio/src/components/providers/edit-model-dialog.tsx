@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { LoaderCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import {
@@ -34,6 +35,7 @@ export function EditModelDialog({
   onClose: () => void
   provider: Provider
 }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [name, setName] = useState(model.name || '')
   const [reasoningEffortsInput, setReasoningEffortsInput] = useState(
@@ -55,7 +57,7 @@ export function EditModelDialog({
   const saveMutation = useMutation({
     mutationFn: () => {
       if (contextWindowTokens === null) {
-        throw new Error('Context window must be a positive integer')
+        throw new Error(t('editModel.contextInvalid'))
       }
       const otherModels = models.filter((m) => m.id !== model.id)
       return kodaClient.saveProvider({
@@ -90,9 +92,9 @@ export function EditModelDialog({
 
   return (
     <Modal
-      description="Edit model metadata. Changes take effect immediately."
+      description={t('editModel.description')}
       onClose={onClose}
-      title={`Edit ${model.id}`}
+      title={t('editModel.title', { id: model.id })}
     >
       <form
         className="space-y-4 p-5"
@@ -102,51 +104,50 @@ export function EditModelDialog({
         }}
       >
         <label className="field-label">
-          Model ID
+          {t('editModel.modelId')}
           <input className="input" disabled value={model.id} />
         </label>
 
         <label className="field-label">
-          Display name
+          {t('editModel.displayName')}
           <input
             className="input"
             onChange={(event) => setName(event.target.value)}
-            placeholder="Defaults to model ID"
+            placeholder={t('editModel.displayNamePlaceholder')}
             value={name}
           />
         </label>
 
         <label className="field-label">
-          Reasoning efforts
+          {t('editModel.reasoningEfforts')}
           <input
             className="input"
             onChange={(event) => setReasoningEffortsInput(event.target.value)}
-            placeholder="e.g. low, medium, high, max"
+            placeholder={t('editModel.reasoningPlaceholder')}
             value={reasoningEffortsInput}
           />
           <span className="mt-1 text-[11px] text-neutral-600">
-            Comma-separated; leave empty to disable reasoning.
+            {t('editModel.reasoningHelp')}
           </span>
         </label>
 
         <label className="field-label">
-          Context window tokens
+          {t('editModel.contextWindow')}
           <input
             className="input"
             inputMode="numeric"
             onChange={(event) => setContextWindowInput(event.target.value)}
-            placeholder="Uses catalog or Koda fallback"
+            placeholder={t('editModel.contextPlaceholder')}
             value={contextWindowInput}
           />
           <span className="mt-1 text-[11px] text-neutral-600">
-            Optional total input and output capacity. Leave empty to use catalog
-            metadata or Koda's fallback.
+            {t('editModel.contextHelp')}
           </span>
         </label>
 
         {efforts.length > 0 && (
           <label className="field-label">
-            Default reasoning effort
+            {t('editModel.defaultReasoningEffort')}
             <Select
               onValueChange={setDefaultEffort}
               value={defaultEffort || '__default'}
@@ -155,7 +156,9 @@ export function EditModelDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__default">Provider default</SelectItem>
+                <SelectItem value="__default">
+                  {t('editModel.providerDefault')}
+                </SelectItem>
                 {efforts.map((effort) => (
                   <SelectItem key={effort} value={effort}>
                     {effort}
@@ -170,14 +173,12 @@ export function EditModelDialog({
           <p className="error-box">{errorMessage(saveMutation.error)}</p>
         )}
         {contextWindowTokens === null && (
-          <p className="error-box">
-            Context window must be a positive integer.
-          </p>
+          <p className="error-box">{t('editModel.contextInvalid')}</p>
         )}
 
         <footer className="flex justify-end gap-2 pt-1">
           <Button variant="outline" onClick={onClose} type="button">
-            Cancel
+            {t('editModel.cancel')}
           </Button>
           <Button
             disabled={contextWindowTokens === null || saveMutation.isPending}
@@ -186,7 +187,7 @@ export function EditModelDialog({
             {saveMutation.isPending && (
               <LoaderCircle className="size-4 animate-spin" />
             )}
-            Save
+            {t('editModel.save')}
           </Button>
         </footer>
       </form>

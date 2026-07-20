@@ -1,6 +1,7 @@
 import { Bot, ChevronRight, LoaderCircle } from 'lucide-react'
 import { lazy, memo, Suspense, useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { usePreferences } from '@/app/preferences-context-value'
 import type { Event } from '@/gen/koda/v1/service_pb'
 import { Role } from '@/gen/koda/v1/service_pb'
@@ -15,6 +16,7 @@ export const ReasoningView = memo(function ReasoningView({
   reasoning?: string
   streaming?: boolean
 }) {
+  const { t } = useI18n()
   const { expandReasoning } = usePreferences()
   const [open, setOpen] = useState(streaming || expandReasoning)
   const [userToggled, setUserToggled] = useState(false)
@@ -35,7 +37,9 @@ export const ReasoningView = memo(function ReasoningView({
         }}
       >
         <ChevronRight className="size-3 transition-transform group-open/reasoning:rotate-90" />
-        {streaming ? 'Thinking' : 'Thought'}
+        {streaming
+          ? t('session.reasoning.thinking')
+          : t('session.reasoning.thought')}
         {streaming && (
           <LoaderCircle className="size-3 animate-spin text-muted-foreground" />
         )}

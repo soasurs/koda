@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
+import { I18nProvider } from '@/app/i18n'
 import { RenameSessionDialog } from '@/components/sessions/rename-session-dialog'
 import { SessionSchema } from '@/gen/koda/v1/service_pb'
 
@@ -32,7 +33,9 @@ describe('RenameSessionDialog', () => {
     })
     render(
       <QueryClientProvider client={queryClient}>
-        <RenameSessionDialog onClose={onClose} session={session} />
+        <I18nProvider>
+          <RenameSessionDialog onClose={onClose} session={session} />
+        </I18nProvider>
       </QueryClientProvider>,
     )
 

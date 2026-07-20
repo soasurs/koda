@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronLeft, Folder, FolderOpen, LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { kodaClient } from '@/lib/connect'
@@ -18,6 +19,7 @@ export function DirectoryPicker({
   onClose,
   onSelect,
 }: DirectoryPickerProps) {
+  const { t } = useI18n()
   const [path, setPath] = useState(initialPath)
   const directoryQuery = useQuery({
     queryKey: ['directories', path],
@@ -26,16 +28,16 @@ export function DirectoryPicker({
 
   return (
     <Modal
-      description="Browse directories on the machine running Koda."
+      description={t('directory.picker.description')}
       onClose={onClose}
-      title="Choose workspace"
+      title={t('directory.picker.title')}
       wide
     >
       <div className="border-b border-border px-5 py-3">
         <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2">
           <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
           <span className="min-w-0 truncate font-mono text-xs text-foreground">
-            {directoryQuery.data?.path || path || 'Home'}
+            {directoryQuery.data?.path || path || t('directory.picker.home')}
           </span>
         </div>
       </div>
@@ -58,7 +60,7 @@ export function DirectoryPicker({
                 variant="ghost"
               >
                 <ChevronLeft className="size-4" />
-                Parent directory
+                {t('directory.picker.parent')}
               </Button>
             )}
             {directoryQuery.data.directories.map((directory) => (
@@ -75,7 +77,7 @@ export function DirectoryPicker({
             {!directoryQuery.data.parentPath &&
               directoryQuery.data.directories.length === 0 && (
                 <p className="px-3 py-10 text-center text-sm text-muted-foreground">
-                  No child directories
+                  {t('directory.picker.noChildren')}
                 </p>
               )}
           </div>
@@ -84,7 +86,7 @@ export function DirectoryPicker({
 
       <footer className="flex justify-end gap-2 border-t border-border px-5 py-4">
         <Button onClick={onClose} variant="outline">
-          Cancel
+          {t('directory.picker.cancel')}
         </Button>
         <Button
           disabled={!directoryQuery.data}
@@ -92,7 +94,7 @@ export function DirectoryPicker({
             if (directoryQuery.data) onSelect(directoryQuery.data.path)
           }}
         >
-          Select this directory
+          {t('directory.picker.select')}
         </Button>
       </footer>
     </Modal>

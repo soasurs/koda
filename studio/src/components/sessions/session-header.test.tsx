@@ -2,6 +2,7 @@ import { create } from '@bufbuild/protobuf'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { I18nProvider } from '@/app/i18n'
 import { SessionHeader } from '@/components/sessions/session-header'
 import { ContextUsageSchema, SessionSchema } from '@/gen/koda/v1/service_pb'
 
@@ -14,16 +15,18 @@ afterEach(cleanup)
 describe('SessionHeader', () => {
   it('shows used, remaining, and percentage values', () => {
     render(
-      <SessionHeader
-        session={create(SessionSchema, {
-          title: 'Context session',
-          contextUsage: create(ContextUsageSchema, {
-            measured: true,
-            usedTokens: 32_000n,
-            windowTokens: 256_000n,
-          }),
-        })}
-      />,
+      <I18nProvider>
+        <SessionHeader
+          session={create(SessionSchema, {
+            title: 'Context session',
+            contextUsage: create(ContextUsageSchema, {
+              measured: true,
+              usedTokens: 32_000n,
+              windowTokens: 256_000n,
+            }),
+          })}
+        />
+      </I18nProvider>,
     )
 
     expect(screen.getByRole('meter')).toHaveAccessibleName(
@@ -36,14 +39,16 @@ describe('SessionHeader', () => {
 
   it('reports unavailable usage before the first provider measurement', () => {
     render(
-      <SessionHeader
-        session={create(SessionSchema, {
-          contextUsage: create(ContextUsageSchema, {
-            windowTokens: 256_000n,
-          }),
-          workdir: '/workspace',
-        })}
-      />,
+      <I18nProvider>
+        <SessionHeader
+          session={create(SessionSchema, {
+            contextUsage: create(ContextUsageSchema, {
+              windowTokens: 256_000n,
+            }),
+            workdir: '/workspace',
+          })}
+        />
+      </I18nProvider>,
     )
 
     expect(screen.getByText('Context — / 256K')).toBeInTheDocument()

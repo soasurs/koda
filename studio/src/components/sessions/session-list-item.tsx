@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { Archive, Ellipsis, MessageSquare, Pencil } from 'lucide-react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import {
   ContextMenu,
@@ -29,7 +30,8 @@ export function SessionListItem({
   onRename: () => void
   session: Session
 }) {
-  const label = session.title || 'Untitled session'
+  const { t } = useI18n()
+  const label = session.title || t('session.untitled')
 
   return (
     <div className="group/session relative min-w-0">
@@ -50,12 +52,12 @@ export function SessionListItem({
         <ContextMenuContent>
           <ContextMenuItem onSelect={onRename}>
             <Pencil />
-            Rename
+            {t('session.listItem.rename')}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem disabled={archiving} onSelect={onArchive}>
             <Archive />
-            Archive
+            {t('session.listItem.archive')}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -63,7 +65,7 @@ export function SessionListItem({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            aria-label={`Actions for ${label}`}
+            aria-label={t('session.listItem.actionsAria', { label })}
             className="absolute right-1 top-1 opacity-0 group-hover/session:opacity-100 group-focus-within/session:opacity-100 data-[state=open]:opacity-100"
             disabled={archiving}
             size="icon-xs"
@@ -75,12 +77,12 @@ export function SessionListItem({
         <DropdownMenuContent align="start" side="right">
           <DropdownMenuItem onSelect={onRename}>
             <Pencil />
-            Rename
+            {t('session.listItem.rename')}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem disabled={archiving} onSelect={onArchive}>
             <Archive />
-            Archive
+            {t('session.listItem.archive')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, KeyRound, LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import {
   editableProviderTypes,
@@ -27,6 +28,7 @@ export function ProviderDialog({
   onClose: () => void
   provider: Provider | null
 }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [id, setId] = useState(provider?.id ?? '')
   const [name, setName] = useState(provider?.name ?? '')
@@ -63,11 +65,15 @@ export function ProviderDialog({
     <Modal
       description={
         provider
-          ? 'Leave the API key empty to keep the existing credential.'
-          : 'Add a provider or an API-compatible endpoint.'
+          ? t('provider.dialog.editDescription')
+          : t('provider.dialog.addDescription')
       }
       onClose={onClose}
-      title={provider ? `Configure ${provider.name}` : 'Add provider'}
+      title={
+        provider
+          ? t('provider.dialog.editTitle', { name: provider.name })
+          : t('provider.dialog.addTitle')
+      }
     >
       <form
         className="space-y-4 p-5"
@@ -78,7 +84,7 @@ export function ProviderDialog({
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="field-label">
-            ID
+            {t('provider.dialog.id')}
             <input
               className="input"
               disabled={Boolean(provider)}
@@ -89,7 +95,7 @@ export function ProviderDialog({
             />
           </label>
           <label className="field-label">
-            Display name
+            {t('provider.dialog.displayName')}
             <input
               className="input"
               onChange={(event) => setName(event.target.value)}
@@ -100,7 +106,7 @@ export function ProviderDialog({
           </label>
         </div>
         <label className="field-label">
-          API type
+          {t('provider.dialog.apiType')}
           <Select
             disabled={provider?.builtin}
             onValueChange={(value) => setType(Number(value) as ProviderType)}
@@ -108,7 +114,7 @@ export function ProviderDialog({
             value={String(type)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select an API" />
+              <SelectValue placeholder={t('provider.dialog.selectApi')} />
             </SelectTrigger>
             <SelectContent>
               {editableProviderTypes.map((providerType) => (
@@ -120,17 +126,17 @@ export function ProviderDialog({
           </Select>
         </label>
         <label className="field-label">
-          Base URL
+          {t('provider.dialog.baseUrl')}
           <input
             className="input"
             onChange={(event) => setBaseUrl(event.target.value)}
-            placeholder="Use provider default"
+            placeholder={t('provider.dialog.baseUrlPlaceholder')}
             type="url"
             value={baseUrl}
           />
         </label>
         <label className="field-label">
-          API key
+          {t('provider.dialog.apiKey')}
           <div className="relative">
             <KeyRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -141,7 +147,9 @@ export function ProviderDialog({
                 setApiKeyDirty(true)
               }}
               placeholder={
-                provider?.configured ? 'Keep existing key' : 'Required'
+                provider?.configured
+                  ? t('provider.dialog.apiKeyKeep')
+                  : t('provider.dialog.apiKeyRequired')
               }
               type="password"
               value={apiKey}
@@ -157,7 +165,7 @@ export function ProviderDialog({
             type="checkbox"
           />
           <span className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-border bg-muted transition-colors after:absolute after:start-[3px] after:size-4 after:rounded-full after:bg-muted-foreground after:transition-transform peer-checked:border-emerald-700 peer-checked:bg-emerald-900/60 peer-checked:after:translate-x-[15px] peer-checked:after:bg-emerald-400" />
-          Enable this provider for agent generation
+          {t('provider.card.enableGeneration')}
         </label>
 
         {saveMutation.isError && (
@@ -169,7 +177,7 @@ export function ProviderDialog({
 
         <footer className="flex justify-end gap-2 pt-1">
           <Button variant="outline" onClick={onClose} type="button">
-            Cancel
+            {t('provider.dialog.cancel')}
           </Button>
           <Button
             disabled={
@@ -186,7 +194,7 @@ export function ProviderDialog({
             ) : (
               <CheckCircle2 className="size-4" />
             )}
-            Save provider
+            {t('provider.dialog.save')}
           </Button>
         </footer>
       </form>

@@ -10,9 +10,11 @@ import {
 } from 'lucide-react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import { EventView, ReasoningView } from '@/components/sessions/session-message'
 import { ToolGroup } from '@/components/sessions/tool-activity'
+import { usePreferences } from '@/app/preferences-context-value'
 import {
   Role,
   TurnFailureStage,
@@ -22,15 +24,6 @@ import {
 import { eventText, groupTurnActivities, type Turn } from '@/lib/session-turns'
 
 type SendShortcut = 'enter' | 'shift-enter' | 'command-enter'
-
-const sendShortcutStorageKey = 'koda-studio-send-shortcut'
-
-function loadSendShortcut(): SendShortcut {
-  const stored = window.localStorage.getItem(sendShortcutStorageKey)
-  return stored === 'shift-enter' || stored === 'command-enter'
-    ? stored
-    : 'enter'
-}
 
 function matchesSendShortcut(
   event: React.KeyboardEvent<HTMLTextAreaElement>,
@@ -70,6 +63,7 @@ export const SessionTurn = memo(function SessionTurn({
   onRetry: (input: string) => void
   turn: Turn
 }) {
+  const { t } = useI18n()
   const userEvents = turn.events.filter(
     (event) => event.message?.role === Role.USER,
   )
@@ -107,11 +101,11 @@ export const SessionTurn = memo(function SessionTurn({
       {canRevise && !isEditing && (
         <div className="-mt-3 flex justify-end gap-1">
           <Button
-            aria-label="Edit message"
+            aria-label={t('session.turn.editMessage')}
             disabled={isRewinding}
             onClick={onEditStart}
             size="icon"
-            title="Edit message"
+            title={t('session.turn.editMessage')}
             variant="ghost"
           >
             <Pencil className="size-3.5" />
@@ -138,11 +132,11 @@ export const SessionTurn = memo(function SessionTurn({
         <div className="-mt-3 ml-9 flex items-center gap-1">
           <CopyButton text={lastAssistantText} />
           <Button
-            aria-label="Retry turn"
+            aria-label={t('session.turn.retryTurn')}
             disabled={isRewinding}
             onClick={() => onRetry(initialEditText)}
             size="icon"
-            title="Retry turn"
+            title={t('session.turn.retryTurn')}
             variant="ghost"
           >
             {isRewinding ? (
@@ -184,6 +178,7 @@ type TurnProps = {
 }
 
 function TurnStatusView({ turn }: { turn: Turn }) {
+  const { t } = useI18n()
   const metadata = turn.metadata
   if (
     !metadata ||
@@ -193,11 +188,13 @@ function TurnStatusView({ turn }: { turn: Turn }) {
     return null
   }
   const failed = metadata.status === TurnStatus.FAILED
-  const title = failed ? 'Turn failed' : 'Turn interrupted'
+  const title = failed
+    ? t('session.turn.failed')
+    : t('session.turn.interrupted')
   const detail = failed
     ? metadata.failure?.message ||
-      failureLabel(metadata.failure?.code, metadata.failure?.stage)
-    : interruptionLabel(metadata.reason)
+      failureLabel(t, metadata.failure?.code, metadata.failure?.stage)
+    : interruptionLabel(t, metadata.reason)
   return (
     <div
       className="ml-9 flex items-start gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm"
@@ -212,44 +209,54 @@ function TurnStatusView({ turn }: { turn: Turn }) {
   )
 }
 
-function interruptionLabel(reason: TurnReason) {
+function interruptionLabel(
+  t: ReturnType<typeof useI18n>['t'],
+  reason: TurnReason,
+) {
   switch (reason) {
     case TurnReason.CANCELED:
-      return 'Canceled by the user'
+      return t('session.turn.interruption.canceled')
     case TurnReason.DEADLINE_EXCEEDED:
-      return 'Execution timed out'
+      return t('session.turn.interruption.deadline')
     case TurnReason.CONSUMER_STOPPED:
-      return 'The client stopped receiving the turn'
+      return t('session.turn.interruption.consumer')
     case TurnReason.ABANDONED:
-      return 'Recovered after an earlier Koda process stopped'
+      return t('session.turn.interruption.abandoned')
     default:
-      return 'Execution stopped before completion'
+      return t('session.turn.interruption.default')
   }
 }
 
-function failureLabel(code = '', stage = TurnFailureStage.UNSPECIFIED) {
-  let location = ''
+function failureLabel(
+  t: ReturnType<typeof useI18n>['t'],
+  code = '',
+  stage = TurnFailureStage.UNSPECIFIED,
+) {
+  let locationKey: string = ''
   switch (stage) {
     case TurnFailureStage.AGENT:
-      location = 'agent'
+      locationKey = 'session.turn.failure.location.agent'
       break
     case TurnFailureStage.PROVIDER:
-      location = 'provider'
+      locationKey = 'session.turn.failure.location.provider'
       break
     case TurnFailureStage.TOOL:
-      location = 'tool'
+      locationKey = 'session.turn.failure.location.tool'
       break
     case TurnFailureStage.PERSISTENCE:
-      location = 'storage'
+      locationKey = 'session.turn.failure.location.storage'
       break
     case TurnFailureStage.CONSUMER:
-      location = 'client'
+      locationKey = 'session.turn.failure.location.client'
       break
   }
+  const location = locationKey ? t(locationKey as never) : ''
   const normalizedCode = code.replaceAll('_', ' ').trim()
   if (normalizedCode && location) return `${normalizedCode} · ${location}`
   if (normalizedCode) return normalizedCode
-  return location ? `Execution failed in the ${location}` : 'Execution failed'
+  return location
+    ? t('session.turn.failure.inLocation', { location })
+    : t('session.turn.failure.generic')
 }
 
 type TurnActivity = ReturnType<typeof groupTurnActivities>[number]
@@ -269,11 +276,12 @@ function EarlierActivityDetails({
 }: {
   activities: TurnActivity[]
 }) {
+  const { t } = useI18n()
   return (
     <details className="group/earlier-activity">
       <summary className="ml-9 flex w-fit cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
         <ChevronRight className="size-3 transition-transform group-open/earlier-activity:rotate-90" />
-        Earlier activity
+        {t('session.turn.earlierActivity')}
       </summary>
       <div className="mt-4 space-y-4">
         {activities.map((activity, index) => (
@@ -296,8 +304,9 @@ function InlineEditComposer({
   onCancel: () => void
   onSubmit: (text: string) => void
 }) {
+  const { t } = useI18n()
+  const { sendShortcut } = usePreferences()
   const [input, setInput] = useState(initialText)
-  const [sendShortcut] = useState<SendShortcut>(loadSendShortcut)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -312,10 +321,10 @@ function InlineEditComposer({
 
   const sendShortcutLabel =
     sendShortcut === 'shift-enter'
-      ? 'Shift + Enter'
+      ? t('session.turn.shortcut.shiftEnter')
       : sendShortcut === 'command-enter'
-        ? '⌘ + Enter'
-        : 'Enter'
+        ? t('session.turn.shortcut.commandEnter')
+        : t('session.turn.shortcut.enter')
 
   return (
     <div className="flex justify-end">
@@ -323,7 +332,7 @@ function InlineEditComposer({
         <div className="rounded-xl border border-border bg-card shadow-xl focus-within:border-ring">
           <textarea
             ref={textareaRef}
-            aria-label="Edit message"
+            aria-label={t('session.turn.editMessage')}
             className="max-h-48 min-h-20 w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground"
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
@@ -340,21 +349,21 @@ function InlineEditComposer({
           />
           <div className="flex items-center justify-between px-2.5 pb-2.5">
             <Button
-              aria-label="Cancel editing"
+              aria-label={t('session.turn.cancelEditing')}
               onClick={onCancel}
               size="icon"
-              title="Cancel editing"
+              title={t('session.turn.cancelEditing')}
               variant="ghost"
             >
               <X className="size-4" />
             </Button>
             <Button
-              aria-label="Send"
+              aria-label={t('session.turn.send')}
               className="rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
               disabled={!input.trim()}
               onClick={submit}
               size="icon"
-              title={`Send (${sendShortcutLabel})`}
+              title={`${t('session.turn.send')} (${sendShortcutLabel})`}
             >
               <Send className="size-4" />
             </Button>
@@ -366,6 +375,7 @@ function InlineEditComposer({
 }
 
 function CopyButton({ text }: { text: string }) {
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
 
   const handleCopy = useCallback(() => {
@@ -378,15 +388,17 @@ function CopyButton({ text }: { text: string }) {
 
   return (
     <Button
-      aria-label="Copy response"
+      aria-label={t('session.turn.copyResponse')}
       disabled={!text}
       onClick={handleCopy}
       size="icon"
-      title="Copy response"
+      title={t('session.turn.copyResponse')}
       variant="ghost"
     >
       {copied ? (
-        <span className="text-[10px] font-medium text-green-400">Copied!</span>
+        <span className="text-[10px] font-medium text-green-400">
+          {t('session.turn.copied')}
+        </span>
       ) : (
         <Copy className="size-3.5" />
       )}

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -25,6 +26,7 @@ export function RenameSessionDialog({
   onClose: () => void
   session: Session
 }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [title, setTitle] = useState(session.title)
   const normalizedTitle = title.trim()
@@ -59,9 +61,9 @@ export function RenameSessionDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Rename session</DialogTitle>
+          <DialogTitle>{t('renameSession.title')}</DialogTitle>
           <DialogDescription>
-            Choose a name that makes this session easy to find.
+            {t('renameSession.description')}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -72,12 +74,12 @@ export function RenameSessionDialog({
           }}
         >
           <div className="grid gap-2">
-            <Label htmlFor="session-title">Name</Label>
+            <Label htmlFor="session-title">{t('renameSession.name')}</Label>
             <Input
               autoFocus
               id="session-title"
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Session name"
+              placeholder={t('renameSession.placeholder')}
               value={title}
             />
           </div>
@@ -89,7 +91,7 @@ export function RenameSessionDialog({
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">
-                Cancel
+                {t('renameSession.cancel')}
               </Button>
             </DialogClose>
             <Button
@@ -103,7 +105,7 @@ export function RenameSessionDialog({
               {renameMutation.isPending && (
                 <LoaderCircle className="animate-spin" aria-hidden="true" />
               )}
-              Rename
+              {t('renameSession.submit')}
             </Button>
           </DialogFooter>
         </form>
