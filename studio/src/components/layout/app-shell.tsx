@@ -29,6 +29,18 @@ function loadSidebarCollapsed(): boolean {
   return window.localStorage.getItem(sidebarCollapsedKey) === 'true'
 }
 
+const collapsedWorkdirsKey = 'koda-studio-collapsed-workdirs'
+
+function loadCollapsedWorkdirs(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(collapsedWorkdirsKey)
+    if (raw) return new Set(JSON.parse(raw) as string[])
+  } catch {
+    /* corrupt data — start fresh */
+  }
+  return new Set()
+}
+
 export function AppShell() {
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -39,6 +51,9 @@ export function AppShell() {
     string | undefined
   >()
   const [renamingSession, setRenamingSession] = useState<Session>()
+  const [collapsedWorkdirs, setCollapsedWorkdirs] = useState<Set<string>>(
+    loadCollapsedWorkdirs,
+  )
   // Populate the MCP tool cache for display-name lookups.
   useQuery({
     queryKey: ['mcp-tool-cache'],
@@ -84,7 +99,12 @@ export function AppShell() {
       groups[session.workdir] = group
       return groups
     }, {}),
-  )
+  ).sort((a, b) => {
+    const aEarliest = Math.min(...a.sessions!.map((s) => Number(s.createdAt)))
+    const bEarliest = Math.min(...b.sessions!.map((s) => Number(s.createdAt)))
+    // Descending: newer (later) workdirs first.
+    return bEarliest - aEarliest
+  })
 
   return (
     <SidebarContext.Provider
@@ -151,7 +171,26 @@ export function AppShell() {
               <div className="space-y-1">
                 {sessionGroups.map((group) => (
                   <div className="relative" key={group.path}>
-                    <details className="group/project" open>
+                    <details
+                      className="group/project"
+                      open={!collapsedWorkdirs.has(group.path)}
+                      onToggle={(e) => {
+                        const open = e.currentTarget.open
+                        setCollapsedWorkdirs((prev) => {
+                          const next = new Set(prev)
+                          if (open) {
+                            next.delete(group.path)
+                          } else {
+                            next.add(group.path)
+                          }
+                          localStorage.setItem(
+                            collapsedWorkdirsKey,
+                            JSON.stringify([...next]),
+                          )
+                          return next
+                        })
+                      }}
+                    >
                       <summary
                         className="flex min-w-0 cursor-pointer list-none items-center gap-2 rounded-md py-2 pl-2.5 pr-16 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground [&::-webkit-details-marker]:hidden"
                         title={group.path}
