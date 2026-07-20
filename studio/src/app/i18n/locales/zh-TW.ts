@@ -21,6 +21,9 @@ export const zhTW: EnDictionary = {
   'settings.general.conversation.sendShortcut.enter': 'Enter',
   'settings.general.conversation.sendShortcut.shiftEnter': 'Shift + Enter',
   'settings.general.conversation.sendShortcut.commandEnter': 'Command + Enter',
+  'settings.general.conversation.notifyOnCompletion': '背景任務完成時通知',
+  'settings.general.conversation.notifyOnCompletion.description':
+    '當你切換到其他分頁時，長時間執行的任務完成後彈出瀏覽器通知。',
 
   // Settings layout
   'settings.layout.title': '設定',
@@ -115,6 +118,7 @@ export const zhTW: EnDictionary = {
   'session.compaction.boundary.titleEstimatedTokens':
     '壓縮後預估 {count} token',
   'session.compaction.boundary.titleModel': '模型:{modelId}',
+  'session.notification.completed': '「{label}」任務已完成',
 
   // Shared session labels
   'session.untitled': '未命名對話',

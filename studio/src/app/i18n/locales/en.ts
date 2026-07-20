@@ -22,6 +22,10 @@ export const en = {
   'settings.general.conversation.sendShortcut.enter': 'Enter',
   'settings.general.conversation.sendShortcut.shiftEnter': 'Shift + Enter',
   'settings.general.conversation.sendShortcut.commandEnter': 'Command + Enter',
+  'settings.general.conversation.notifyOnCompletion':
+    'Notify when a run finishes in the background',
+  'settings.general.conversation.notifyOnCompletion.description':
+    'Show a browser notification when a long task completes while you are on another tab.',
 
   // Settings layout
   'settings.layout.title': 'Settings',
@@ -125,6 +129,7 @@ export const en = {
   'session.compaction.boundary.titleEstimatedTokens':
     '{count} estimated tokens after compaction',
   'session.compaction.boundary.titleModel': 'Model: {modelId}',
+  'session.notification.completed': '「{label}」completed',
 
   // Shared session labels
   'session.untitled': 'Untitled session',

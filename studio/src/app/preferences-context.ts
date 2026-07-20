@@ -4,6 +4,7 @@ export type Preferences = {
   expandReasoning: boolean
   expandToolCalls: boolean
   sendShortcut: SendShortcut
+  notifyOnCompletion: boolean
 }
 
 export type PreferencesContextValue = Preferences & {
@@ -17,4 +18,5 @@ export const defaultPreferences: Preferences = {
   expandReasoning: false,
   expandToolCalls: false,
   sendShortcut: 'enter',
+  notifyOnCompletion: true,
 }

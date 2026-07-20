@@ -65,6 +65,7 @@ export function GeneralSettingsPage() {
   const {
     expandReasoning,
     expandToolCalls,
+    notifyOnCompletion,
     sendShortcut,
     setPreference: setPref,
   } = usePreferences()
@@ -186,6 +187,21 @@ export function GeneralSettingsPage() {
                 ))}
               </SelectContent>
             </Select>
+          </SettingRow>
+          <SettingRow
+            description={t(
+              'settings.general.conversation.notifyOnCompletion.description',
+            )}
+            htmlFor="notify-on-completion"
+            label={t('settings.general.conversation.notifyOnCompletion')}
+          >
+            <Switch
+              checked={notifyOnCompletion}
+              id="notify-on-completion"
+              onCheckedChange={(checked) =>
+                setPref('notifyOnCompletion', Boolean(checked))
+              }
+            />
           </SettingRow>
         </SettingSection>
       </div>
