@@ -149,24 +149,25 @@ func TestFactoryGenerateTitleUsesEmbeddedPromptWithoutReasoning(t *testing.T) {
 	}
 }
 
-func TestLoadWorkspaceInstructionsOrdersParentBeforeChild(t *testing.T) {
-	root := t.TempDir()
-	workspace := filepath.Join(root, "workspace")
-	if err := os.Mkdir(workspace, 0o700); err != nil {
-		t.Fatalf("Mkdir() error = %v", err)
+func TestLoadWorkspaceInstructionsOrdersGlobalBeforeWorkspace(t *testing.T) {
+	globalHome := t.TempDir()
+	globalPath := filepath.Join(globalHome, ".koda", "AGENTS.md")
+	if err := os.MkdirAll(filepath.Dir(globalPath), 0o700); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("parent rule"), 0o600); err != nil {
-		t.Fatalf("WriteFile(parent AGENTS.md) error = %v", err)
+	if err := os.WriteFile(globalPath, []byte("global rule"), 0o600); err != nil {
+		t.Fatalf("WriteFile(global AGENTS.md) error = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(workspace, "AGENTS.md"), []byte("child rule"), 0o600); err != nil {
-		t.Fatalf("WriteFile(child AGENTS.md) error = %v", err)
+	workspace := t.TempDir()
+	if err := os.WriteFile(filepath.Join(workspace, "AGENTS.md"), []byte("workspace rule"), 0o600); err != nil {
+		t.Fatalf("WriteFile(workspace AGENTS.md) error = %v", err)
 	}
-	instructions, err := LoadWorkspaceInstructions(workspace)
+	instructions, err := loadWorkspaceInstructions(workspace, globalHome)
 	if err != nil {
-		t.Fatalf("LoadWorkspaceInstructions() error = %v", err)
+		t.Fatalf("loadWorkspaceInstructions() error = %v", err)
 	}
-	if instructions == "" || strings.Index(instructions, "parent rule") >= strings.Index(instructions, "child rule") {
-		t.Fatalf("instructions = %q, want parent before child", instructions)
+	if instructions == "" || strings.Index(instructions, "global rule") >= strings.Index(instructions, "workspace rule") {
+		t.Fatalf("instructions = %q, want global before workspace", instructions)
 	}
 }
 
@@ -195,8 +196,8 @@ func TestToolsForMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toolsForMode(build) error = %v", err)
 	}
-	if len(plan) != 9 || len(build) != 12 {
-		t.Fatalf("tool counts = %d, %d; want 9, 12", len(plan), len(build))
+	if len(plan) != 10 || len(build) != 13 {
+		t.Fatalf("tool counts = %d, %d; want 10, 13", len(plan), len(build))
 	}
 	for _, values := range [][]tool.Tool{plan, build} {
 		if values[len(values)-2].Definition().Name != "load_skill" || values[len(values)-1].Definition().Name != "read_skill_resource" {

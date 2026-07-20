@@ -63,43 +63,51 @@ func renderEmbeddedPrompt(name string, data any) (string, error) {
 	return builder.String(), nil
 }
 
-// LoadWorkspaceInstructions returns the AGENTS.md files from the filesystem
-// root through workdir, ordered so a closer file appears later and can refine
-// instructions from its parents.
+// LoadWorkspaceInstructions reads the global ~/.koda/AGENTS.md and the
+// workspace root AGENTS.md file. Subdirectory AGENTS.md files are loaded
+// on demand with the load_instructions tool.
 func LoadWorkspaceInstructions(workdir string) (string, error) {
 	resolved, err := normalizeWorkdir(workdir)
 	if err != nil {
 		return "", err
 	}
-	var directories []string
-	for directory := resolved; ; directory = filepath.Dir(directory) {
-		directories = append(directories, directory)
-		parent := filepath.Dir(directory)
-		if parent == directory {
-			break
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = ""
+	}
+	return loadWorkspaceInstructions(resolved, home)
+}
+
+func loadWorkspaceInstructions(workdir, homeDir string) (string, error) {
+	var builder strings.Builder
+	if homeDir != "" {
+		if err := appendInstructionFile(&builder, filepath.Join(homeDir, ".koda", "AGENTS.md")); err != nil {
+			return "", err
 		}
 	}
-
-	var builder strings.Builder
-	for index := len(directories) - 1; index >= 0; index-- {
-		path := filepath.Join(directories[index], "AGENTS.md")
-		data, err := os.ReadFile(path)
-		if errors.Is(err, os.ErrNotExist) {
-			continue
-		}
-		if err != nil {
-			return "", fmt.Errorf("agent: read %s: %w", path, err)
-		}
-		contents := strings.TrimSpace(string(data))
-		if contents == "" {
-			continue
-		}
-		if builder.Len() > 0 {
-			builder.WriteString("\n\n")
-		}
-		fmt.Fprintf(&builder, "## Instructions from %s\n\n%s", strconv.Quote(path), contents)
+	if err := appendInstructionFile(&builder, filepath.Join(workdir, "AGENTS.md")); err != nil {
+		return "", err
 	}
 	return builder.String(), nil
+}
+
+func appendInstructionFile(builder *strings.Builder, path string) error {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("agent: read %s: %w", path, err)
+	}
+	contents := strings.TrimSpace(string(data))
+	if contents == "" {
+		return nil
+	}
+	if builder.Len() > 0 {
+		builder.WriteString("\n\n")
+	}
+	fmt.Fprintf(builder, "## Instructions from %s\n\n%s", strconv.Quote(path), contents)
+	return nil
 }
 
 func normalizeWorkdir(workdir string) (string, error) {
@@ -147,6 +155,7 @@ func instructionConfiguration(mode Mode, workdir, skillInstruction string) (stri
 		if workspace != "" {
 			runtime += "\n\n# Workspace instructions\n\n" + workspace
 		}
+		runtime += "\n\nSubdirectory AGENTS.md files are loaded on demand with the `load_instructions` tool."
 		if skillInstruction != "" {
 			runtime += "\n\n# Available skills\n\n" + skillInstruction
 		}

@@ -159,6 +159,7 @@ export const en = {
   'tools.name.web_fetch': 'Web fetch',
   'tools.name.write_file': 'Write file',
   'tools.name.load_skill': 'Load skill',
+  'tools.name.load_instructions': 'Load instructions',
   // Tool names (past tense)
   'tools.namePast.ask_questions': 'Asked questions',
   'tools.namePast.create_file': 'Created file',
@@ -171,6 +172,7 @@ export const en = {
   'tools.namePast.web_fetch': 'Fetched web page',
   'tools.namePast.write_file': 'Wrote file',
   'tools.namePast.load_skill': 'Loaded skill',
+  'tools.namePast.load_instructions': 'Loaded instructions',
 
   // Session turn
   'session.turn.failed': 'Turn failed',
