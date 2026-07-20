@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronUp, LoaderCircle } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 
 import {
@@ -22,6 +23,7 @@ export function SessionModelPicker({
   disabled: boolean
   session: Session
 }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const pickerRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
@@ -66,7 +68,7 @@ export function SessionModelPicker({
     currentModelsQuery.data?.models.find(
       (model) => model.id === session.modelId,
     )?.defaultReasoningEffort ||
-    'default'
+    t('session.modelPicker.default')
 
   useEffect(() => {
     if (!open) return
@@ -118,7 +120,7 @@ export function SessionModelPicker({
     <div className="relative" ref={pickerRef}>
       <Button
         aria-expanded={open}
-        aria-label="Session model settings"
+        aria-label={t('session.modelPicker.settingsAria')}
         className="h-8 max-w-56 px-2.5 text-xs"
         disabled={disabled}
         onClick={() => {
@@ -143,7 +145,7 @@ export function SessionModelPicker({
         <div className="absolute bottom-full right-0 z-20 mb-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-border bg-popover p-4 shadow-2xl">
           <div className="space-y-3">
             <label className="field-label">
-              Provider
+              {t('session.modelPicker.provider')}
               <Select
                 disabled={providersQuery.isPending || updateMutation.isPending}
                 onValueChange={(value) => {
@@ -153,7 +155,9 @@ export function SessionModelPicker({
                 }}
                 value={providerId}
               >
-                <SelectTrigger aria-label="Session provider">
+                <SelectTrigger
+                  aria-label={t('session.modelPicker.sessionProvider')}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent data-session-model-picker-select side="top">
@@ -166,7 +170,7 @@ export function SessionModelPicker({
               </Select>
             </label>
             <label className="field-label">
-              Model
+              {t('session.modelPicker.model')}
               <Select
                 disabled={modelsQuery.isPending || updateMutation.isPending}
                 onValueChange={(value) => {
@@ -175,7 +179,9 @@ export function SessionModelPicker({
                 }}
                 value={selectedModelId}
               >
-                <SelectTrigger aria-label="Session model">
+                <SelectTrigger
+                  aria-label={t('session.modelPicker.sessionModel')}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent data-session-model-picker-select side="top">
@@ -188,7 +194,7 @@ export function SessionModelPicker({
               </Select>
             </label>
             <label className="field-label">
-              Reasoning effort
+              {t('session.modelPicker.reasoningEffort')}
               <Select
                 disabled={!selectedModel || updateMutation.isPending}
                 onValueChange={(value) =>
@@ -196,11 +202,15 @@ export function SessionModelPicker({
                 }
                 value={reasoningEffort || '__default'}
               >
-                <SelectTrigger aria-label="Session reasoning effort">
+                <SelectTrigger
+                  aria-label={t('session.modelPicker.sessionReasoningEffort')}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent data-session-model-picker-select side="top">
-                  <SelectItem value="__default">Provider default</SelectItem>
+                  <SelectItem value="__default">
+                    {t('session.modelPicker.providerDefault')}
+                  </SelectItem>
                   {selectedModel?.reasoningEfforts.map((effort) => (
                     <SelectItem key={effort} value={effort}>
                       {effort}
@@ -219,7 +229,7 @@ export function SessionModelPicker({
 
           <div className="mt-4 flex justify-end gap-2">
             <Button onClick={() => setOpen(false)} variant="outline">
-              Cancel
+              {t('session.modelPicker.cancel')}
             </Button>
             <Button
               disabled={
@@ -230,7 +240,7 @@ export function SessionModelPicker({
               {updateMutation.isPending && (
                 <LoaderCircle className="size-3.5 animate-spin" />
               )}
-              Apply
+              {t('session.modelPicker.apply')}
             </Button>
           </div>
         </div>

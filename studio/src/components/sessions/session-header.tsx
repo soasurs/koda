@@ -1,13 +1,19 @@
+import { useMemo } from 'react'
+
+import { useI18n } from '@/app/i18n'
 import type { Session } from '@/gen/koda/v1/service_pb'
 import { SidebarExpandButton } from '@/components/layout/sidebar-expand-button'
 
 export function SessionHeader({ session }: { session: Session }) {
+  const { t } = useI18n()
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border px-4 sm:px-6">
       <SidebarExpandButton />
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-sm font-medium">
-          {session.title || session.workdir.split('/').pop() || 'Untitled'}
+          {session.title ||
+            session.workdir.split('/').pop() ||
+            t('session.header.untitled')}
         </h1>
       </div>
       <ContextWindowUsage session={session} />
@@ -15,17 +21,37 @@ export function SessionHeader({ session }: { session: Session }) {
   )
 }
 
+function useTokenFormatters(locale: string) {
+  return useMemo(
+    () => ({
+      compact: new Intl.NumberFormat(locale, {
+        notation: 'compact',
+        maximumFractionDigits: 1,
+      }),
+      exact: new Intl.NumberFormat(locale),
+    }),
+    [locale],
+  )
+}
+
 function ContextWindowUsage({ session }: { session: Session }) {
+  const { t, locale } = useI18n()
+  const { compact: compactFormatter, exact: exactFormatter } =
+    useTokenFormatters(locale)
   const usage = session.contextUsage
   if (!usage || usage.windowTokens <= 0n) return null
+
+  const windowCompact = compactFormatter.format(usage.windowTokens)
 
   if (!usage.measured) {
     return (
       <div
         className="shrink-0 text-xs text-muted-foreground"
-        title={`Context usage unavailable · ${formatTokens(usage.windowTokens)} window`}
+        title={t('session.header.contextUsageUnavailable', {
+          window: windowCompact,
+        })}
       >
-        Context — / {formatTokens(usage.windowTokens)}
+        {t('session.header.contextShort', { window: windowCompact })}
       </div>
     )
   }
@@ -36,7 +62,12 @@ function ContextWindowUsage({ session }: { session: Session }) {
     (Number(used) / Number(usage.windowTokens)) * 100,
   )
   const meterPercentage = Math.min(Math.max(percentage, 0), 100)
-  const label = `${formatExactTokens(used)} tokens used, ${formatExactTokens(remaining)} remaining, ${percentage}% of ${formatExactTokens(usage.windowTokens)}`
+  const label = t('session.header.usageLabel', {
+    used: exactFormatter.format(used),
+    remaining: exactFormatter.format(remaining),
+    percentage: String(percentage),
+    window: exactFormatter.format(usage.windowTokens),
+  })
 
   return (
     <div
@@ -55,24 +86,13 @@ function ContextWindowUsage({ session }: { session: Session }) {
         />
       </div>
       <span className="whitespace-nowrap text-xs text-muted-foreground">
-        {formatTokens(used)} used · {formatTokens(remaining)} left ·{' '}
-        {percentage}% of {formatTokens(usage.windowTokens)}
+        {t('session.header.usageSummary', {
+          used: compactFormatter.format(used),
+          remaining: compactFormatter.format(remaining),
+          percentage: String(percentage),
+          window: compactFormatter.format(usage.windowTokens),
+        })}
       </span>
     </div>
   )
-}
-
-const compactTokenFormatter = new Intl.NumberFormat('en-US', {
-  notation: 'compact',
-  maximumFractionDigits: 1,
-})
-
-const exactTokenFormatter = new Intl.NumberFormat('en-US')
-
-function formatTokens(tokens: bigint) {
-  return compactTokenFormatter.format(tokens)
-}
-
-function formatExactTokens(tokens: bigint) {
-  return exactTokenFormatter.format(tokens)
 }

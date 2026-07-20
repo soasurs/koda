@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ArchiveRestore, LoaderCircle, MessageSquareText } from 'lucide-react'
 
+import { useI18n } from '@/app/i18n'
 import { SettingsLayout } from '@/components/settings/settings-layout'
 import { Button } from '@/components/ui/button'
 import type { Session } from '@/gen/koda/v1/service_pb'
@@ -9,6 +10,7 @@ import { kodaClient } from '@/lib/connect'
 import { errorMessage, kodaKeys, listSessions } from '@/lib/koda'
 
 export function SessionSettingsPage() {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const sessionsQuery = useQuery({
     queryKey: kodaKeys.archivedSessions,
@@ -33,10 +35,10 @@ export function SessionSettingsPage() {
     <SettingsLayout active="sessions">
       <div>
         <h2 className="text-lg font-semibold tracking-tight">
-          Archived sessions
+          {t('settings.sessions.title')}
         </h2>
         <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-          Restore sessions that you want to return to the active project list.
+          {t('settings.sessions.description')}
         </p>
       </div>
 
@@ -54,10 +56,10 @@ export function SessionSettingsPage() {
         <div className="mt-6 rounded-lg border border-dashed border-border px-6 py-12 text-center">
           <MessageSquareText className="mx-auto size-6 text-muted-foreground" />
           <p className="mt-3 text-sm font-medium text-foreground">
-            No archived sessions
+            {t('settings.sessions.empty.title')}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Archived sessions will appear here.
+            {t('settings.sessions.empty.body')}
           </p>
         </div>
       ) : (
@@ -73,7 +75,7 @@ export function SessionSettingsPage() {
                   params={{ sessionId: session.id }}
                   to="/sessions/$sessionId"
                 >
-                  {session.title || 'Untitled session'}
+                  {session.title || t('session.untitled')}
                 </Link>
                 <p className="mt-1 truncate text-xs text-muted-foreground">
                   {session.workdir}
@@ -94,7 +96,7 @@ export function SessionSettingsPage() {
                 ) : (
                   <ArchiveRestore aria-hidden="true" />
                 )}
-                Restore
+                {t('settings.sessions.restore')}
               </Button>
             </div>
           ))}

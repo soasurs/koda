@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, FileText, LoaderCircle, PackageOpen } from 'lucide-react'
 import { lazy, Suspense, useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import { SettingsLayout } from '@/components/settings/settings-layout'
 import { Modal } from '@/components/ui/modal'
@@ -11,6 +12,7 @@ import { errorMessage, getSkill, kodaKeys, listSkills } from '@/lib/koda'
 const MarkdownText = lazy(() => import('@/components/markdown-text'))
 
 export function SkillSettingsPage() {
+  const { t } = useI18n()
   const [selectedName, setSelectedName] = useState<string>()
   const skillsQuery = useQuery({
     queryKey: kodaKeys.skills,
@@ -29,10 +31,11 @@ export function SkillSettingsPage() {
     <SettingsLayout active="skills">
       <div className="flex items-start justify-between gap-5">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Skills</h2>
+          <h2 className="text-lg font-semibold tracking-tight">
+            {t('settings.skills.title')}
+          </h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Inspect the Agent Skills loaded from ~/.koda/skills when this Koda
-            process started. Restart Koda to pick up filesystem changes.
+            {t('settings.skills.description')}
           </p>
         </div>
       </div>
@@ -47,17 +50,19 @@ export function SkillSettingsPage() {
         <div className="mt-6 rounded-lg border border-dashed border-border px-6 py-12 text-center">
           <PackageOpen className="mx-auto size-6 text-muted-foreground" />
           <p className="mt-3 text-sm font-medium text-foreground">
-            No skills loaded
+            {t('settings.skills.empty.title')}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add a skill under ~/.koda/skills and restart Koda.
+            {t('settings.skills.empty.body')}
           </p>
         </div>
       ) : (
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {skillsQuery.data.map((skill) => (
             <Button
-              aria-label={`Open ${skill.name}`}
+              aria-label={t('settings.skills.card.openAria', {
+                name: skill.name,
+              })}
               className="group flex h-auto min-h-28 items-start gap-3 rounded-lg border border-border bg-background p-4 text-left hover:border-border/80 hover:bg-accent"
               key={skill.name}
               onClick={() => setSelectedName(skill.name)}
@@ -108,14 +113,23 @@ export function SkillSettingsPage() {
 }
 
 function SkillDetails({ skill }: { skill: Skill }) {
+  const { t } = useI18n()
   const metadata = Object.entries(skill.metadata)
   return (
     <article className="min-w-0">
       {(skill.license || skill.compatibility || metadata.length > 0) && (
         <dl className="grid gap-3 border-b border-border pb-5 text-sm sm:grid-cols-2">
-          {skill.license && <Detail label="License" value={skill.license} />}
+          {skill.license && (
+            <Detail
+              label={t('settings.skills.details.license')}
+              value={skill.license}
+            />
+          )}
           {skill.compatibility && (
-            <Detail label="Compatibility" value={skill.compatibility} />
+            <Detail
+              label={t('settings.skills.details.compatibility')}
+              value={skill.compatibility}
+            />
           )}
           {metadata.map(([key, value]) => (
             <Detail key={key} label={key} value={value} />
@@ -124,12 +138,15 @@ function SkillDetails({ skill }: { skill: Skill }) {
       )}
 
       {skill.allowedTools.length > 0 && (
-        <DetailList label="Allowed tools" values={skill.allowedTools} />
+        <DetailList
+          label={t('settings.skills.details.allowedTools')}
+          values={skill.allowedTools}
+        />
       )}
 
       <section className="mt-6">
         <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Instructions
+          {t('settings.skills.details.instructions')}
         </h4>
         <div className="mt-3 min-w-0 text-sm leading-6 text-foreground">
           <Suspense
@@ -143,7 +160,10 @@ function SkillDetails({ skill }: { skill: Skill }) {
       </section>
 
       {skill.resources.length > 0 && (
-        <DetailList label="Resources" values={skill.resources} />
+        <DetailList
+          label={t('settings.skills.details.resources')}
+          values={skill.resources}
+        />
       )}
     </article>
   )

@@ -1,6 +1,8 @@
 import { Check, ChevronRight, LoaderCircle, Wrench, X } from 'lucide-react'
 import { memo, useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
+import { usePreferences } from '@/app/preferences-context-value'
 import type { Event, FileChange } from '@/gen/koda/v1/service_pb'
 import { DiffLineKind } from '@/gen/koda/v1/service_pb'
 import { parseShellOutput, type ShellOutput } from '@/lib/shell-output'
@@ -13,6 +15,8 @@ export const ToolGroup = memo(function ToolGroup({
   assistant: Event
   toolEvents: Event[]
 }) {
+  const { t } = useI18n()
+  const { expandToolCalls } = usePreferences()
   const message = assistant.message
   const responses = new Map(
     toolEvents.flatMap((event) => {
@@ -22,29 +26,34 @@ export const ToolGroup = memo(function ToolGroup({
   )
   const hasPending =
     message?.toolCalls.some((toolCall) => !responses.has(toolCall.id)) ?? false
-  const [open, setOpen] = useState(hasPending)
+  const [open, setOpen] = useState(hasPending || expandToolCalls)
+  const [userToggled, setUserToggled] = useState(false)
 
   if (!message) return null
   const toolCount = message.toolCalls.length || toolEvents.length
   if (toolCount === 0) return null
 
+  const effectiveOpen = userToggled ? open : hasPending || expandToolCalls
   return (
     <details
       className="group ml-9 rounded-lg border border-border bg-muted/30"
-      open={open}
+      open={effectiveOpen}
     >
       <summary
         className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
         onClick={(event) => {
           event.preventDefault()
+          setUserToggled(true)
           setOpen((value) => !value)
         }}
       >
         <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
         <Wrench className="size-3.5" />
         {toolCount > 0
-          ? `${toolCount} tool ${toolCount === 1 ? 'step' : 'steps'}`
-          : 'Tools'}
+          ? toolCount === 1
+            ? t('session.tool.steps.one', { count: toolCount })
+            : t('session.tool.steps.other', { count: toolCount })
+          : t('session.tool.tools')}
       </summary>
       <div className="divide-y divide-border border-t border-border px-3">
         {message.toolCalls.map((toolCall) => (
@@ -66,10 +75,15 @@ const ToolCallRow = memo(function ToolCallRow({
   response?: NonNullable<Event['message']>['toolResponse']
   toolCall: NonNullable<Event['message']>['toolCalls'][number]
 }) {
+  const { t } = useI18n()
   const finished = Boolean(response)
-  const { label, detail } = toolCallPresentation(toolCall, finished)
+  const { label, detail } = toolCallPresentation(t, toolCall, finished)
   const failed = response?.outcome.case === 'error'
-  const status = finished ? (failed ? 'Failed' : 'Completed') : 'Running...'
+  const status = failed
+    ? t('session.tool.status.failed')
+    : finished
+      ? t('session.tool.status.completed')
+      : t('session.tool.status.running')
   const fileChanges =
     response?.outcome.case === 'result'
       ? response.outcome.value.fileChanges
@@ -141,13 +155,14 @@ const ToolCallRow = memo(function ToolCallRow({
 })
 
 function ShellOutputView({ output }: { output: ShellOutput }) {
+  const { t } = useI18n()
   return (
     <div className="mb-3 overflow-hidden rounded-md border border-border bg-background font-mono text-[11px]">
       <div className="flex items-center justify-between border-b border-border px-3 py-2 text-muted-foreground">
-        <span>Output</span>
+        <span>{t('session.tool.output.title')}</span>
         <span>
-          Exit {output.exitCode}
-          {output.truncated ? ' · Truncated' : ''}
+          {t('session.tool.output.exit', { code: output.exitCode })}
+          {output.truncated ? t('session.tool.output.truncated') : ''}
         </span>
       </div>
       {output.stdout || output.stderr ? (
@@ -164,13 +179,16 @@ function ShellOutputView({ output }: { output: ShellOutput }) {
           )}
         </div>
       ) : (
-        <p className="px-3 py-2 text-muted-foreground">No output</p>
+        <p className="px-3 py-2 text-muted-foreground">
+          {t('session.tool.output.empty')}
+        </p>
       )}
     </div>
   )
 }
 
 export function FileChangesView({ changes }: { changes: FileChange[] }) {
+  const { t } = useI18n()
   return (
     <div className="mb-3 space-y-3 overflow-hidden rounded-md border border-border bg-background">
       {changes.map((change, changeIndex) => (
@@ -178,7 +196,9 @@ export function FileChangesView({ changes }: { changes: FileChange[] }) {
           <div className="flex items-center justify-between border-b border-border px-3 py-2 font-mono text-[11px] text-muted-foreground">
             <span className="truncate">{change.path}</span>
             {change.truncated && (
-              <span className="shrink-0 text-muted-foreground">Truncated</span>
+              <span className="shrink-0 text-muted-foreground">
+                {t('session.tool.diff.truncated')}
+              </span>
             )}
           </div>
           <div className="overflow-x-auto py-1 font-mono text-[11px] leading-5">

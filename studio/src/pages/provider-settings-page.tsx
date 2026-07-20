@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LoaderCircle, Plus } from 'lucide-react'
 import { useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import { ProviderCard } from '@/components/providers/provider-card'
 import { ProviderDialog } from '@/components/providers/provider-dialog'
@@ -11,6 +12,7 @@ import { kodaClient } from '@/lib/connect'
 import { errorMessage, kodaKeys, listProviders } from '@/lib/koda'
 
 export function ProviderSettingsPage() {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [editingProvider, setEditingProvider] = useState<Provider | null>()
   const providersQuery = useQuery({
@@ -30,15 +32,16 @@ export function ProviderSettingsPage() {
       <div id="providers">
         <div className="flex items-start justify-between gap-5">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Providers</h2>
+            <h2 className="text-lg font-semibold tracking-tight">
+              {t('settings.providers.title')}
+            </h2>
             <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-              Configure credentials and compatible endpoints stored by your
-              local Koda service.
+              {t('settings.providers.description')}
             </p>
           </div>
           <Button onClick={() => setEditingProvider(null)}>
             <Plus className="size-4" />
-            Add provider
+            {t('settings.providers.addProvider')}
           </Button>
         </div>
 

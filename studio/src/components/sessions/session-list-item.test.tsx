@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { ComponentProps, ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { I18nProvider } from '@/app/i18n'
 import { SessionListItem } from '@/components/sessions/session-list-item'
 import { SessionSchema } from '@/gen/koda/v1/service_pb'
 
@@ -37,15 +38,17 @@ describe('SessionListItem', () => {
   it('archives a session from its context menu', async () => {
     const onArchive = vi.fn()
     render(
-      <SessionListItem
-        archiving={false}
-        onArchive={onArchive}
-        onRename={vi.fn()}
-        session={create(SessionSchema, {
-          id: 'session-1',
-          title: 'Context menu session',
-        })}
-      />,
+      <I18nProvider>
+        <SessionListItem
+          archiving={false}
+          onArchive={onArchive}
+          onRename={vi.fn()}
+          session={create(SessionSchema, {
+            id: 'session-1',
+            title: 'Context menu session',
+          })}
+        />
+      </I18nProvider>,
     )
 
     fireEvent.contextMenu(screen.getByRole('link'))
@@ -59,15 +62,17 @@ describe('SessionListItem', () => {
   it('opens rename from its context menu', async () => {
     const onRename = vi.fn()
     render(
-      <SessionListItem
-        archiving={false}
-        onArchive={vi.fn()}
-        onRename={onRename}
-        session={create(SessionSchema, {
-          id: 'session-1',
-          title: 'Rename me',
-        })}
-      />,
+      <I18nProvider>
+        <SessionListItem
+          archiving={false}
+          onArchive={vi.fn()}
+          onRename={onRename}
+          session={create(SessionSchema, {
+            id: 'session-1',
+            title: 'Rename me',
+          })}
+        />
+      </I18nProvider>,
     )
 
     fireEvent.contextMenu(screen.getByRole('link'))

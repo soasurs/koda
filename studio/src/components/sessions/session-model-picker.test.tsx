@@ -3,6 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { I18nProvider } from '@/app/i18n'
 import { SessionModelPicker } from '@/components/sessions/session-model-picker'
 import type { Session } from '@/gen/koda/v1/service_pb'
 
@@ -54,17 +55,19 @@ function renderPicker() {
   })
   render(
     <QueryClientProvider client={queryClient}>
-      <SessionModelPicker
-        disabled={false}
-        session={
-          {
-            id: 'session-1',
-            modelId: 'model-1',
-            providerId: 'provider-1',
-            reasoningEffort: 'medium',
-          } as Session
-        }
-      />
+      <I18nProvider>
+        <SessionModelPicker
+          disabled={false}
+          session={
+            {
+              id: 'session-1',
+              modelId: 'model-1',
+              providerId: 'provider-1',
+              reasoningEffort: 'medium',
+            } as Session
+          }
+        />
+      </I18nProvider>
     </QueryClientProvider>,
   )
 }

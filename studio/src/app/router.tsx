@@ -2,10 +2,12 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
 } from '@tanstack/react-router'
 
 import { AppShell } from '@/components/layout/app-shell'
 import { HomePage } from '@/pages/home-page'
+import { GeneralSettingsPage } from '@/pages/general-settings-page'
 import { MCPSettingsPage } from '@/pages/mcp-settings-page'
 import { ProviderSettingsPage } from '@/pages/provider-settings-page'
 import { SessionPage } from '@/pages/session-page'
@@ -20,6 +22,20 @@ const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: HomePage,
+})
+
+const settingsIndexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings',
+  beforeLoad: () => {
+    throw redirect({ to: '/settings/general' })
+  },
+})
+
+const generalSettingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings/general',
+  component: GeneralSettingsPage,
 })
 
 const providerSettingsRoute = createRoute({
@@ -55,6 +71,8 @@ const sessionRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   homeRoute,
   sessionRoute,
+  settingsIndexRoute,
+  generalSettingsRoute,
   providerSettingsRoute,
   sessionSettingsRoute,
   mcpSettingsRoute,

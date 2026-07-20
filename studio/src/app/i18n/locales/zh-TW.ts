@@ -1,0 +1,351 @@
+import type { EnDictionary } from '@/app/i18n/locales/en'
+
+export const zhTW: EnDictionary = {
+  // General settings
+  'settings.general.title': '一般',
+  'settings.general.description': '管理 Koda Studio 的外觀與對話預設設定。',
+  'settings.general.appearance.title': '外觀',
+  'settings.general.appearance.theme': '主題',
+  'settings.general.appearance.theme.system': '跟隨系統',
+  'settings.general.appearance.theme.light': '淺色',
+  'settings.general.appearance.theme.dark': '深色',
+  'settings.general.appearance.language': '語言',
+  'settings.general.conversation.title': '對話',
+  'settings.general.conversation.expandReasoning': '預設展開推理',
+  'settings.general.conversation.expandReasoning.description':
+    '一輪對話開始時展開助手推理面板。',
+  'settings.general.conversation.expandToolCalls': '預設展開工具呼叫',
+  'settings.general.conversation.expandToolCalls.description':
+    '工具呼叫執行時展開工具呼叫群組。',
+  'settings.general.conversation.sendShortcut': '傳送快速鍵',
+  'settings.general.conversation.sendShortcut.enter': 'Enter',
+  'settings.general.conversation.sendShortcut.shiftEnter': 'Shift + Enter',
+  'settings.general.conversation.sendShortcut.commandEnter': 'Command + Enter',
+
+  // Settings layout
+  'settings.layout.title': '設定',
+  'settings.layout.description': '檢視程序級能力並設定本地 Koda 服務。',
+  'settings.layout.nav.ariaLabel': '設定',
+  'settings.layout.nav.providers': '提供方',
+  'settings.layout.nav.sessions': '對話',
+  'settings.layout.nav.mcp': 'MCP',
+  'settings.layout.nav.skills': '技能',
+
+  // Providers settings page
+  'settings.providers.title': '提供方',
+  'settings.providers.description': '設定本地 Koda 服務儲存的憑證與相容端點。',
+  'settings.providers.addProvider': '新增提供方',
+
+  // Sessions settings page
+  'settings.sessions.title': '已封存的對話',
+  'settings.sessions.description': '恢復希望重新回到活躍專案清單的對話。',
+  'settings.sessions.empty.title': '沒有已封存的對話',
+  'settings.sessions.empty.body': '已封存的對話會顯示在這裡。',
+  'settings.sessions.restore': '恢復',
+
+  // MCP settings page
+  'settings.mcp.title': 'MCP 伺服器',
+  'settings.mcp.description':
+    '檢視從 ~/.koda/koda.yaml 載入的程序級 MCP 伺服器。重啟 Koda 以套用設定變更。',
+  'settings.mcp.empty.title': '未設定 MCP 伺服器',
+  'settings.mcp.empty.body':
+    '在 ~/.koda/koda.yaml 中新增 mcp.servers 條目並重啟 Koda。',
+  'settings.mcp.card.openAria': '開啟 {name}',
+  'settings.mcp.card.toolCount.one': '{count} 個工具',
+  'settings.mcp.card.toolCount.other': '{count} 個工具',
+  'settings.mcp.card.mode.planAndBuild': '規劃 + 建構',
+  'settings.mcp.card.mode.buildWithApproval': '建構(需核准)',
+  'settings.mcp.details.id': 'ID',
+  'settings.mcp.details.transport': '傳輸',
+  'settings.mcp.details.agentModes': '代理模式',
+  'settings.mcp.details.mode.planAndBuild': '規劃與建構',
+  'settings.mcp.details.mode.buildWithApproval': '建構(需核准)',
+  'settings.mcp.details.target': '目標',
+  'settings.mcp.details.tools.title': '工具',
+  'settings.mcp.details.tools.empty': '此伺服器啟動時未公開工具。',
+  'settings.mcp.details.tools.mcpName': 'MCP 名稱:{name}',
+  'settings.mcp.transport.http': 'HTTP',
+  'settings.mcp.transport.stdio': 'stdio',
+  'settings.mcp.transport.unknown': '未知',
+
+  // Skills settings page
+  'settings.skills.title': '技能',
+  'settings.skills.description':
+    '檢視本 Koda 程序啟動時從 ~/.koda/skills 載入的代理技能。重啟 Koda 以拾取檔案系統變更。',
+  'settings.skills.empty.title': '未載入技能',
+  'settings.skills.empty.body': '在 ~/.koda/skills 下新增技能並重啟 Koda。',
+  'settings.skills.card.openAria': '開啟 {name}',
+  'settings.skills.details.license': '授權',
+  'settings.skills.details.compatibility': '相容性',
+  'settings.skills.details.allowedTools': '允許的工具',
+  'settings.skills.details.resources': '資源',
+  'settings.skills.details.instructions': '指令',
+
+  // App shell
+  'app.shell.brand': 'Koda Studio',
+  'app.shell.collapseSidebarAria': '收合側邊欄',
+  'app.shell.newSession': '新增對話',
+  'app.shell.new': '新增',
+  'app.shell.projects': '專案',
+  'app.shell.noSessions': '暫無對話',
+  'app.shell.newSessionInAria': '在 {name} 中新增對話',
+  'app.shell.newSessionInTitle': '在 {path} 中新增對話',
+  'app.shell.settingsAria': '設定',
+
+  // Home page
+  'home.empty.title': '從一個對話開始',
+  'home.empty.body': '從側邊欄建立對話。對話按本地專案分組。',
+  'home.empty.configureProviders': '設定提供方',
+
+  // Session page
+  'session.notFound': '找不到對話',
+  'session.empty.title': '準備就緒',
+  'session.empty.body': '讓 Koda 檢查、規劃或修改此工作區。',
+  'session.compaction.continuing': '沿用現有上下文繼續',
+  'session.compaction.completed': '上下文已壓縮 · 第 {generation} 代',
+  'session.compaction.failed': '上下文壓縮失敗',
+  'session.compaction.inProgress': '正在壓縮較早的上下文…',
+  'session.compaction.detail.completed':
+    '{sourceTokens} 源 token · 預估壓縮後 {estimatedTokens}',
+  'session.compaction.detail.inProgress': '當前上下文 {contextTokens} token',
+  'session.compaction.boundary.label': '較早上下文已壓縮 · 第 {generation} 代',
+  'session.compaction.boundary.titleGeneration': '第 {generation} 代',
+  'session.compaction.boundary.titleEvents': '已摘要 {count} 個較早事件',
+  'session.compaction.boundary.titleSourceTokens': '{count} 源 token',
+  'session.compaction.boundary.titleEstimatedTokens':
+    '壓縮後預估 {count} token',
+  'session.compaction.boundary.titleModel': '模型:{modelId}',
+
+  // Shared session labels
+  'session.untitled': '未命名對話',
+  'session.header.untitled': '未命名',
+
+  // Reasoning view
+  'session.reasoning.thinking': '思考中',
+  'session.reasoning.thought': '思考',
+
+  // Tool activity
+  'session.tool.tools': '工具',
+  'session.tool.steps.one': '{count} 個工具步驟',
+  'session.tool.steps.other': '{count} 個工具步驟',
+  'session.tool.status.completed': '已完成',
+  'session.tool.status.failed': '失敗',
+  'session.tool.status.running': '執行中…',
+  'session.tool.output.title': '輸出',
+  'session.tool.output.exit': '退出碼 {code}',
+  'session.tool.output.truncated': ' · 已截斷',
+  'session.tool.output.empty': '無輸出',
+  'session.tool.diff.truncated': '已截斷',
+
+  // Tool names (present tense)
+  'tools.name.ask_questions': '提問',
+  'tools.name.create_file': '建立檔案',
+  'tools.name.edit_file': '編輯檔案',
+  'tools.name.find_files': '尋找檔案',
+  'tools.name.list_directory': '列出目錄',
+  'tools.name.read_file': '讀取檔案',
+  'tools.name.run_shell': '執行命令',
+  'tools.name.search_text': '搜尋文字',
+  'tools.name.web_fetch': '擷取網頁',
+  'tools.name.write_file': '寫入檔案',
+  // Tool names (past tense)
+  'tools.namePast.ask_questions': '已提問',
+  'tools.namePast.create_file': '已建立檔案',
+  'tools.namePast.edit_file': '已編輯檔案',
+  'tools.namePast.find_files': '已尋找檔案',
+  'tools.namePast.list_directory': '已列出目錄',
+  'tools.namePast.read_file': '已讀取檔案',
+  'tools.namePast.run_shell': '已執行命令',
+  'tools.namePast.search_text': '已搜尋文字',
+  'tools.namePast.web_fetch': '已擷取網頁',
+  'tools.namePast.write_file': '已寫入檔案',
+
+  // Session turn
+  'session.turn.failed': '本輪失敗',
+  'session.turn.interrupted': '本輪已中斷',
+  'session.turn.earlierActivity': '較早的活動',
+  'session.turn.editMessage': '編輯訊息',
+  'session.turn.retryTurn': '重試本輪',
+  'session.turn.copyResponse': '複製回覆',
+  'session.turn.copied': '已複製!',
+  'session.turn.cancelEditing': '取消編輯',
+  'session.turn.send': '傳送',
+  'session.turn.interruption.canceled': '已被使用者取消',
+  'session.turn.interruption.deadline': '執行逾時',
+  'session.turn.interruption.consumer': '用戶端停止接收本輪',
+  'session.turn.interruption.abandoned': '在之前的 Koda 程序停止後恢復',
+  'session.turn.interruption.default': '執行在完成前停止',
+  'session.turn.failure.location.agent': 'agent',
+  'session.turn.failure.location.provider': 'provider',
+  'session.turn.failure.location.tool': 'tool',
+  'session.turn.failure.location.storage': 'storage',
+  'session.turn.failure.location.client': 'client',
+  'session.turn.failure.inLocation': '在 {location} 執行失敗',
+  'session.turn.failure.generic': '執行失敗',
+  'session.turn.shortcut.shiftEnter': 'Shift + Enter',
+  'session.turn.shortcut.commandEnter': '⌘ + Enter',
+  'session.turn.shortcut.enter': 'Enter',
+
+  // Session composer
+  'session.composer.message': '訊息',
+  'session.composer.stop': '停止',
+  'session.composer.send': '傳送',
+  'session.composer.chooseSendShortcut': '選擇傳送快速鍵',
+  'session.composer.sendWith': '傳送訊息使用',
+  'session.composer.placeholder': '讓 Koda 在此目錄中工作…',
+  'session.composer.disclaimer': 'Koda 可能出錯。請審查命令與檔案變更。',
+  'session.composer.mode.build': '建構',
+  'session.composer.mode.plan': '規劃',
+
+  // Session model picker
+  'session.modelPicker.settingsAria': '對話模型設定',
+  'session.modelPicker.provider': '提供方',
+  'session.modelPicker.model': '模型',
+  'session.modelPicker.reasoningEffort': '推理力度',
+  'session.modelPicker.providerDefault': '提供方預設',
+  'session.modelPicker.sessionProvider': '對話提供方',
+  'session.modelPicker.sessionModel': '對話模型',
+  'session.modelPicker.sessionReasoningEffort': '對話推理力度',
+  'session.modelPicker.cancel': '取消',
+  'session.modelPicker.apply': '套用',
+  'session.modelPicker.default': '預設',
+
+  // Session header
+  'session.header.contextUsageUnavailable': '上下文用量不可用 · 視窗 {window}',
+  'session.header.contextShort': '上下文 — / {window}',
+  'session.header.usageLabel':
+    '已用 {used} token,剩餘 {remaining},佔 {window} 的 {percentage}%',
+  'session.header.usageSummary':
+    '已用 {used} · 剩餘 {remaining} · 佔 {window} 的 {percentage}%',
+
+  // Session list item
+  'session.listItem.rename': '重新命名',
+  'session.listItem.archive': '封存',
+  'session.listItem.actionsAria': '{label} 的操作',
+
+  // Directory picker
+  'directory.picker.description': '瀏覽執行 Koda 的機器上的目錄。',
+  'directory.picker.title': '選擇工作區',
+  'directory.picker.home': '主目錄',
+  'directory.picker.parent': '上層目錄',
+  'directory.picker.noChildren': '無子目錄',
+  'directory.picker.cancel': '取消',
+  'directory.picker.select': '選擇此目錄',
+
+  // Create session dialog
+  'createSession.description': '為新的編碼對話選擇工作區與模型。',
+  'createSession.title': '新增對話',
+  'createSession.workspace': '工作區',
+  'createSession.chooseDirectory': '選擇一個本地目錄',
+  'createSession.provider': '提供方',
+  'createSession.noProviders': '沒有已設定的提供方',
+  'createSession.model': '模型',
+  'createSession.noModels': '無可用模型',
+  'createSession.reasoningEffort': '推理力度',
+  'createSession.providerDefault': '提供方預設',
+  'createSession.fileAccess': '檔案存取',
+  'createSession.fileAccess.workspaceRead': '工作區讀取',
+  'createSession.fileAccess.workspaceWrite': '工作區寫入',
+  'createSession.fileAccess.unrestricted': '不受限制',
+  'createSession.shellAccess': 'Shell 存取',
+  'createSession.shellAccess.askEveryTime': '每次詢問',
+  'createSession.shellAccess.unrestricted': '不受限制',
+  'createSession.cancel': '取消',
+  'createSession.submit': '建立對話',
+
+  // Rename session dialog
+  'renameSession.title': '重新命名對話',
+  'renameSession.description': '選一個便於查找此對話的名稱。',
+  'renameSession.name': '名稱',
+  'renameSession.placeholder': '對話名稱',
+  'renameSession.cancel': '取消',
+  'renameSession.submit': '重新命名',
+
+  // Run prompts
+  'runPrompt.permissionRequired': '需要權限',
+  'runPrompt.permissionBody': 'Koda 想執行以下操作。',
+  'runPrompt.reviewChanges': '審查建議的變更',
+  'runPrompt.approve': '核准',
+  'runPrompt.reject': '拒絕',
+  'runPrompt.submitAnswers': '提交回答',
+  'runPrompt.cancel': '取消',
+  'runPrompt.freeformPlaceholder': '或輸入你的回答',
+
+  // Provider card
+  'provider.card.builtIn': '內建',
+  'provider.card.loadingModels': '正在載入模型…',
+  'provider.card.modelCount': '{count} 個模型',
+  'provider.card.ready': '就緒',
+  'provider.card.notConfigured': '未設定',
+  'provider.card.refreshAria': '重新整理 {name} 模型',
+  'provider.card.refreshTitle': '重新整理模型',
+  'provider.card.configure': '設定',
+  'provider.card.deleteAria': '刪除 {name}',
+  'provider.card.deleteConfirm': '刪除 {name}?',
+  'provider.card.models': '模型',
+  'provider.card.addModel': '新增模型',
+  'provider.card.noModels': '無可用模型',
+  'provider.card.deleteModelPrompt': '刪除此模型?',
+  'provider.card.confirmDeleteAria': '確認刪除',
+  'provider.card.cancelDeleteAria': '取消刪除',
+  'provider.card.reasoning': '推理:{efforts}',
+  'provider.card.context': '上下文:{tokens}',
+  'provider.card.editModelAria': '編輯 {id}',
+  'provider.card.deleteModelAria': '刪除 {id}',
+  'provider.card.enableGeneration': '為代理生成啟用此提供方',
+
+  // Provider dialog
+  'provider.dialog.editDescription': '將 API key 留空以保留現有憑證。',
+  'provider.dialog.addDescription': '新增提供方或 API 相容端點。',
+  'provider.dialog.editTitle': '設定 {name}',
+  'provider.dialog.addTitle': '新增提供方',
+  'provider.dialog.id': 'ID',
+  'provider.dialog.displayName': '顯示名稱',
+  'provider.dialog.apiType': 'API 類型',
+  'provider.dialog.selectApi': '選擇一個 API',
+  'provider.dialog.baseUrl': 'Base URL',
+  'provider.dialog.baseUrlPlaceholder': '使用提供方預設',
+  'provider.dialog.apiKey': 'API key',
+  'provider.dialog.apiKeyKeep': '保留現有 key',
+  'provider.dialog.apiKeyRequired': '必填',
+  'provider.dialog.cancel': '取消',
+  'provider.dialog.save': '儲存提供方',
+
+  // Add model dialog
+  'addModel.description': '模型 ID 將原樣傳送給提供方 API。',
+  'addModel.title': '向 {name} 新增模型',
+  'addModel.modelId': '模型 ID',
+  'addModel.displayName': '顯示名稱',
+  'addModel.displayNamePlaceholder': '預設使用模型 ID',
+  'addModel.contextWindow': '上下文視窗 token',
+  'addModel.contextPlaceholder': '使用目錄或 Koda 回退',
+  'addModel.contextHelp':
+    '可選的輸入與輸出總容量。留空則使用目錄中繼資料或 Koda 回退值。',
+  'addModel.duplicate': '已存在相同 ID 的模型。',
+  'addModel.contextInvalid': '上下文視窗必須為正整數。',
+  'addModel.cancel': '取消',
+  'addModel.submit': '新增模型',
+
+  // Edit model dialog
+  'editModel.description': '編輯模型中繼資料。變更立即生效。',
+  'editModel.title': '編輯 {id}',
+  'editModel.modelId': '模型 ID',
+  'editModel.displayName': '顯示名稱',
+  'editModel.displayNamePlaceholder': '預設使用模型 ID',
+  'editModel.reasoningEfforts': '推理力度',
+  'editModel.reasoningPlaceholder': '例如 low, medium, high, max',
+  'editModel.reasoningHelp': '逗號分隔;留空則停用推理。',
+  'editModel.contextWindow': '上下文視窗 token',
+  'editModel.contextPlaceholder': '使用目錄或 Koda 回退',
+  'editModel.contextHelp':
+    '可選的輸入與輸出總容量。留空則使用目錄中繼資料或 Koda 回退值。',
+  'editModel.defaultReasoningEffort': '預設推理力度',
+  'editModel.providerDefault': '提供方預設',
+  'editModel.contextInvalid': '上下文視窗必須為正整數。',
+  'editModel.cancel': '取消',
+  'editModel.save': '儲存',
+
+  // Theme toggle
+  'theme.toggle.label': '主題',
+  'theme.toggle.ariaLabel': '主題',
+}

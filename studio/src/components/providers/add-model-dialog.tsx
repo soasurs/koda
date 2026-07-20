@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { LoaderCircle } from 'lucide-react'
 import { useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import type { Model, Provider } from '@/gen/koda/v1/service_pb'
@@ -18,6 +19,7 @@ export function AddModelDialog({
   onClose: () => void
   provider: Provider
 }) {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [id, setId] = useState('')
   const [name, setName] = useState('')
@@ -27,7 +29,7 @@ export function AddModelDialog({
   const saveMutation = useMutation({
     mutationFn: () => {
       if (contextWindowTokens === null) {
-        throw new Error('Context window must be a positive integer')
+        throw new Error(t('addModel.contextInvalid'))
       }
       return kodaClient.saveProvider({
         id: provider.id,
@@ -60,9 +62,9 @@ export function AddModelDialog({
 
   return (
     <Modal
-      description="The model ID is sent to the provider API exactly as entered."
+      description={t('addModel.description')}
       onClose={onClose}
-      title={`Add model to ${provider.name}`}
+      title={t('addModel.title', { name: provider.name })}
     >
       <form
         className="space-y-4 p-5"
@@ -72,7 +74,7 @@ export function AddModelDialog({
         }}
       >
         <label className="field-label">
-          Model ID
+          {t('addModel.modelId')}
           <input
             autoFocus
             className="input"
@@ -83,37 +85,32 @@ export function AddModelDialog({
           />
         </label>
         <label className="field-label">
-          Display name
+          {t('addModel.displayName')}
           <input
             className="input"
             onChange={(event) => setName(event.target.value)}
-            placeholder="Defaults to model ID"
+            placeholder={t('addModel.displayNamePlaceholder')}
             value={name}
           />
         </label>
 
         <label className="field-label">
-          Context window tokens
+          {t('addModel.contextWindow')}
           <input
             className="input"
             inputMode="numeric"
             onChange={(event) => setContextWindowInput(event.target.value)}
-            placeholder="Uses catalog or Koda fallback"
+            placeholder={t('addModel.contextPlaceholder')}
             value={contextWindowInput}
           />
           <span className="mt-1 text-[11px] text-neutral-600">
-            Optional total input and output capacity. Leave empty to use catalog
-            metadata or Koda's fallback.
+            {t('addModel.contextHelp')}
           </span>
         </label>
 
-        {duplicate && (
-          <p className="error-box">A model with this ID already exists.</p>
-        )}
+        {duplicate && <p className="error-box">{t('addModel.duplicate')}</p>}
         {contextWindowTokens === null && (
-          <p className="error-box">
-            Context window must be a positive integer.
-          </p>
+          <p className="error-box">{t('addModel.contextInvalid')}</p>
         )}
         {saveMutation.isError && (
           <p className="error-box">{errorMessage(saveMutation.error)}</p>
@@ -121,7 +118,7 @@ export function AddModelDialog({
 
         <footer className="flex justify-end gap-2 pt-1">
           <Button variant="outline" onClick={onClose} type="button">
-            Cancel
+            {t('addModel.cancel')}
           </Button>
           <Button
             disabled={
@@ -135,7 +132,7 @@ export function AddModelDialog({
             {saveMutation.isPending && (
               <LoaderCircle className="size-4 animate-spin" />
             )}
-            Add model
+            {t('addModel.submit')}
           </Button>
         </footer>
       </form>

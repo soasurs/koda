@@ -1,0 +1,351 @@
+import type { EnDictionary } from '@/app/i18n/locales/en'
+
+export const zhCN: EnDictionary = {
+  // General settings
+  'settings.general.title': '通用',
+  'settings.general.description': '管理 Koda Studio 的外观与对话默认设置。',
+  'settings.general.appearance.title': '外观',
+  'settings.general.appearance.theme': '主题',
+  'settings.general.appearance.theme.system': '跟随系统',
+  'settings.general.appearance.theme.light': '浅色',
+  'settings.general.appearance.theme.dark': '深色',
+  'settings.general.appearance.language': '语言',
+  'settings.general.conversation.title': '对话',
+  'settings.general.conversation.expandReasoning': '默认展开推理',
+  'settings.general.conversation.expandReasoning.description':
+    '一轮对话开始时展开助手推理面板。',
+  'settings.general.conversation.expandToolCalls': '默认展开工具调用',
+  'settings.general.conversation.expandToolCalls.description':
+    '工具调用执行时展开工具调用分组。',
+  'settings.general.conversation.sendShortcut': '发送快捷键',
+  'settings.general.conversation.sendShortcut.enter': 'Enter',
+  'settings.general.conversation.sendShortcut.shiftEnter': 'Shift + Enter',
+  'settings.general.conversation.sendShortcut.commandEnter': 'Command + Enter',
+
+  // Settings layout
+  'settings.layout.title': '设置',
+  'settings.layout.description': '查看进程级能力并配置本地 Koda 服务。',
+  'settings.layout.nav.ariaLabel': '设置',
+  'settings.layout.nav.providers': '提供方',
+  'settings.layout.nav.sessions': '会话',
+  'settings.layout.nav.mcp': 'MCP',
+  'settings.layout.nav.skills': '技能',
+
+  // Providers settings page
+  'settings.providers.title': '提供方',
+  'settings.providers.description': '配置本地 Koda 服务存储的凭据与兼容端点。',
+  'settings.providers.addProvider': '添加提供方',
+
+  // Sessions settings page
+  'settings.sessions.title': '已归档会话',
+  'settings.sessions.description': '恢复希望重新回到活跃项目列表的会话。',
+  'settings.sessions.empty.title': '没有已归档会话',
+  'settings.sessions.empty.body': '已归档会话会显示在这里。',
+  'settings.sessions.restore': '恢复',
+
+  // MCP settings page
+  'settings.mcp.title': 'MCP 服务器',
+  'settings.mcp.description':
+    '查看从 ~/.koda/koda.yaml 加载的进程级 MCP 服务器。重启 Koda 以应用配置变更。',
+  'settings.mcp.empty.title': '未配置 MCP 服务器',
+  'settings.mcp.empty.body':
+    '在 ~/.koda/koda.yaml 中添加 mcp.servers 条目并重启 Koda。',
+  'settings.mcp.card.openAria': '打开 {name}',
+  'settings.mcp.card.toolCount.one': '{count} 个工具',
+  'settings.mcp.card.toolCount.other': '{count} 个工具',
+  'settings.mcp.card.mode.planAndBuild': '规划 + 构建',
+  'settings.mcp.card.mode.buildWithApproval': '构建(需批准)',
+  'settings.mcp.details.id': 'ID',
+  'settings.mcp.details.transport': '传输',
+  'settings.mcp.details.agentModes': '代理模式',
+  'settings.mcp.details.mode.planAndBuild': '规划与构建',
+  'settings.mcp.details.mode.buildWithApproval': '构建(需批准)',
+  'settings.mcp.details.target': '目标',
+  'settings.mcp.details.tools.title': '工具',
+  'settings.mcp.details.tools.empty': '此服务器启动时未暴露工具。',
+  'settings.mcp.details.tools.mcpName': 'MCP 名称:{name}',
+  'settings.mcp.transport.http': 'HTTP',
+  'settings.mcp.transport.stdio': 'stdio',
+  'settings.mcp.transport.unknown': '未知',
+
+  // Skills settings page
+  'settings.skills.title': '技能',
+  'settings.skills.description':
+    '查看本 Koda 进程启动时从 ~/.koda/skills 加载的代理技能。重启 Koda 以拾取文件系统变更。',
+  'settings.skills.empty.title': '未加载技能',
+  'settings.skills.empty.body': '在 ~/.koda/skills 下添加技能并重启 Koda。',
+  'settings.skills.card.openAria': '打开 {name}',
+  'settings.skills.details.license': '许可证',
+  'settings.skills.details.compatibility': '兼容性',
+  'settings.skills.details.allowedTools': '允许的工具',
+  'settings.skills.details.resources': '资源',
+  'settings.skills.details.instructions': '指令',
+
+  // App shell
+  'app.shell.brand': 'Koda Studio',
+  'app.shell.collapseSidebarAria': '折叠侧边栏',
+  'app.shell.newSession': '新建会话',
+  'app.shell.new': '新建',
+  'app.shell.projects': '项目',
+  'app.shell.noSessions': '暂无会话',
+  'app.shell.newSessionInAria': '在 {name} 中新建会话',
+  'app.shell.newSessionInTitle': '在 {path} 中新建会话',
+  'app.shell.settingsAria': '设置',
+
+  // Home page
+  'home.empty.title': '从一个会话开始',
+  'home.empty.body': '从侧边栏创建会话。会话按本地项目分组。',
+  'home.empty.configureProviders': '配置提供方',
+
+  // Session page
+  'session.notFound': '找不到会话',
+  'session.empty.title': '准备就绪',
+  'session.empty.body': '让 Koda 检查、规划或修改此工作区。',
+  'session.compaction.continuing': '沿用现有上下文继续',
+  'session.compaction.completed': '上下文已压缩 · 第 {generation} 代',
+  'session.compaction.failed': '上下文压缩失败',
+  'session.compaction.inProgress': '正在压缩较早的上下文…',
+  'session.compaction.detail.completed':
+    '{sourceTokens} 源 token · 预计压缩后 {estimatedTokens}',
+  'session.compaction.detail.inProgress': '当前上下文 {contextTokens} token',
+  'session.compaction.boundary.label': '较早上下文已压缩 · 第 {generation} 代',
+  'session.compaction.boundary.titleGeneration': '第 {generation} 代',
+  'session.compaction.boundary.titleEvents': '已摘要 {count} 个较早事件',
+  'session.compaction.boundary.titleSourceTokens': '{count} 源 token',
+  'session.compaction.boundary.titleEstimatedTokens':
+    '压缩后预计 {count} token',
+  'session.compaction.boundary.titleModel': '模型:{modelId}',
+
+  // Shared session labels
+  'session.untitled': '未命名会话',
+  'session.header.untitled': '未命名',
+
+  // Reasoning view
+  'session.reasoning.thinking': '思考中',
+  'session.reasoning.thought': '思考',
+
+  // Tool activity
+  'session.tool.tools': '工具',
+  'session.tool.steps.one': '{count} 个工具步骤',
+  'session.tool.steps.other': '{count} 个工具步骤',
+  'session.tool.status.completed': '已完成',
+  'session.tool.status.failed': '失败',
+  'session.tool.status.running': '运行中…',
+  'session.tool.output.title': '输出',
+  'session.tool.output.exit': '退出码 {code}',
+  'session.tool.output.truncated': ' · 已截断',
+  'session.tool.output.empty': '无输出',
+  'session.tool.diff.truncated': '已截断',
+
+  // Tool names (present tense)
+  'tools.name.ask_questions': '提问',
+  'tools.name.create_file': '创建文件',
+  'tools.name.edit_file': '编辑文件',
+  'tools.name.find_files': '查找文件',
+  'tools.name.list_directory': '列出目录',
+  'tools.name.read_file': '读取文件',
+  'tools.name.run_shell': '执行命令',
+  'tools.name.search_text': '搜索文本',
+  'tools.name.web_fetch': '抓取网页',
+  'tools.name.write_file': '写入文件',
+  // Tool names (past tense)
+  'tools.namePast.ask_questions': '已提问',
+  'tools.namePast.create_file': '已创建文件',
+  'tools.namePast.edit_file': '已编辑文件',
+  'tools.namePast.find_files': '已查找文件',
+  'tools.namePast.list_directory': '已列出目录',
+  'tools.namePast.read_file': '已读取文件',
+  'tools.namePast.run_shell': '已执行命令',
+  'tools.namePast.search_text': '已搜索文本',
+  'tools.namePast.web_fetch': '已抓取网页',
+  'tools.namePast.write_file': '已写入文件',
+
+  // Session turn
+  'session.turn.failed': '本轮失败',
+  'session.turn.interrupted': '本轮已中断',
+  'session.turn.earlierActivity': '较早的活动',
+  'session.turn.editMessage': '编辑消息',
+  'session.turn.retryTurn': '重试本轮',
+  'session.turn.copyResponse': '复制回复',
+  'session.turn.copied': '已复制!',
+  'session.turn.cancelEditing': '取消编辑',
+  'session.turn.send': '发送',
+  'session.turn.interruption.canceled': '已被用户取消',
+  'session.turn.interruption.deadline': '执行超时',
+  'session.turn.interruption.consumer': '客户端停止接收本轮',
+  'session.turn.interruption.abandoned': '在之前的 Koda 进程停止后恢复',
+  'session.turn.interruption.default': '执行在完成前停止',
+  'session.turn.failure.location.agent': 'agent',
+  'session.turn.failure.location.provider': 'provider',
+  'session.turn.failure.location.tool': 'tool',
+  'session.turn.failure.location.storage': 'storage',
+  'session.turn.failure.location.client': 'client',
+  'session.turn.failure.inLocation': '在 {location} 执行失败',
+  'session.turn.failure.generic': '执行失败',
+  'session.turn.shortcut.shiftEnter': 'Shift + Enter',
+  'session.turn.shortcut.commandEnter': '⌘ + Enter',
+  'session.turn.shortcut.enter': 'Enter',
+
+  // Session composer
+  'session.composer.message': '消息',
+  'session.composer.stop': '停止',
+  'session.composer.send': '发送',
+  'session.composer.chooseSendShortcut': '选择发送快捷键',
+  'session.composer.sendWith': '发送消息使用',
+  'session.composer.placeholder': '让 Koda 在此目录中工作…',
+  'session.composer.disclaimer': 'Koda 可能出错。请审查命令与文件变更。',
+  'session.composer.mode.build': '构建',
+  'session.composer.mode.plan': '规划',
+
+  // Session model picker
+  'session.modelPicker.settingsAria': '会话模型设置',
+  'session.modelPicker.provider': '提供方',
+  'session.modelPicker.model': '模型',
+  'session.modelPicker.reasoningEffort': '推理力度',
+  'session.modelPicker.providerDefault': '提供方默认',
+  'session.modelPicker.sessionProvider': '会话提供方',
+  'session.modelPicker.sessionModel': '会话模型',
+  'session.modelPicker.sessionReasoningEffort': '会话推理力度',
+  'session.modelPicker.cancel': '取消',
+  'session.modelPicker.apply': '应用',
+  'session.modelPicker.default': '默认',
+
+  // Session header
+  'session.header.contextUsageUnavailable': '上下文用量不可用 · 窗口 {window}',
+  'session.header.contextShort': '上下文 — / {window}',
+  'session.header.usageLabel':
+    '已用 {used} token,剩余 {remaining},占 {window} 的 {percentage}%',
+  'session.header.usageSummary':
+    '已用 {used} · 剩余 {remaining} · 占 {window} 的 {percentage}%',
+
+  // Session list item
+  'session.listItem.rename': '重命名',
+  'session.listItem.archive': '归档',
+  'session.listItem.actionsAria': '{label} 的操作',
+
+  // Directory picker
+  'directory.picker.description': '浏览运行 Koda 的机器上的目录。',
+  'directory.picker.title': '选择工作区',
+  'directory.picker.home': '主目录',
+  'directory.picker.parent': '上级目录',
+  'directory.picker.noChildren': '无子目录',
+  'directory.picker.cancel': '取消',
+  'directory.picker.select': '选择此目录',
+
+  // Create session dialog
+  'createSession.description': '为新的编码会话选择工作区与模型。',
+  'createSession.title': '新建会话',
+  'createSession.workspace': '工作区',
+  'createSession.chooseDirectory': '选择一个本地目录',
+  'createSession.provider': '提供方',
+  'createSession.noProviders': '没有已配置的提供方',
+  'createSession.model': '模型',
+  'createSession.noModels': '无可用模型',
+  'createSession.reasoningEffort': '推理力度',
+  'createSession.providerDefault': '提供方默认',
+  'createSession.fileAccess': '文件访问',
+  'createSession.fileAccess.workspaceRead': '工作区读取',
+  'createSession.fileAccess.workspaceWrite': '工作区写入',
+  'createSession.fileAccess.unrestricted': '不受限制',
+  'createSession.shellAccess': 'Shell 访问',
+  'createSession.shellAccess.askEveryTime': '每次询问',
+  'createSession.shellAccess.unrestricted': '不受限制',
+  'createSession.cancel': '取消',
+  'createSession.submit': '创建会话',
+
+  // Rename session dialog
+  'renameSession.title': '重命名会话',
+  'renameSession.description': '选一个便于查找此会话的名称。',
+  'renameSession.name': '名称',
+  'renameSession.placeholder': '会话名称',
+  'renameSession.cancel': '取消',
+  'renameSession.submit': '重命名',
+
+  // Run prompts
+  'runPrompt.permissionRequired': '需要权限',
+  'runPrompt.permissionBody': 'Koda 想执行以下操作。',
+  'runPrompt.reviewChanges': '审查建议的变更',
+  'runPrompt.approve': '批准',
+  'runPrompt.reject': '拒绝',
+  'runPrompt.submitAnswers': '提交回答',
+  'runPrompt.cancel': '取消',
+  'runPrompt.freeformPlaceholder': '或输入你的回答',
+
+  // Provider card
+  'provider.card.builtIn': '内置',
+  'provider.card.loadingModels': '正在加载模型…',
+  'provider.card.modelCount': '{count} 个模型',
+  'provider.card.ready': '就绪',
+  'provider.card.notConfigured': '未配置',
+  'provider.card.refreshAria': '刷新 {name} 模型',
+  'provider.card.refreshTitle': '刷新模型',
+  'provider.card.configure': '配置',
+  'provider.card.deleteAria': '删除 {name}',
+  'provider.card.deleteConfirm': '删除 {name}?',
+  'provider.card.models': '模型',
+  'provider.card.addModel': '添加模型',
+  'provider.card.noModels': '无可用模型',
+  'provider.card.deleteModelPrompt': '删除此模型?',
+  'provider.card.confirmDeleteAria': '确认删除',
+  'provider.card.cancelDeleteAria': '取消删除',
+  'provider.card.reasoning': '推理:{efforts}',
+  'provider.card.context': '上下文:{tokens}',
+  'provider.card.editModelAria': '编辑 {id}',
+  'provider.card.deleteModelAria': '删除 {id}',
+  'provider.card.enableGeneration': '为代理生成启用此提供方',
+
+  // Provider dialog
+  'provider.dialog.editDescription': '将 API key 留空以保留现有凭据。',
+  'provider.dialog.addDescription': '添加提供方或 API 兼容端点。',
+  'provider.dialog.editTitle': '配置 {name}',
+  'provider.dialog.addTitle': '添加提供方',
+  'provider.dialog.id': 'ID',
+  'provider.dialog.displayName': '显示名称',
+  'provider.dialog.apiType': 'API 类型',
+  'provider.dialog.selectApi': '选择一个 API',
+  'provider.dialog.baseUrl': 'Base URL',
+  'provider.dialog.baseUrlPlaceholder': '使用提供方默认',
+  'provider.dialog.apiKey': 'API key',
+  'provider.dialog.apiKeyKeep': '保留现有 key',
+  'provider.dialog.apiKeyRequired': '必填',
+  'provider.dialog.cancel': '取消',
+  'provider.dialog.save': '保存提供方',
+
+  // Add model dialog
+  'addModel.description': '模型 ID 将原样发送给提供方 API。',
+  'addModel.title': '向 {name} 添加模型',
+  'addModel.modelId': '模型 ID',
+  'addModel.displayName': '显示名称',
+  'addModel.displayNamePlaceholder': '默认使用模型 ID',
+  'addModel.contextWindow': '上下文窗口 token',
+  'addModel.contextPlaceholder': '使用目录或 Koda 回退',
+  'addModel.contextHelp':
+    '可选的输入与输出总容量。留空则使用目录元数据或 Koda 回退值。',
+  'addModel.duplicate': '已存在相同 ID 的模型。',
+  'addModel.contextInvalid': '上下文窗口必须为正整数。',
+  'addModel.cancel': '取消',
+  'addModel.submit': '添加模型',
+
+  // Edit model dialog
+  'editModel.description': '编辑模型元数据。更改立即生效。',
+  'editModel.title': '编辑 {id}',
+  'editModel.modelId': '模型 ID',
+  'editModel.displayName': '显示名称',
+  'editModel.displayNamePlaceholder': '默认使用模型 ID',
+  'editModel.reasoningEfforts': '推理力度',
+  'editModel.reasoningPlaceholder': '例如 low, medium, high, max',
+  'editModel.reasoningHelp': '逗号分隔;留空则禁用推理。',
+  'editModel.contextWindow': '上下文窗口 token',
+  'editModel.contextPlaceholder': '使用目录或 Koda 回退',
+  'editModel.contextHelp':
+    '可选的输入与输出总容量。留空则使用目录元数据或 Koda 回退值。',
+  'editModel.defaultReasoningEffort': '默认推理力度',
+  'editModel.providerDefault': '提供方默认',
+  'editModel.contextInvalid': '上下文窗口必须为正整数。',
+  'editModel.cancel': '取消',
+  'editModel.save': '保存',
+
+  // Theme toggle
+  'theme.toggle.label': '主题',
+  'theme.toggle.ariaLabel': '主题',
+}

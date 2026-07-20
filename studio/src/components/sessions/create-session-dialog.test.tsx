@@ -3,6 +3,8 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { I18nProvider } from '@/app/i18n'
+
 const mocks = vi.hoisted(() => ({
   createSession: vi.fn(),
   listDirectories: vi.fn(),
@@ -32,7 +34,9 @@ function renderDialog(onClose = vi.fn()) {
   })
   render(
     <QueryClientProvider client={queryClient}>
-      <CreateSessionDialog onClose={onClose} />
+      <I18nProvider>
+        <CreateSessionDialog onClose={onClose} />
+      </I18nProvider>
     </QueryClientProvider>,
   )
   return onClose

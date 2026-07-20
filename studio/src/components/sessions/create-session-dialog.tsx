@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { FolderSearch, LoaderCircle } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import { DirectoryPicker } from '@/components/sessions/directory-picker'
 import { Modal } from '@/components/ui/modal'
@@ -26,6 +27,7 @@ export function CreateSessionDialog({
   initialWorkdir = '',
   onClose,
 }: CreateSessionDialogProps) {
+  const { t } = useI18n()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [workdir, setWorkdir] = useState(initialWorkdir)
@@ -92,9 +94,9 @@ export function CreateSessionDialog({
   return (
     <>
       <Modal
-        description="Select a workspace and model for the new coding session."
+        description={t('createSession.description')}
         onClose={onClose}
-        title="New session"
+        title={t('createSession.title')}
       >
         <form
           className="space-y-5 p-5"
@@ -104,7 +106,7 @@ export function CreateSessionDialog({
           }}
         >
           <label className="field-label">
-            Workspace
+            {t('createSession.workspace')}
             <Button
               className="justify-start"
               onClick={() => setShowDirectoryPicker(true)}
@@ -113,14 +115,14 @@ export function CreateSessionDialog({
             >
               <FolderSearch className="size-4 shrink-0 text-muted-foreground" />
               <span className={workdir ? 'truncate' : 'text-muted-foreground'}>
-                {workdir || 'Choose a local directory'}
+                {workdir || t('createSession.chooseDirectory')}
               </span>
             </Button>
           </label>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="field-label">
-              Provider
+              {t('createSession.provider')}
               <Select
                 onValueChange={(value) => {
                   setProviderId(value)
@@ -135,7 +137,7 @@ export function CreateSessionDialog({
                 <SelectContent>
                   {configuredProviders.length === 0 && (
                     <SelectItem value="no-providers" disabled>
-                      No configured providers
+                      {t('createSession.noProviders')}
                     </SelectItem>
                   )}
                   {configuredProviders.map((provider) => (
@@ -147,7 +149,7 @@ export function CreateSessionDialog({
               </Select>
             </label>
             <label className="field-label">
-              Model
+              {t('createSession.model')}
               <Select
                 disabled={!selectedProviderId || modelsQuery.isPending}
                 onValueChange={(value) => {
@@ -162,7 +164,7 @@ export function CreateSessionDialog({
                 <SelectContent>
                   {modelsQuery.data?.models.length === 0 && (
                     <SelectItem value="no-models" disabled>
-                      No models available
+                      {t('createSession.noModels')}
                     </SelectItem>
                   )}
                   {modelsQuery.data?.models.map((model) => (
@@ -177,7 +179,7 @@ export function CreateSessionDialog({
 
           {selectedModel && selectedModel.reasoningEfforts.length > 0 && (
             <label className="field-label">
-              Reasoning effort
+              {t('createSession.reasoningEffort')}
               <Select
                 onValueChange={(value) =>
                   setReasoningEffort(value === '__default' ? '' : value)
@@ -188,7 +190,9 @@ export function CreateSessionDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__default">Provider default</SelectItem>
+                  <SelectItem value="__default">
+                    {t('createSession.providerDefault')}
+                  </SelectItem>
                   {selectedModel.reasoningEfforts.map((effort) => (
                     <SelectItem key={effort} value={effort}>
                       {effort}
@@ -201,7 +205,7 @@ export function CreateSessionDialog({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="field-label">
-              File access
+              {t('createSession.fileAccess')}
               <Select
                 onValueChange={(value) =>
                   setFileAccess(Number(value) as FileAccess)
@@ -213,19 +217,19 @@ export function CreateSessionDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={String(FileAccess.WORKSPACE_READ)}>
-                    Workspace read
+                    {t('createSession.fileAccess.workspaceRead')}
                   </SelectItem>
                   <SelectItem value={String(FileAccess.WORKSPACE_WRITE)}>
-                    Workspace write
+                    {t('createSession.fileAccess.workspaceWrite')}
                   </SelectItem>
                   <SelectItem value={String(FileAccess.UNRESTRICTED)}>
-                    Unrestricted
+                    {t('createSession.fileAccess.unrestricted')}
                   </SelectItem>
                 </SelectContent>
               </Select>
             </label>
             <label className="field-label">
-              Shell access
+              {t('createSession.shellAccess')}
               <Select
                 onValueChange={(value) =>
                   setShellAccess(Number(value) as ShellAccess)
@@ -237,10 +241,10 @@ export function CreateSessionDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={String(ShellAccess.APPROVAL_REQUIRED)}>
-                    Ask every time
+                    {t('createSession.shellAccess.askEveryTime')}
                   </SelectItem>
                   <SelectItem value={String(ShellAccess.UNRESTRICTED)}>
-                    Unrestricted
+                    {t('createSession.shellAccess.unrestricted')}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -253,7 +257,7 @@ export function CreateSessionDialog({
 
           <footer className="flex justify-end gap-2 pt-1">
             <Button onClick={onClose} type="button" variant="outline">
-              Cancel
+              {t('createSession.cancel')}
             </Button>
             <Button
               disabled={
@@ -267,7 +271,7 @@ export function CreateSessionDialog({
               {createMutation.isPending && (
                 <LoaderCircle className="size-4 animate-spin" />
               )}
-              Create session
+              {t('createSession.submit')}
             </Button>
           </footer>
         </form>

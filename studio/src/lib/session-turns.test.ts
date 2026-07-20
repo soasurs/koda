@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest'
 import {
   EventSchema,
   InputSchema,
-  Role,
   ToolCallSchema,
   TurnSchema,
-  TurnStatus,
 } from '@/gen/koda/v1/service_pb'
+import { Role, TurnStatus } from '@/gen/koda/v1/service_pb'
+import { dictionaries } from '@/app/i18n/dictionaries'
 import {
   eventText,
   groupEventsByTurn,
@@ -127,8 +127,11 @@ describe('session turn helpers', () => {
   })
 
   it('creates a friendly tool label and concise detail', () => {
+    const t = (key: string) =>
+      dictionaries.en[key as keyof typeof dictionaries.en] ?? key
     expect(
       toolCallPresentation(
+        t,
         create(ToolCallSchema, {
           name: 'read_file',
           argumentsJson: JSON.stringify({ path: 'src/app.tsx', maxChars: 200 }),
@@ -138,6 +141,7 @@ describe('session turn helpers', () => {
 
     expect(
       toolCallPresentation(
+        t,
         create(ToolCallSchema, {
           name: 'web_fetch',
           argumentsJson: JSON.stringify({
@@ -154,6 +158,7 @@ describe('session turn helpers', () => {
 
     expect(
       toolCallPresentation(
+        t,
         create(ToolCallSchema, {
           name: 'custom_tool',
           argumentsJson: '{}',
