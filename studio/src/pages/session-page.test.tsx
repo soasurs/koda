@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { I18nProvider } from '@/app/i18n'
 import { CompactionProgressStage } from '@/gen/koda/v1/service_pb'
 import { SessionPage } from '@/pages/session-page'
 
@@ -135,12 +136,24 @@ describe('SessionPage', () => {
     route.compactionProgress = null
   })
 
+  function renderPage() {
+    return render(
+      <I18nProvider>
+        <SessionPage />
+      </I18nProvider>,
+    )
+  }
+
   it('remounts transient run state when the route session changes', () => {
-    const view = render(<SessionPage />)
+    const view = renderPage()
     expect(screen.getByTestId('turn-turn-1')).toHaveTextContent('session-1')
 
     route.sessionId = 'session-2'
-    view.rerender(<SessionPage />)
+    view.rerender(
+      <I18nProvider>
+        <SessionPage />
+      </I18nProvider>,
+    )
 
     expect(screen.getByTestId('turn-turn-1')).toHaveTextContent('session-2')
     view.unmount()
@@ -171,7 +184,7 @@ describe('SessionPage', () => {
       },
     }
 
-    render(<SessionPage />)
+    renderPage()
 
     expect(screen.getByTestId('compaction-boundary')).toHaveTextContent(
       'generation 3',
@@ -194,7 +207,7 @@ describe('SessionPage', () => {
       sourceTokens: 0n,
       estimatedTokensAfter: 0n,
     }
-    const view = render(<SessionPage />)
+    const view = renderPage()
 
     expect(screen.getByRole('status')).toHaveTextContent(
       'Compacting earlier context…',
@@ -210,7 +223,11 @@ describe('SessionPage', () => {
       sourceTokens: 192_000n,
       estimatedTokensAfter: 32_000n,
     }
-    view.rerender(<SessionPage />)
+    view.rerender(
+      <I18nProvider>
+        <SessionPage />
+      </I18nProvider>,
+    )
 
     expect(screen.getByRole('status')).toHaveTextContent(
       'Context compacted · generation 2',

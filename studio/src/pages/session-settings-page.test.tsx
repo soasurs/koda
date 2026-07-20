@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { I18nProvider } from '@/app/i18n'
 import { SessionSchema } from '@/gen/koda/v1/service_pb'
 
 const mocks = vi.hoisted(() => ({
@@ -59,7 +60,9 @@ describe('SessionSettingsPage', () => {
     })
     render(
       <QueryClientProvider client={queryClient}>
-        <SessionSettingsPage />
+        <I18nProvider>
+          <SessionSettingsPage />
+        </I18nProvider>
       </QueryClientProvider>,
     )
 

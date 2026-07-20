@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { I18nProvider } from '@/app/i18n'
 import {
   MCPServerSchema,
   MCPServerSummarySchema,
@@ -74,7 +75,9 @@ describe('MCPSettingsPage', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <MCPSettingsPage />
+        <I18nProvider>
+          <MCPSettingsPage />
+        </I18nProvider>
       </QueryClientProvider>,
     )
 
@@ -98,7 +101,9 @@ describe('MCPSettingsPage', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <MCPSettingsPage />
+        <I18nProvider>
+          <MCPSettingsPage />
+        </I18nProvider>
       </QueryClientProvider>,
     )
 

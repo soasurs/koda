@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { Fragment, useMemo, useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { SessionComposer } from '@/components/sessions/session-composer'
 import { SessionHeader } from '@/components/sessions/session-header'
 import {
@@ -35,6 +36,7 @@ export function SessionPage() {
 }
 
 function SessionContent({ sessionId }: { sessionId: string }) {
+  const { t } = useI18n()
   const sessionQuery = useQuery({
     queryKey: kodaKeys.session(sessionId),
     queryFn: async () => (await kodaClient.getSession({ sessionId })).session,
@@ -94,7 +96,7 @@ function SessionContent({ sessionId }: { sessionId: string }) {
         <p className="error-box">
           {sessionQuery.isError
             ? errorMessage(sessionQuery.error)
-            : 'Session not found'}
+            : t('session.notFound')}
         </p>
       </div>
     )
@@ -214,13 +216,20 @@ function SessionContent({ sessionId }: { sessionId: string }) {
 }
 
 function CompactionActivity({ progress }: { progress: CompactionProgress }) {
+  const { t, locale } = useI18n()
   const completed = progress.stage === CompactionProgressStage.COMPLETED
   const failed = progress.stage === CompactionProgressStage.FAILED
+  const tokenFormatter = useTokenFormatter(locale)
   const detail = completed
-    ? `${formatTokens(progress.sourceTokens)} source tokens · ${formatTokens(progress.estimatedTokensAfter)} estimated after`
+    ? t('session.compaction.detail.completed', {
+        sourceTokens: tokenFormatter.format(progress.sourceTokens),
+        estimatedTokens: tokenFormatter.format(progress.estimatedTokensAfter),
+      })
     : failed
-      ? 'Continuing with existing context'
-      : `${formatTokens(progress.contextTokens)} tokens in current context`
+      ? t('session.compaction.continuing')
+      : t('session.compaction.detail.inProgress', {
+          contextTokens: tokenFormatter.format(progress.contextTokens),
+        })
 
   return (
     <div
@@ -238,10 +247,12 @@ function CompactionActivity({ progress }: { progress: CompactionProgress }) {
       <div>
         <div className="font-medium text-foreground">
           {completed
-            ? `Context compacted · generation ${progress.generation}`
+            ? t('session.compaction.completed', {
+                generation: String(progress.generation),
+              })
             : failed
-              ? 'Context compaction failed'
-              : 'Compacting earlier context…'}
+              ? t('session.compaction.failed')
+              : t('session.compaction.inProgress')}
         </div>
         <div className="mt-0.5 text-xs">{detail}</div>
       </div>
@@ -249,23 +260,39 @@ function CompactionActivity({ progress }: { progress: CompactionProgress }) {
   )
 }
 
-const compactTokenFormatter = new Intl.NumberFormat('en-US', {
-  maximumFractionDigits: 1,
-  notation: 'compact',
-})
-
-function formatTokens(tokens: bigint) {
-  return compactTokenFormatter.format(tokens)
+function useTokenFormatter(locale: string) {
+  return useMemo(
+    () =>
+      new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'zh', {
+        maximumFractionDigits: 1,
+        notation: 'compact',
+      }),
+    [locale],
+  )
 }
 
 function CompactionBoundary({ compaction }: { compaction: CompactionStatus }) {
+  const { t, locale } = useI18n()
   const createdAt = new Date(Number(compaction.createdAt))
+  const tokenFormatter = useTokenFormatter(locale)
   const title = [
-    `Generation ${compaction.generation}`,
-    `${compaction.compactedEventCount} earlier events summarized`,
-    `${compaction.sourceTokens} source tokens`,
-    `${compaction.estimatedTokensAfter} estimated tokens after compaction`,
-    compaction.modelId ? `Model: ${compaction.modelId}` : '',
+    t('session.compaction.boundary.titleGeneration', {
+      generation: String(compaction.generation),
+    }),
+    t('session.compaction.boundary.titleEvents', {
+      count: String(compaction.compactedEventCount),
+    }),
+    t('session.compaction.boundary.titleSourceTokens', {
+      count: tokenFormatter.format(compaction.sourceTokens),
+    }),
+    t('session.compaction.boundary.titleEstimatedTokens', {
+      count: tokenFormatter.format(compaction.estimatedTokensAfter),
+    }),
+    compaction.modelId
+      ? t('session.compaction.boundary.titleModel', {
+          modelId: compaction.modelId,
+        })
+      : '',
     Number.isNaN(createdAt.getTime()) ? '' : createdAt.toLocaleString(),
   ]
     .filter(Boolean)
@@ -280,7 +307,9 @@ function CompactionBoundary({ compaction }: { compaction: CompactionStatus }) {
       <div className="h-px flex-1 bg-border" />
       <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-muted/50 px-2.5 py-1">
         <Archive className="size-3" />
-        Earlier context compacted · generation {compaction.generation}
+        {t('session.compaction.boundary.label', {
+          generation: String(compaction.generation),
+        })}
       </span>
       <div className="h-px flex-1 bg-border" />
     </div>
@@ -288,14 +317,15 @@ function CompactionBoundary({ compaction }: { compaction: CompactionStatus }) {
 }
 
 function EmptyConversation() {
+  const { t } = useI18n()
   return (
     <div className="py-20 text-center">
       <div className="mx-auto flex size-11 items-center justify-center rounded-xl border border-border bg-muted">
         <Sparkles className="size-5 text-muted-foreground" />
       </div>
-      <h2 className="mt-4 text-sm font-medium">Ready to work</h2>
+      <h2 className="mt-4 text-sm font-medium">{t('session.empty.title')}</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Ask Koda to inspect, plan, or change this workspace.
+        {t('session.empty.body')}
       </p>
     </div>
   )

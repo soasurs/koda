@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { CreateSessionDialog } from '@/components/sessions/create-session-dialog'
 import { RenameSessionDialog } from '@/components/sessions/rename-session-dialog'
@@ -28,6 +29,7 @@ function loadSidebarCollapsed(): boolean {
 }
 
 export function AppShell() {
+  const { t } = useI18n()
   const navigate = useNavigate()
   const { sessionId: currentSessionId } = useParams({ strict: false })
   const queryClient = useQueryClient()
@@ -91,10 +93,10 @@ export function AppShell() {
               <Bot className="size-4" aria-hidden="true" />
             </div>
             <span className="text-sm font-semibold tracking-tight">
-              Koda Studio
+              {t('app.shell.brand')}
             </span>
             <Button
-              aria-label="Collapse sidebar"
+              aria-label={t('app.shell.collapseSidebarAria')}
               className="ml-auto"
               onClick={() => {
                 const next = !sidebarCollapsed
@@ -114,13 +116,13 @@ export function AppShell() {
               onClick={() => setCreateSessionWorkdir('')}
             >
               <Plus className="size-4" aria-hidden="true" />
-              New session
+              {t('app.shell.newSession')}
             </Button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
             <p className="px-2.5 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Projects
+              {t('app.shell.projects')}
             </p>
             {archiveMutation.isError && (
               <p className="mb-2 px-2.5 text-xs leading-5 text-red-400">
@@ -135,7 +137,7 @@ export function AppShell() {
               </p>
             ) : sessionsQuery.data.length === 0 ? (
               <p className="px-2.5 text-xs leading-5 text-muted-foreground">
-                No sessions yet
+                {t('app.shell.noSessions')}
               </p>
             ) : (
               <div className="space-y-1">
@@ -170,10 +172,14 @@ export function AppShell() {
                         {group.sessions?.length}
                       </span>
                       <Button
-                        aria-label={`New session in ${group.name}`}
+                        aria-label={t('app.shell.newSessionInAria', {
+                          name: group.name,
+                        })}
                         onClick={() => setCreateSessionWorkdir(group.path)}
                         size="icon-xs"
-                        title={`New session in ${group.path}`}
+                        title={t('app.shell.newSessionInTitle', {
+                          path: group.path,
+                        })}
                         variant="ghost"
                       >
                         <Plus className="size-3.5" aria-hidden="true" />
@@ -188,7 +194,7 @@ export function AppShell() {
           <div className="flex items-center justify-between border-t border-border px-4 py-3">
             <ThemeToggle />
             <Link
-              aria-label="Settings"
+              aria-label={t('app.shell.settingsAria')}
               className={buttonVariants({ variant: 'ghost', size: 'icon' })}
               to="/settings"
             >
@@ -201,7 +207,9 @@ export function AppShell() {
           {!sidebarCollapsed && (
             <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4 md:hidden">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold">Koda Studio</span>
+                <span className="text-sm font-semibold">
+                  {t('app.shell.brand')}
+                </span>
               </div>
               <Button
                 onClick={() => setCreateSessionWorkdir('')}
@@ -209,7 +217,7 @@ export function AppShell() {
                 variant="outline"
               >
                 <Plus className="size-4" />
-                New
+                {t('app.shell.new')}
               </Button>
               <ThemeToggle compact />
             </header>

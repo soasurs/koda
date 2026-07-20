@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { I18nProvider } from '@/app/i18n'
 import { SkillSchema, SkillSummarySchema } from '@/gen/koda/v1/service_pb'
 
 const { getSkillMock, listSkillsMock } = vi.hoisted(() => ({
@@ -61,7 +62,9 @@ describe('SkillSettingsPage', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <SkillSettingsPage />
+        <I18nProvider>
+          <SkillSettingsPage />
+        </I18nProvider>
       </QueryClientProvider>,
     )
 
@@ -89,7 +92,9 @@ describe('SkillSettingsPage', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <SkillSettingsPage />
+        <I18nProvider>
+          <SkillSettingsPage />
+        </I18nProvider>
       </QueryClientProvider>,
     )
 

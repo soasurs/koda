@@ -35,17 +35,19 @@ export function SettingsLayout({
             Koda Studio
           </p>
           <h1 className="mt-2 text-xl font-semibold tracking-tight">
-            Settings
+            {t('settings.layout.title')}
           </h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-            Inspect process-wide capabilities and configure your local Koda
-            service.
+            {t('settings.layout.description')}
           </p>
         </div>
       </div>
 
       <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-8 pt-6 md:grid-cols-[12rem_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)]">
-        <nav aria-label="Settings" className="grid gap-1 self-start">
+        <nav
+          aria-label={t('settings.layout.nav.ariaLabel')}
+          className="grid gap-1 self-start"
+        >
           <Link
             aria-current={active === 'general' ? 'page' : undefined}
             className={itemClass(active === 'general')}
@@ -60,7 +62,7 @@ export function SettingsLayout({
             to="/settings/providers"
           >
             <Settings2 className="size-4" aria-hidden="true" />
-            Providers
+            {t('settings.layout.nav.providers')}
           </Link>
           <Link
             aria-current={active === 'sessions' ? 'page' : undefined}
@@ -68,7 +70,7 @@ export function SettingsLayout({
             to="/settings/sessions"
           >
             <Archive className="size-4" aria-hidden="true" />
-            Sessions
+            {t('settings.layout.nav.sessions')}
           </Link>
           <Link
             aria-current={active === 'mcp' ? 'page' : undefined}
@@ -76,7 +78,7 @@ export function SettingsLayout({
             to="/settings/mcp"
           >
             <Network className="size-4" aria-hidden="true" />
-            MCP
+            {t('settings.layout.nav.mcp')}
           </Link>
           <Link
             aria-current={active === 'skills' ? 'page' : undefined}
@@ -84,7 +86,7 @@ export function SettingsLayout({
             to="/settings/skills"
           >
             <Blocks className="size-4" aria-hidden="true" />
-            Skills
+            {t('settings.layout.nav.skills')}
           </Link>
         </nav>
 

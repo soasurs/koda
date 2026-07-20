@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, LoaderCircle, Network, PackageOpen } from 'lucide-react'
 import { useState } from 'react'
 
+import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import { SettingsLayout } from '@/components/settings/settings-layout'
 import { Modal } from '@/components/ui/modal'
@@ -14,6 +15,7 @@ import {
 } from '@/lib/koda'
 
 export function MCPSettingsPage() {
+  const { t } = useI18n()
   const [selectedID, setSelectedID] = useState<string>()
   const serversQuery = useQuery({
     queryKey: kodaKeys.mcpServers,
@@ -31,10 +33,11 @@ export function MCPSettingsPage() {
   return (
     <SettingsLayout active="mcp">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">MCP servers</h2>
+        <h2 className="text-lg font-semibold tracking-tight">
+          {t('settings.mcp.title')}
+        </h2>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Inspect the process-wide MCP servers loaded from ~/.koda/koda.yaml.
-          Restart Koda to apply configuration changes.
+          {t('settings.mcp.description')}
         </p>
       </div>
 
@@ -48,17 +51,19 @@ export function MCPSettingsPage() {
         <div className="mt-6 rounded-lg border border-dashed border-border px-6 py-12 text-center">
           <PackageOpen className="mx-auto size-6 text-muted-foreground" />
           <p className="mt-3 text-sm font-medium text-foreground">
-            No MCP servers configured
+            {t('settings.mcp.empty.title')}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add mcp.servers entries to ~/.koda/koda.yaml and restart Koda.
+            {t('settings.mcp.empty.body')}
           </p>
         </div>
       ) : (
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           {serversQuery.data.map((server) => (
             <Button
-              aria-label={`Open ${server.name}`}
+              aria-label={t('settings.mcp.card.openAria', {
+                name: server.name,
+              })}
               className="group flex h-auto min-h-28 items-start gap-3 rounded-lg border border-border bg-background p-4 text-left hover:border-border/80 hover:bg-accent"
               key={server.id}
               onClick={() => setSelectedID(server.id)}
@@ -72,9 +77,18 @@ export function MCPSettingsPage() {
                   {server.name}
                 </span>
                 <span className="mt-1 block truncate text-xs text-muted-foreground">
-                  {transportLabel(server.transport)} · {server.toolCount}{' '}
-                  {server.toolCount === 1 ? 'tool' : 'tools'} ·{' '}
-                  {server.readOnly ? 'Plan + Build' : 'Build with approval'}
+                  {transportLabel(server.transport, t)} ·{' '}
+                  {server.toolCount === 1
+                    ? t('settings.mcp.card.toolCount.one', {
+                        count: server.toolCount,
+                      })
+                    : t('settings.mcp.card.toolCount.other', {
+                        count: server.toolCount,
+                      })}{' '}
+                  ·{' '}
+                  {server.readOnly
+                    ? t('settings.mcp.card.mode.planAndBuild')
+                    : t('settings.mcp.card.mode.buildWithApproval')}
                 </span>
                 <span className="mt-1 block truncate text-xs text-muted-foreground">
                   {server.target}
@@ -114,27 +128,38 @@ export function MCPSettingsPage() {
 }
 
 function MCPServerDetails({ server }: { server: MCPServer }) {
+  const { t } = useI18n()
   return (
     <article className="min-w-0">
       <dl className="grid gap-3 border-b border-border pb-5 text-sm sm:grid-cols-2">
-        <Detail label="ID" value={server.id} />
-        <Detail label="Transport" value={transportLabel(server.transport)} />
+        <Detail label={t('settings.mcp.details.id')} value={server.id} />
         <Detail
-          label="Agent modes"
-          value={server.readOnly ? 'Plan and Build' : 'Build with approval'}
+          label={t('settings.mcp.details.transport')}
+          value={transportLabel(server.transport, t)}
+        />
+        <Detail
+          label={t('settings.mcp.details.agentModes')}
+          value={
+            server.readOnly
+              ? t('settings.mcp.details.mode.planAndBuild')
+              : t('settings.mcp.details.mode.buildWithApproval')
+          }
         />
         <div className="sm:col-span-2">
-          <Detail label="Target" value={server.target} />
+          <Detail
+            label={t('settings.mcp.details.target')}
+            value={server.target}
+          />
         </div>
       </dl>
 
       <section className="mt-6">
         <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Tools
+          {t('settings.mcp.details.tools.title')}
         </h4>
         {server.tools.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            This server exposed no tools at startup.
+            {t('settings.mcp.details.tools.empty')}
           </p>
         ) : (
           <div className="mt-3 grid gap-3">
@@ -148,7 +173,9 @@ function MCPServerDetails({ server }: { server: MCPServer }) {
                 </code>
                 {tool.originalName !== tool.name && (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    MCP name: {tool.originalName}
+                    {t('settings.mcp.details.tools.mcpName', {
+                      name: tool.originalName,
+                    })}
                   </p>
                 )}
                 {tool.description && (
@@ -176,13 +203,15 @@ function Detail({ label, value }: { label: string; value: string }) {
   )
 }
 
-function transportLabel(transport: MCPTransport): string {
+type TranslationFn = (key: import('@/app/i18n/context').TKey) => string
+
+function transportLabel(transport: MCPTransport, t: TranslationFn): string {
   switch (transport) {
     case MCPTransport.MCP_TRANSPORT_HTTP:
-      return 'HTTP'
+      return t('settings.mcp.transport.http')
     case MCPTransport.MCP_TRANSPORT_STDIO:
-      return 'stdio'
+      return t('settings.mcp.transport.stdio')
     default:
-      return 'Unknown'
+      return t('settings.mcp.transport.unknown')
   }
 }
