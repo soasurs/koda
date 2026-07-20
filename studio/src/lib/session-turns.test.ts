@@ -1,6 +1,5 @@
 import { create } from '@bufbuild/protobuf'
 import { describe, expect, it } from 'vitest'
-
 import {
   EventSchema,
   InputSchema,
@@ -165,5 +164,49 @@ describe('session turn helpers', () => {
         }),
       ),
     ).toEqual({ label: 'Custom Tool', detail: '' })
+
+    expect(
+      toolCallPresentation(
+        t,
+        create(ToolCallSchema, {
+          name: 'load_skill',
+          argumentsJson: JSON.stringify({ name: 'go-pr-review' }),
+        }),
+      ),
+    ).toEqual({ label: 'Load skill', detail: 'go-pr-review' })
+
+    expect(
+      toolCallPresentation(
+        t,
+        create(ToolCallSchema, {
+          name: 'load_skill',
+          argumentsJson: JSON.stringify({ name: 'go-pr-review' }),
+        }),
+        true,
+      ),
+    ).toEqual({ label: 'Loaded skill', detail: 'go-pr-review' })
+
+    expect(
+      toolCallPresentation(
+        t,
+        create(ToolCallSchema, {
+          name: 'mcp__duckduckgo__search',
+          argumentsJson: JSON.stringify({ query: 'golang' }),
+        }),
+      ),
+    ).toEqual({ label: 'MCP Duckduckgo \u203A Search', detail: 'golang' })
+
+    expect(
+      toolCallPresentation(
+        t,
+        create(ToolCallSchema, {
+          name: 'mcp__github__get_file_contents',
+          argumentsJson: JSON.stringify({ path: '/README.md' }),
+        }),
+      ),
+    ).toEqual({
+      label: 'MCP Github \u203A Get File Contents',
+      detail: '/README.md',
+    })
   })
 })

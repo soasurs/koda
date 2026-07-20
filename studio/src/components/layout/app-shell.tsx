@@ -22,6 +22,7 @@ import type { Session } from '@/gen/koda/v1/service_pb'
 import { kodaClient } from '@/lib/connect'
 import { errorMessage, kodaKeys, listSessions } from '@/lib/koda'
 
+import { refreshMCPToolCache } from '@/lib/mcp-tools'
 const sidebarCollapsedKey = 'koda-studio-sidebar-collapsed'
 
 function loadSidebarCollapsed(): boolean {
@@ -38,6 +39,13 @@ export function AppShell() {
     string | undefined
   >()
   const [renamingSession, setRenamingSession] = useState<Session>()
+  // Populate the MCP tool cache for display-name lookups.
+  useQuery({
+    queryKey: ['mcp-tool-cache'],
+    queryFn: refreshMCPToolCache,
+    staleTime: Infinity,
+    retry: 2,
+  })
   const sessionsQuery = useQuery({
     queryKey: kodaKeys.sessions,
     queryFn: () => listSessions(),

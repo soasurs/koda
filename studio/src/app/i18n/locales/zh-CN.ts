@@ -148,6 +148,7 @@ export const zhCN: EnDictionary = {
   'tools.name.search_text': '搜索文本',
   'tools.name.web_fetch': '抓取网页',
   'tools.name.write_file': '写入文件',
+  'tools.name.load_skill': '加载技能',
   // Tool names (past tense)
   'tools.namePast.ask_questions': '已提问',
   'tools.namePast.create_file': '已创建文件',
@@ -159,6 +160,7 @@ export const zhCN: EnDictionary = {
   'tools.namePast.search_text': '已搜索文本',
   'tools.namePast.web_fetch': '已抓取网页',
   'tools.namePast.write_file': '已写入文件',
+  'tools.namePast.load_skill': '已加载技能',
 
   // Session turn
   'session.turn.failed': '本轮失败',
