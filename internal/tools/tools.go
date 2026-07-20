@@ -274,7 +274,11 @@ func (s service) readOnlyTools() ([]tool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []tool.Tool{readFile, listDirectory, searchText, findFiles, webFetch, askQuestions}, nil
+	loadInstructions, err := s.newLoadInstructionsTool()
+	if err != nil {
+		return nil, err
+	}
+	return []tool.Tool{readFile, listDirectory, searchText, findFiles, webFetch, askQuestions, loadInstructions}, nil
 }
 
 type toolCallContextKey struct{}

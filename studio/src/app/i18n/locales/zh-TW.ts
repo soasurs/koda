@@ -149,6 +149,7 @@ export const zhTW: EnDictionary = {
   'tools.name.web_fetch': '擷取網頁',
   'tools.name.write_file': '寫入檔案',
   'tools.name.load_skill': '載入技能',
+  'tools.name.load_instructions': '載入指令',
   // Tool names (past tense)
   'tools.namePast.ask_questions': '已提問',
   'tools.namePast.create_file': '已建立檔案',
@@ -161,6 +162,7 @@ export const zhTW: EnDictionary = {
   'tools.namePast.web_fetch': '已擷取網頁',
   'tools.namePast.write_file': '已寫入檔案',
   'tools.namePast.load_skill': '已載入技能',
+  'tools.namePast.load_instructions': '已載入指令',
 
   // Session turn
   'session.turn.failed': '本輪失敗',
