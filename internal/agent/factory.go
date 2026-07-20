@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"container/list"
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -22,6 +23,12 @@ import (
 	"github.com/soasurs/koda/internal/store"
 	"github.com/soasurs/koda/internal/tools"
 )
+
+// maxCachedRunners bounds the number of cached runner instances. Each runner
+// holds its own model client with an HTTP connection pool, so the cache must
+// not grow without bound. Normal usage stays well below this limit; the cap
+// exists only as safety against pathological session creation.
+const maxCachedRunners = 32
 
 // Mode identifies the coding capabilities exposed to an agent.
 type Mode string
@@ -70,12 +77,18 @@ type Factory struct {
 	skillTools       []tool.Tool
 	mcpTools         []tool.Tool
 	mcpPlanTools     []tool.Tool
-
-	mu    sync.Mutex
-	cache map[cacheKey]*runner.Runner
+	mu               sync.Mutex
+	cache            map[cacheKey]*list.Element
+	lru              *list.List
 
 	newModel  providerModelFactory
 	projector runner.Projector
+}
+
+// cacheEntry wraps a cached runner keyed by its cache key.
+type cacheEntry struct {
+	key    cacheKey
+	runner *runner.Runner
 }
 
 type cacheKey struct {
@@ -149,7 +162,8 @@ func New(config Config) (*Factory, error) {
 		skillTools:       skillTools,
 		mcpTools:         append([]tool.Tool(nil), mcpTools...),
 		mcpPlanTools:     append([]tool.Tool(nil), mcpPlanTools...),
-		cache:            make(map[cacheKey]*runner.Runner),
+		cache:            make(map[cacheKey]*list.Element),
+		lru:              list.New(),
 		newModel:         newProviderModel,
 		projector:        config.Projector,
 	}, nil
@@ -188,9 +202,10 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 	}
 
 	f.mu.Lock()
-	if cached := f.cache[key]; cached != nil {
+	if elem := f.cache[key]; elem != nil {
+		f.lru.MoveToFront(elem)
 		f.mu.Unlock()
-		return cached, nil
+		return elem.Value.(*cacheEntry).runner, nil
 	}
 	f.mu.Unlock()
 
@@ -243,11 +258,16 @@ func (f *Factory) Runner(ctx context.Context, session store.Session, mode Mode) 
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if cached := f.cache[key]; cached != nil {
-		return cached, nil
+	if elem := f.cache[key]; elem != nil {
+		f.lru.MoveToFront(elem)
+		return elem.Value.(*cacheEntry).runner, nil
 	}
 	f.evictSupersededLocked(key)
-	f.cache[key] = result
+	entry := &cacheEntry{key: key, runner: result}
+	f.cache[key] = f.lru.PushFront(entry)
+	if f.lru.Len() > maxCachedRunners {
+		f.evictLRULocked()
+	}
 	return result, nil
 }
 
@@ -324,15 +344,29 @@ func (f *Factory) resolveProviderAndModel(ctx context.Context, session store.Ses
 }
 
 func (f *Factory) evictSupersededLocked(key cacheKey) {
-	for candidate := range f.cache {
+	for candidate, elem := range f.cache {
 		if candidate.providerID == key.providerID && candidate.providerRevision != key.providerRevision {
+			f.lru.Remove(elem)
 			delete(f.cache, candidate)
 			continue
 		}
 		if candidate.sessionID == key.sessionID && candidate.mode == key.mode && candidate != key {
+			f.lru.Remove(elem)
 			delete(f.cache, candidate)
 		}
 	}
+}
+
+// evictLRULocked removes the least-recently-used cached runner. It must be
+// called while f.mu is held and only when the cache exceeds maxCachedRunners.
+func (f *Factory) evictLRULocked() {
+	elem := f.lru.Back()
+	if elem == nil {
+		return
+	}
+	entry := elem.Value.(*cacheEntry)
+	f.lru.Remove(elem)
+	delete(f.cache, entry.key)
 }
 
 func validateSession(session store.Session) error {
