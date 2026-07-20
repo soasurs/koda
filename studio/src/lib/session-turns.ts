@@ -7,6 +7,7 @@ import type {
 import { Role } from '@/gen/koda/v1/service_pb'
 import type { TKey } from '@/app/i18n'
 
+import { lookupMCPTool } from '@/lib/mcp-tools'
 export type Turn = { id: string; events: Event[]; metadata?: DurableTurn }
 export type TurnActivity = { assistant: Event; tools: Event[] }
 
@@ -100,6 +101,7 @@ export function toolDetail(argumentsJson: string): string {
   try {
     const input = JSON.parse(argumentsJson) as Record<string, unknown>
     const value =
+      input.name ??
       input.path ??
       input.url ??
       input.command ??
@@ -114,6 +116,33 @@ export function toolDetail(argumentsJson: string): string {
   }
 }
 
+// MCP tool names are namespaced as mcp__<serverID>__<toolName>.
+// mcpToolLabel returns a human-readable label for MCP tools,
+// or an empty string if the name does not follow the MCP convention.
+function mcpToolLabel(name: string): string {
+  const meta = lookupMCPTool(name)
+  if (meta)
+    return `MCP ${meta.serverName} \u203A ${humanize(meta.originalName)}`
+  const prefix = 'mcp__'
+  if (!name.startsWith(prefix)) return ''
+  const inner = name.slice(prefix.length)
+  const sep = inner.indexOf('__')
+  if (sep < 0) {
+    // Degenerate: mcp__something — treat as a single name.
+    return 'MCP ' + humanize(inner)
+  }
+  const server = humanize(inner.slice(0, sep))
+  const tool = humanize(inner.slice(sep + 2))
+  return `MCP ${server} \u203A ${tool}`
+}
+
+function humanize(value: string): string {
+  return value
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
+}
 // --- Tool label translation ---
 
 export function toolLabel(
@@ -130,11 +159,9 @@ export function toolLabel(
   const translated = t(presentKey)
   if (translated !== presentKey) return translated
   // Fallback: human-readable from the tool name
-  return name
-    .split(/[_-]+/)
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(' ')
+  const mcpLabel = mcpToolLabel(name)
+  if (mcpLabel) return mcpLabel
+  return humanize(name)
 }
 
 // --- Convenience wrappers ---
