@@ -12,7 +12,7 @@ require (
 	github.com/google/jsonschema-go v0.4.2
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/modelcontextprotocol/go-sdk v1.4.1
-	github.com/soasurs/adk v0.1.0
+	github.com/soasurs/adk v0.1.1
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.54.0
