@@ -70,6 +70,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	}
 
 	db, err := sqlx.Open("sqlite", sqliteDSN(path))
+	db.SetMaxOpenConns(1)
 	if err != nil {
 		return nil, fmt.Errorf("store: open database: %w", err)
 	}
