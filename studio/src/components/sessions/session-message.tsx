@@ -1,11 +1,12 @@
 import { Bot, ChevronRight, LoaderCircle } from 'lucide-react'
-import { lazy, memo, Suspense, useMemo, useState } from 'react'
+import { lazy, memo, Suspense, useState } from 'react'
 
 import { useI18n } from '@/app/i18n'
 import { usePreferences } from '@/app/preferences-context-value'
-import type { Event, Part } from '@/gen/koda/v1/service_pb'
+import type { Event } from '@/gen/koda/v1/service_pb'
 import { Role } from '@/gen/koda/v1/service_pb'
-import { ImageViewer } from '@/components/ui/image-viewer'
+import { UserImage } from '@/components/sessions/user-image'
+import { EventTime } from '@/components/sessions/event-time'
 import { eventParts, eventText } from '@/lib/session-turns'
 
 const MarkdownText = lazy(() => import('@/components/markdown-text'))
@@ -97,37 +98,6 @@ export const EventView = memo(function EventView({ event }: { event: Event }) {
   return text && <AssistantText text={text} timestamp={event.createdAt} />
 })
 
-function UserImage({ part }: { part: Part }) {
-  const image = part.content.case === 'image' ? part.content.value : null
-  const source = image?.source ?? null
-
-  const dataURL = useMemo(() => {
-    if (!image || !source || source.case !== 'data') return ''
-    return imageDataURL(source.value, image.mimeType || 'image/png')
-  }, [image, source])
-
-  if (!image || !source) return null
-  const src = source.case === 'url' ? source.value : dataURL
-  if (!src) return null
-
-  return (
-    <ImageViewer
-      alt="User attachment"
-      className="max-h-48 rounded-xl border border-border object-contain"
-      src={src}
-    />
-  )
-}
-
-function imageDataURL(data: Uint8Array, mimeType: string): string {
-  let binary = ''
-  const chunkSize = 0x8000
-  for (let offset = 0; offset < data.length; offset += chunkSize) {
-    binary += String.fromCharCode(...data.subarray(offset, offset + chunkSize))
-  }
-  return `data:${mimeType};base64,${btoa(binary)}`
-}
-
 export const AssistantText = memo(function AssistantText({
   text,
   streaming = false,
@@ -158,46 +128,3 @@ export const AssistantText = memo(function AssistantText({
     </div>
   )
 })
-
-function EventTime({
-  className = '',
-  timestamp,
-}: {
-  className?: string
-  timestamp: bigint
-}) {
-  if (timestamp <= 0n) return null
-
-  const date = new Date(Number(timestamp))
-  const now = new Date()
-  const sameYear = date.getFullYear() === now.getFullYear()
-  const sameDay =
-    sameYear &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  const label = new Intl.DateTimeFormat(undefined, {
-    ...(sameDay
-      ? {}
-      : {
-          month: 'numeric',
-          day: 'numeric',
-          ...(sameYear ? {} : { year: 'numeric' }),
-        }),
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
-  const title = new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'full',
-    timeStyle: 'medium',
-  }).format(date)
-
-  return (
-    <time
-      className={`text-[11px] leading-4 text-muted-foreground ${className}`}
-      dateTime={date.toISOString()}
-      title={title}
-    >
-      {label}
-    </time>
-  )
-}

@@ -2,7 +2,10 @@ import { useI18n, localeLabels, supportedLocales } from '@/app/i18n'
 import type { SendShortcut } from '@/app/preferences-context'
 import { usePreferences } from '@/app/preferences-context-value'
 import { SettingsLayout } from '@/components/settings/settings-layout'
-import { Label } from '@/components/ui/label'
+import {
+  SettingRow,
+  SettingSection,
+} from '@/components/settings/setting-controls'
 import {
   Select,
   SelectContent,
@@ -12,52 +15,6 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useTheme, type ThemePreference } from '@/app/theme-context'
-
-function SettingRow({
-  description,
-  htmlFor,
-  label,
-  children,
-}: {
-  description?: string
-  htmlFor: string
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-3">
-      <div className="min-w-0">
-        <Label
-          className="text-sm font-medium text-foreground"
-          htmlFor={htmlFor}
-        >
-          {label}
-        </Label>
-        {description && (
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {description}
-          </p>
-        )}
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  )
-}
-
-function SettingSection({
-  children,
-  title,
-}: {
-  children: React.ReactNode
-  title: string
-}) {
-  return (
-    <section className="rounded-lg border border-border p-5">
-      <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-      <div className="mt-3 divide-y divide-border">{children}</div>
-    </section>
-  )
-}
 
 export function GeneralSettingsPage() {
   const { t, locale, setLocale } = useI18n()

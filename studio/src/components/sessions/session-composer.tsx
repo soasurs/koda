@@ -1,82 +1,28 @@
-import {
-  ChevronUp,
-  CircleStop,
-  ClipboardList,
-  Eye,
-  FilePen,
-  Folder,
-  Globe,
-  Hammer,
-  Paperclip,
-  Send,
-  ShieldQuestion,
-  Terminal,
-  X,
-  Zap,
-} from 'lucide-react'
+import { CircleStop, Paperclip, Send } from 'lucide-react'
 import {
   memo,
   useEffect,
   useRef,
   useState,
-  type ChangeEvent,
   type DragEvent,
   type RefObject,
 } from 'react'
 
-import { useI18n, type TKey } from '@/app/i18n'
-import type { SendShortcut } from '@/app/preferences-context'
+import { useI18n } from '@/app/i18n'
 import { usePreferences } from '@/app/preferences-context-value'
-import { ImageViewer } from '@/components/ui/image-viewer'
 import { Button } from '@/components/ui/button'
 import { SessionModelPicker } from '@/components/sessions/session-model-picker'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { ModeSelector } from '@/components/sessions/mode-selector'
+import { PermissionSelectors } from '@/components/sessions/permission-selectors'
+import { SendShortcutPicker } from '@/components/sessions/send-shortcut-picker'
+import { AttachmentPreview } from '@/components/sessions/attachment-preview'
+import { useAttachments } from '@/components/sessions/use-attachments'
+import { matchesSendShortcut } from '@/lib/send-shortcut'
 import type { Session } from '@/gen/koda/v1/service_pb'
 import { AgentMode, FileAccess, ShellAccess } from '@/gen/koda/v1/service_pb'
 import { kodaClient } from '@/lib/connect'
-import type {
-  ComposerAttachment,
-  ComposerInput,
-} from '@/lib/composer-attachments'
-import {
-  fileToAttachment,
-  isComposerInputEmpty,
-  revokeAttachment,
-  revokeAttachments,
-  type AttachmentLoadError,
-} from '@/lib/composer-attachments'
-
-function matchesSendShortcut(
-  event: React.KeyboardEvent<HTMLTextAreaElement>,
-  shortcut: SendShortcut,
-) {
-  if (event.key !== 'Enter' || event.nativeEvent.isComposing) return false
-
-  switch (shortcut) {
-    case 'shift-enter':
-      return event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey
-    case 'command-enter':
-      return event.metaKey && !event.shiftKey && !event.ctrlKey && !event.altKey
-    default:
-      return (
-        !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey
-      )
-  }
-}
+import type { ComposerInput } from '@/lib/composer-attachments'
+import { isComposerInputEmpty } from '@/lib/composer-attachments'
 
 export const SessionComposer = memo(function SessionComposer({
   initialInput,
@@ -100,17 +46,23 @@ export const SessionComposer = memo(function SessionComposer({
   session: Session
 }) {
   const { t } = useI18n()
-  const { sendShortcut, setPreference } = usePreferences()
+  const { sendShortcut } = usePreferences()
   const [input, setInput] = useState(initialInput.text)
-  const [attachments, setAttachments] = useState<ComposerAttachment[]>(
-    initialInput.attachments,
-  )
-  const [attachmentError, setAttachmentError] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
   const [fileAccess, setFileAccess] = useState(session.fileAccess)
   const [shellAccess, setShellAccess] = useState(session.shellAccess)
   const wasRunningRef = useRef(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const {
+    attachments,
+    setAttachments,
+    error,
+    setError,
+    fileInputRef,
+    addFiles,
+    removeAttachment,
+    handlePaste,
+    handleFileInputChange,
+  } = useAttachments(initialInput.attachments)
 
   useEffect(() => {
     if (wasRunningRef.current && !isRunning) {
@@ -119,59 +71,19 @@ export const SessionComposer = memo(function SessionComposer({
     wasRunningRef.current = isRunning
   }, [isRunning, inputRef])
 
-  useEffect(() => {
-    return () => revokeAttachments(initialInput.attachments)
-  }, [initialInput.attachments])
-
-  function reportAttachmentErrors(errors: AttachmentLoadError[]) {
-    if (errors.length === 0) {
-      setAttachmentError('')
-      return
-    }
-    const first = errors[0]
-    if (!first) return
-    const key: TKey =
-      first.reason === 'not-image'
-        ? 'session.composer.attachment.notImage'
-        : first.reason === 'too-large'
-          ? 'session.composer.attachment.tooLarge'
-          : 'session.composer.attachment.readFailed'
-    setAttachmentError(t(key, { name: first.name }))
-  }
-
-  async function addFiles(files: FileList | File[]) {
-    const incoming = Array.from(files)
-    const results = await Promise.all(
-      incoming.map((file) => fileToAttachment(file)),
-    )
-    const accepted: ComposerAttachment[] = []
-    const errors: AttachmentLoadError[] = []
-    for (const result of results) {
-      if ('id' in result) accepted.push(result)
-      else errors.push(result)
-    }
-    if (accepted.length > 0) {
-      setAttachments((current) => [...current, ...accepted])
-    }
-    reportAttachmentErrors(errors)
-  }
-
-  function removeAttachment(id: string) {
-    setAttachments((current) => {
-      const target = current.find((att) => att.id === id)
-      if (target) revokeAttachment(target)
-      return current.filter((att) => att.id !== id)
-    })
-  }
-
-  function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const files = Array.from(event.clipboardData.items)
-      .filter((item) => item.kind === 'file')
-      .map((item) => item.getAsFile())
-      .filter((file): file is File => file !== null)
-    if (files.length === 0) return
-    event.preventDefault()
-    void addFiles(files)
+  function updatePermission(
+    kind: 'fileAccess' | 'shellAccess',
+    value: FileAccess | ShellAccess,
+  ) {
+    if (isRunning) return
+    if (kind === 'fileAccess') setFileAccess(value as FileAccess)
+    else setShellAccess(value as ShellAccess)
+    kodaClient
+      .updateSession({ sessionId: session.id, [kind]: value })
+      .catch(() => {
+        setFileAccess(session.fileAccess)
+        setShellAccess(session.shellAccess)
+      })
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
@@ -192,58 +104,13 @@ export const SessionComposer = memo(function SessionComposer({
     if (event.currentTarget === event.target) setIsDragOver(false)
   }
 
-  function handleFileInputChange(event: ChangeEvent<HTMLInputElement>) {
-    if (event.target.files && event.target.files.length > 0) {
-      void addFiles(event.target.files)
-    }
-    event.target.value = ''
-  }
-
-  function updatePermission(
-    kind: 'fileAccess' | 'shellAccess',
-    value: FileAccess | ShellAccess,
-  ) {
-    if (isRunning) return
-    if (kind === 'fileAccess') setFileAccess(value as FileAccess)
-    else setShellAccess(value as ShellAccess)
-    kodaClient
-      .updateSession({ sessionId: session.id, [kind]: value })
-      .catch(() => {
-        setFileAccess(session.fileAccess)
-        setShellAccess(session.shellAccess)
-      })
-  }
-
-  const shortcutOptions: { label: string; shortcut: SendShortcut }[] = [
-    {
-      label: t('settings.general.conversation.sendShortcut.enter'),
-      shortcut: 'enter',
-    },
-    {
-      label: t('settings.general.conversation.sendShortcut.shiftEnter'),
-      shortcut: 'shift-enter',
-    },
-    {
-      label: t('settings.general.conversation.sendShortcut.commandEnter'),
-      shortcut: 'command-enter',
-    },
-  ]
-  const sendShortcutLabel = shortcutOptions.find(
-    (option) => option.shortcut === sendShortcut,
-  )!.label
-
-  function selectSendShortcut(shortcut: SendShortcut) {
-    setPreference('sendShortcut', shortcut)
-    requestAnimationFrame(() => inputRef.current?.focus())
-  }
-
   function submit() {
     if (isRunning) return
     const payload: ComposerInput = { text: input, attachments }
     if (isComposerInputEmpty(payload)) return
     setInput('')
     setAttachments([])
-    setAttachmentError('')
+    setError('')
     onRun(payload)
   }
 
@@ -273,10 +140,8 @@ export const SessionComposer = memo(function SessionComposer({
               ))}
             </div>
           )}
-          {attachmentError && (
-            <p className="mx-3 mt-2 text-xs text-destructive">
-              {attachmentError}
-            </p>
+          {error && (
+            <p className="mx-3 mt-2 text-xs text-destructive">{error}</p>
           )}
           {isDragOver && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -321,97 +186,22 @@ export const SessionComposer = memo(function SessionComposer({
               >
                 <Paperclip className="size-4" />
               </Button>
-              <div className="relative">
-                <Select
-                  disabled={false}
-                  onValueChange={(value) =>
-                    onModeChange(Number(value) as AgentMode)
-                  }
-                  value={String(mode)}
-                >
-                  <SelectTrigger className="inline-flex h-auto w-auto items-center gap-1 whitespace-nowrap rounded-md border border-border bg-background py-1.5 pl-3 pr-7 text-xs font-medium text-foreground hover:border-border/80 [&>svg]:hidden">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <ChevronUp className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
-                  <SelectContent side="top">
-                    <SelectItem value={String(AgentMode.BUILD)}>
-                      <span className="flex items-center gap-2">
-                        <Hammer className="size-4 shrink-0" />
-                        {t('session.composer.mode.build')}
-                      </span>
-                    </SelectItem>
-                    <SelectItem value={String(AgentMode.PLAN)}>
-                      <span className="flex items-center gap-2">
-                        <ClipboardList className="size-4 shrink-0" />
-                        {t('session.composer.mode.plan')}
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <span className="relative inline-flex rounded-md border border-border">
-                <Select
-                  disabled={isRunning}
-                  onValueChange={(value) =>
-                    updatePermission('fileAccess', Number(value) as FileAccess)
-                  }
-                  value={String(fileAccess)}
-                >
-                  <SelectTrigger className="inline-flex h-auto w-auto items-center gap-1 whitespace-nowrap rounded-none rounded-l-md border-0 border-r border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 [&>svg:last-child]:rotate-180">
-                    <Folder className="size-3.5 shrink-0 text-muted-foreground" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent side="top">
-                    <SelectItem value={String(FileAccess.WORKSPACE_READ)}>
-                      <span className="flex items-center gap-2">
-                        <Eye className="size-4 shrink-0" />
-                        {t('session.composer.fileAccess.read')}
-                      </span>
-                    </SelectItem>
-                    <SelectItem value={String(FileAccess.WORKSPACE_WRITE)}>
-                      <span className="flex items-center gap-2">
-                        <FilePen className="size-4 shrink-0" />
-                        {t('session.composer.fileAccess.write')}
-                      </span>
-                    </SelectItem>
-                    <SelectItem value={String(FileAccess.UNRESTRICTED)}>
-                      <span className="flex items-center gap-2">
-                        <Globe className="size-4 shrink-0" />
-                        {t('session.composer.fileAccess.full')}
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  disabled={isRunning}
-                  onValueChange={(value) =>
-                    updatePermission(
-                      'shellAccess',
-                      Number(value) as ShellAccess,
-                    )
-                  }
-                  value={String(shellAccess)}
-                >
-                  <SelectTrigger className="inline-flex h-auto w-auto items-center gap-1 whitespace-nowrap rounded-none rounded-r-md border-0 bg-background px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 [&>svg:last-child]:rotate-180">
-                    <Terminal className="size-3.5 shrink-0 text-muted-foreground" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent side="top">
-                    <SelectItem value={String(ShellAccess.APPROVAL_REQUIRED)}>
-                      <span className="flex items-center gap-2">
-                        <ShieldQuestion className="size-4 shrink-0" />
-                        {t('session.composer.shellAccess.ask')}
-                      </span>
-                    </SelectItem>
-                    <SelectItem value={String(ShellAccess.UNRESTRICTED)}>
-                      <span className="flex items-center gap-2">
-                        <Zap className="size-4 shrink-0" />
-                        {t('session.composer.shellAccess.free')}
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </span>
+              <ModeSelector
+                disabled={false}
+                mode={mode}
+                onModeChange={onModeChange}
+              />
+              <PermissionSelectors
+                disabled={isRunning}
+                fileAccess={fileAccess}
+                onFileAccessChange={(value) =>
+                  updatePermission('fileAccess', value)
+                }
+                onShellAccessChange={(value) =>
+                  updatePermission('shellAccess', value)
+                }
+                shellAccess={shellAccess}
+              />
             </div>
             <div className="flex items-center gap-1.5">
               <SessionModelPicker
@@ -435,49 +225,13 @@ export const SessionComposer = memo(function SessionComposer({
                     disabled={!canSubmit}
                     onClick={submit}
                     size="icon"
-                    title={`${t('session.composer.send')} (${sendShortcutLabel})`}
+                    title={`${t('session.composer.send')} (${sendShortcutLabel(sendShortcut, t)})`}
                   >
                     <Send
                       className={`size-4 ${canSubmit ? '' : 'opacity-50'}`}
                     />
                   </Button>
-                  <DropdownMenu
-                    onOpenChange={(open) => {
-                      if (!open)
-                        requestAnimationFrame(() => inputRef.current?.focus())
-                    }}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        aria-label={t('session.composer.chooseSendShortcut')}
-                        className="border-0 border-l border-primary-foreground/30 bg-transparent text-primary-foreground/70 hover:bg-primary/90 hover:text-primary-foreground rounded-none"
-                        size="icon"
-                        title={`${t('session.composer.chooseSendShortcut')}: ${sendShortcutLabel}`}
-                      >
-                        <ChevronUp className="size-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" side="top" sideOffset={8}>
-                      <DropdownMenuLabel>
-                        {t('session.composer.sendWith')}
-                      </DropdownMenuLabel>
-                      <DropdownMenuRadioGroup
-                        onValueChange={(value) =>
-                          selectSendShortcut(value as SendShortcut)
-                        }
-                        value={sendShortcut}
-                      >
-                        {shortcutOptions.map((option) => (
-                          <DropdownMenuRadioItem
-                            key={option.shortcut}
-                            value={option.shortcut}
-                          >
-                            {option.label}
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <SendShortcutPicker inputRef={inputRef} />
                 </div>
               )}
             </div>
@@ -491,30 +245,16 @@ export const SessionComposer = memo(function SessionComposer({
   )
 })
 
-function AttachmentPreview({
-  att,
-  onRemove,
-  removeLabel,
-}: {
-  att: ComposerAttachment
-  onRemove: () => void
-  removeLabel: string
-}) {
-  return (
-    <div className="group relative overflow-hidden rounded-md border border-border bg-background">
-      <ImageViewer
-        alt={att.name}
-        className="size-16 object-cover"
-        src={att.previewUrl}
-      />
-      <button
-        aria-label={removeLabel}
-        className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-background/90 text-foreground opacity-0 transition-opacity group-hover:opacity-100"
-        onClick={onRemove}
-        type="button"
-      >
-        <X className="size-3" />
-      </button>
-    </div>
-  )
+function sendShortcutLabel(
+  shortcut: import('@/app/preferences-context').SendShortcut,
+  t: ReturnType<typeof useI18n>['t'],
+): string {
+  switch (shortcut) {
+    case 'shift-enter':
+      return t('settings.general.conversation.sendShortcut.shiftEnter')
+    case 'command-enter':
+      return t('settings.general.conversation.sendShortcut.commandEnter')
+    default:
+      return t('settings.general.conversation.sendShortcut.enter')
+  }
 }

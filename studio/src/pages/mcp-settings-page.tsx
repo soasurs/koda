@@ -6,6 +6,7 @@ import { useI18n } from '@/app/i18n'
 import { Button } from '@/components/ui/button'
 import { SettingsLayout } from '@/components/settings/settings-layout'
 import { Modal } from '@/components/ui/modal'
+import { Detail } from '@/components/settings/detail-display'
 import { MCPTransport, type MCPServer } from '@/gen/koda/v1/service_pb'
 import {
   errorMessage,
@@ -189,17 +190,6 @@ function MCPServerDetails({ server }: { server: MCPServer }) {
         )}
       </section>
     </article>
-  )
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="mt-1 wrap-break-word text-foreground">{value}</dd>
-    </div>
   )
 }
 

@@ -17,8 +17,8 @@ import {
   inputText,
   inputToComposerInput,
   mergeConversationEvents,
-  toolCallPresentation,
 } from '@/lib/session-turns'
+import { toolCallPresentation } from '@/lib/tool-presentation'
 
 describe('session turn helpers', () => {
   it('groups conversation events by turn in encounter order', () => {
