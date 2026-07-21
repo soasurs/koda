@@ -1,9 +1,10 @@
 import { create } from '@bufbuild/protobuf'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { EventView } from '@/components/sessions/session-message'
-import { EventSchema, Role } from '@/gen/koda/v1/service_pb'
+import { EventSchema, ImageSchema, Role } from '@/gen/koda/v1/service_pb'
+import { ImageDetail } from '@/gen/koda/v1/service_pb'
 
 vi.mock('@/components/markdown-text', () => ({
   default: ({ text }: { text: string }) => <span>{text}</span>,
@@ -52,5 +53,75 @@ describe('EventView', () => {
     )
 
     expect(container.querySelector('time')).not.toBeInTheDocument()
+  })
+
+  it('renders image parts alongside text for user messages', async () => {
+    const { container } = render(
+      <EventView
+        event={create(EventSchema, {
+          id: 'event-1',
+          message: {
+            role: Role.USER,
+            text: 'look at this',
+            parts: [
+              { content: { case: 'text', value: 'look at this' } },
+              {
+                content: {
+                  case: 'image',
+                  value: create(ImageSchema, {
+                    source: {
+                      case: 'data',
+                      value: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+                    },
+                    mimeType: 'image/png',
+                    detail: ImageDetail.AUTO,
+                  }),
+                },
+              },
+            ],
+          },
+        })}
+      />,
+    )
+
+    expect(screen.getByText('look at this')).toBeInTheDocument()
+    await waitFor(() => {
+      const img = container.querySelector('img')
+      expect(img).toBeInTheDocument()
+      expect(img?.getAttribute('src')).toMatch(/^data:image\/png;base64,/)
+    })
+  })
+
+  it('renders only an image when the user message has no text', async () => {
+    const { container } = render(
+      <EventView
+        event={create(EventSchema, {
+          id: 'event-2',
+          message: {
+            role: Role.USER,
+            parts: [
+              {
+                content: {
+                  case: 'image',
+                  value: create(ImageSchema, {
+                    source: {
+                      case: 'data',
+                      value: new Uint8Array([1, 2, 3]),
+                    },
+                    mimeType: 'image/png',
+                    detail: ImageDetail.AUTO,
+                  }),
+                },
+              },
+            ],
+          },
+        })}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(container.querySelector('img')).toBeInTheDocument()
+    })
+    expect(container.textContent).not.toContain('undefined')
   })
 })

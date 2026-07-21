@@ -2,15 +2,25 @@ import {
   ChevronRight,
   Copy,
   LoaderCircle,
+  Paperclip,
   Pencil,
   RotateCcw,
   Send,
   TriangleAlert,
   X,
 } from 'lucide-react'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from 'react'
 
 import { useI18n, type TKey } from '@/app/i18n'
+import { ImageViewer } from '@/components/ui/image-viewer'
 import { Button } from '@/components/ui/button'
 import { EventView, ReasoningView } from '@/components/sessions/session-message'
 import { ToolGroup } from '@/components/sessions/tool-activity'
@@ -21,7 +31,23 @@ import {
   TurnReason,
   TurnStatus,
 } from '@/gen/koda/v1/service_pb'
-import { eventText, groupTurnActivities, type Turn } from '@/lib/session-turns'
+import type {
+  ComposerAttachment,
+  ComposerInput,
+} from '@/lib/composer-attachments'
+import {
+  fileToAttachment,
+  isComposerInputEmpty,
+  revokeAttachment,
+  revokeAttachments,
+  type AttachmentLoadError,
+} from '@/lib/composer-attachments'
+import {
+  eventText,
+  groupTurnActivities,
+  inputToComposerInput,
+  type Turn,
+} from '@/lib/session-turns'
 
 type SendShortcut = 'enter' | 'shift-enter' | 'command-enter'
 
@@ -59,8 +85,8 @@ export const SessionTurn = memo(function SessionTurn({
   isRewinding: boolean
   onEditCancel: () => void
   onEditStart: () => void
-  onEditSubmit: (text: string) => void
-  onRetry: (input: string) => void
+  onEditSubmit: (input: ComposerInput) => void
+  onRetry: (input: ComposerInput) => void
   turn: Turn
 }) {
   const { t } = useI18n()
@@ -79,14 +105,23 @@ export const SessionTurn = memo(function SessionTurn({
   const lastAssistantText = lastAssistantEvent
     ? eventText(lastAssistantEvent)
     : ''
-  const lastUserEvent = [...userEvents].reverse()[0]
-  const initialEditText = lastUserEvent ? eventText(lastUserEvent) : ''
+  const initialEditInput = useMemo(() => {
+    const lastUserEvent = [...turn.events]
+      .reverse()
+      .find((event) => event.message?.role === Role.USER)
+    return lastUserEvent
+      ? inputToComposerInput(
+          { parts: lastUserEvent.message?.parts ?? [] },
+          lastUserEvent.message?.text ?? '',
+        )
+      : { text: '', attachments: [] }
+  }, [turn.events])
 
   return (
     <section className="space-y-6 border-b border-border/70 pb-8 last:border-b-0">
       {isEditing ? (
         <InlineEditComposer
-          initialText={initialEditText}
+          initialInput={initialEditInput}
           onCancel={onEditCancel}
           onSubmit={onEditSubmit}
         />
@@ -134,7 +169,7 @@ export const SessionTurn = memo(function SessionTurn({
           <Button
             aria-label={t('session.turn.retryTurn')}
             disabled={isRewinding}
-            onClick={() => onRetry(initialEditText)}
+            onClick={() => onRetry(initialEditInput)}
             size="icon"
             title={t('session.turn.retryTurn')}
             variant="ghost"
@@ -172,8 +207,8 @@ type TurnProps = {
   isRewinding: boolean
   onEditCancel: () => void
   onEditStart: () => void
-  onEditSubmit: (text: string) => void
-  onRetry: (input: string) => void
+  onEditSubmit: (input: ComposerInput) => void
+  onRetry: (input: ComposerInput) => void
   turn: Turn
 }
 
@@ -290,28 +325,97 @@ function EarlierActivityDetails({
 }
 
 function InlineEditComposer({
-  initialText,
+  initialInput,
   onCancel,
   onSubmit,
 }: {
-  initialText: string
+  initialInput: ComposerInput
   onCancel: () => void
-  onSubmit: (text: string) => void
+  onSubmit: (input: ComposerInput) => void
 }) {
   const { t } = useI18n()
   const { sendShortcut } = usePreferences()
-  const [input, setInput] = useState(initialText)
+  const [input, setInput] = useState(initialInput.text)
+  const [attachments, setAttachments] = useState<ComposerAttachment[]>(
+    initialInput.attachments,
+  )
+  const [attachmentError, setAttachmentError] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     textareaRef.current?.focus()
   }, [])
 
-  function submit() {
-    const trimmed = input.trim()
-    if (!trimmed) return
-    onSubmit(trimmed)
+  useEffect(() => {
+    return () => revokeAttachments(initialInput.attachments)
+  }, [initialInput.attachments])
+
+  function reportAttachmentErrors(errors: AttachmentLoadError[]) {
+    if (errors.length === 0) {
+      setAttachmentError('')
+      return
+    }
+    const first = errors[0]
+    if (!first) return
+    const key: TKey =
+      first.reason === 'not-image'
+        ? 'session.composer.attachment.notImage'
+        : first.reason === 'too-large'
+          ? 'session.composer.attachment.tooLarge'
+          : 'session.composer.attachment.readFailed'
+    setAttachmentError(t(key, { name: first.name }))
   }
+
+  async function addFiles(files: FileList | File[]) {
+    const incoming = Array.from(files)
+    const results = await Promise.all(
+      incoming.map((file) => fileToAttachment(file)),
+    )
+    const accepted: ComposerAttachment[] = []
+    const errors: AttachmentLoadError[] = []
+    for (const result of results) {
+      if ('id' in result) accepted.push(result)
+      else errors.push(result)
+    }
+    if (accepted.length > 0) {
+      setAttachments((current) => [...current, ...accepted])
+    }
+    reportAttachmentErrors(errors)
+  }
+
+  function removeAttachment(id: string) {
+    setAttachments((current) => {
+      const target = current.find((att) => att.id === id)
+      if (target) revokeAttachment(target)
+      return current.filter((att) => att.id !== id)
+    })
+  }
+
+  function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const files = Array.from(event.clipboardData.items)
+      .filter((item) => item.kind === 'file')
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => file !== null)
+    if (files.length === 0) return
+    event.preventDefault()
+    void addFiles(files)
+  }
+
+  function handleFileInputChange(event: ChangeEvent<HTMLInputElement>) {
+    if (event.target.files && event.target.files.length > 0) {
+      void addFiles(event.target.files)
+    }
+    event.target.value = ''
+  }
+
+  function submit() {
+    const payload: ComposerInput = { text: input, attachments }
+    if (isComposerInputEmpty(payload)) return
+    onSubmit(payload)
+  }
+
+  const canSubmit = !isComposerInputEmpty({ text: input, attachments })
 
   const sendShortcutLabel =
     sendShortcut === 'shift-enter'
@@ -324,6 +428,35 @@ function InlineEditComposer({
     <div className="flex justify-end">
       <div className="w-full max-w-[85%] space-y-2">
         <div className="rounded-xl border border-border bg-card shadow-xl focus-within:border-ring">
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-3 pt-3">
+              {attachments.map((att) => (
+                <div
+                  className="group relative overflow-hidden rounded-md border border-border bg-background"
+                  key={att.id}
+                >
+                  <ImageViewer
+                    alt={att.name}
+                    className="size-16 object-cover"
+                    src={att.previewUrl}
+                  />
+                  <button
+                    aria-label={t('session.composer.attachment.remove')}
+                    className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-background/90 text-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={() => removeAttachment(att.id)}
+                    type="button"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {attachmentError && (
+            <p className="mx-3 mt-2 text-xs text-destructive">
+              {attachmentError}
+            </p>
+          )}
           <textarea
             ref={textareaRef}
             aria-label={t('session.turn.editMessage')}
@@ -339,22 +472,42 @@ function InlineEditComposer({
                 onCancel()
               }
             }}
+            onPaste={handlePaste}
             value={input}
           />
+          <input
+            accept="image/*"
+            className="hidden"
+            multiple
+            onChange={handleFileInputChange}
+            ref={fileInputRef}
+            type="file"
+          />
           <div className="flex items-center justify-between px-2.5 pb-2.5">
-            <Button
-              aria-label={t('session.turn.cancelEditing')}
-              onClick={onCancel}
-              size="icon"
-              title={t('session.turn.cancelEditing')}
-              variant="ghost"
-            >
-              <X className="size-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                aria-label={t('session.composer.attach')}
+                onClick={() => fileInputRef.current?.click()}
+                size="icon"
+                title={t('session.composer.attach')}
+                variant="ghost"
+              >
+                <Paperclip className="size-4" />
+              </Button>
+              <Button
+                aria-label={t('session.turn.cancelEditing')}
+                onClick={onCancel}
+                size="icon"
+                title={t('session.turn.cancelEditing')}
+                variant="ghost"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
             <Button
               aria-label={t('session.turn.send')}
               className="rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
-              disabled={!input.trim()}
+              disabled={!canSubmit}
               onClick={submit}
               size="icon"
               title={`${t('session.turn.send')} (${sendShortcutLabel})`}

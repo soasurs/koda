@@ -1,11 +1,12 @@
 import { Bot, ChevronRight, LoaderCircle } from 'lucide-react'
-import { lazy, memo, Suspense, useState } from 'react'
+import { lazy, memo, Suspense, useMemo, useState } from 'react'
 
 import { useI18n } from '@/app/i18n'
 import { usePreferences } from '@/app/preferences-context-value'
-import type { Event } from '@/gen/koda/v1/service_pb'
+import type { Event, Part } from '@/gen/koda/v1/service_pb'
 import { Role } from '@/gen/koda/v1/service_pb'
-import { eventText } from '@/lib/session-turns'
+import { ImageViewer } from '@/components/ui/image-viewer'
+import { eventParts, eventText } from '@/lib/session-turns'
 
 const MarkdownText = lazy(() => import('@/components/markdown-text'))
 
@@ -65,12 +66,26 @@ export const EventView = memo(function EventView({ event }: { event: Event }) {
   const text = eventText(event)
 
   if (message.role === Role.USER) {
+    const parts = eventParts(event)
+    const images = parts.filter((part) => part.content.case === 'image')
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%]">
-          <div className="rounded-xl bg-primary px-4 py-2.5 text-sm leading-6 text-primary-foreground">
-            <span className="whitespace-pre-wrap">{text}</span>
-          </div>
+        <div className="max-w-[85%] space-y-1.5">
+          {images.length > 0 && (
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {images.map((part, index) => (
+                <UserImage
+                  key={event.id ? `${event.id}-img-${index}` : `img-${index}`}
+                  part={part}
+                />
+              ))}
+            </div>
+          )}
+          {text && (
+            <div className="rounded-xl bg-primary px-4 py-2.5 text-sm leading-6 text-primary-foreground">
+              <span className="whitespace-pre-wrap">{text}</span>
+            </div>
+          )}
           <EventTime className="mt-1 text-right" timestamp={event.createdAt} />
         </div>
       </div>
@@ -81,6 +96,37 @@ export const EventView = memo(function EventView({ event }: { event: Event }) {
 
   return text && <AssistantText text={text} timestamp={event.createdAt} />
 })
+
+function UserImage({ part }: { part: Part }) {
+  const image = part.content.case === 'image' ? part.content.value : null
+  const source = image?.source ?? null
+
+  const dataURL = useMemo(() => {
+    if (!image || !source || source.case !== 'data') return ''
+    return imageDataURL(source.value, image.mimeType || 'image/png')
+  }, [image, source])
+
+  if (!image || !source) return null
+  const src = source.case === 'url' ? source.value : dataURL
+  if (!src) return null
+
+  return (
+    <ImageViewer
+      alt="User attachment"
+      className="max-h-48 rounded-xl border border-border object-contain"
+      src={src}
+    />
+  )
+}
+
+function imageDataURL(data: Uint8Array, mimeType: string): string {
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let offset = 0; offset < data.length; offset += chunkSize) {
+    binary += String.fromCharCode(...data.subarray(offset, offset + chunkSize))
+  }
+  return `data:${mimeType};base64,${btoa(binary)}`
+}
 
 export const AssistantText = memo(function AssistantText({
   text,

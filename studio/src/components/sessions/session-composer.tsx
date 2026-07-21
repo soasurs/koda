@@ -7,16 +7,27 @@ import {
   Folder,
   Globe,
   Hammer,
+  Paperclip,
   Send,
   ShieldQuestion,
   Terminal,
+  X,
   Zap,
 } from 'lucide-react'
-import { memo, useEffect, useRef, useState, type RefObject } from 'react'
+import {
+  memo,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type RefObject,
+} from 'react'
 
-import { useI18n } from '@/app/i18n'
+import { useI18n, type TKey } from '@/app/i18n'
 import type { SendShortcut } from '@/app/preferences-context'
 import { usePreferences } from '@/app/preferences-context-value'
+import { ImageViewer } from '@/components/ui/image-viewer'
 import { Button } from '@/components/ui/button'
 import { SessionModelPicker } from '@/components/sessions/session-model-picker'
 import {
@@ -37,6 +48,17 @@ import {
 import type { Session } from '@/gen/koda/v1/service_pb'
 import { AgentMode, FileAccess, ShellAccess } from '@/gen/koda/v1/service_pb'
 import { kodaClient } from '@/lib/connect'
+import type {
+  ComposerAttachment,
+  ComposerInput,
+} from '@/lib/composer-attachments'
+import {
+  fileToAttachment,
+  isComposerInputEmpty,
+  revokeAttachment,
+  revokeAttachments,
+  type AttachmentLoadError,
+} from '@/lib/composer-attachments'
 
 function matchesSendShortcut(
   event: React.KeyboardEvent<HTMLTextAreaElement>,
@@ -67,22 +89,28 @@ export const SessionComposer = memo(function SessionComposer({
   runError,
   session,
 }: {
-  initialInput: string
+  initialInput: ComposerInput
   inputRef: RefObject<HTMLTextAreaElement | null>
   isRunning: boolean
   mode: AgentMode
   onModeChange: (mode: AgentMode) => void
-  onRun: (input: string) => void
+  onRun: (input: ComposerInput) => void
   onStop: () => void
   runError: string
   session: Session
 }) {
   const { t } = useI18n()
   const { sendShortcut, setPreference } = usePreferences()
-  const [input, setInput] = useState(initialInput)
+  const [input, setInput] = useState(initialInput.text)
+  const [attachments, setAttachments] = useState<ComposerAttachment[]>(
+    initialInput.attachments,
+  )
+  const [attachmentError, setAttachmentError] = useState('')
+  const [isDragOver, setIsDragOver] = useState(false)
   const [fileAccess, setFileAccess] = useState(session.fileAccess)
   const [shellAccess, setShellAccess] = useState(session.shellAccess)
   const wasRunningRef = useRef(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (wasRunningRef.current && !isRunning) {
@@ -90,6 +118,86 @@ export const SessionComposer = memo(function SessionComposer({
     }
     wasRunningRef.current = isRunning
   }, [isRunning, inputRef])
+
+  useEffect(() => {
+    return () => revokeAttachments(initialInput.attachments)
+  }, [initialInput.attachments])
+
+  function reportAttachmentErrors(errors: AttachmentLoadError[]) {
+    if (errors.length === 0) {
+      setAttachmentError('')
+      return
+    }
+    const first = errors[0]
+    if (!first) return
+    const key: TKey =
+      first.reason === 'not-image'
+        ? 'session.composer.attachment.notImage'
+        : first.reason === 'too-large'
+          ? 'session.composer.attachment.tooLarge'
+          : 'session.composer.attachment.readFailed'
+    setAttachmentError(t(key, { name: first.name }))
+  }
+
+  async function addFiles(files: FileList | File[]) {
+    const incoming = Array.from(files)
+    const results = await Promise.all(
+      incoming.map((file) => fileToAttachment(file)),
+    )
+    const accepted: ComposerAttachment[] = []
+    const errors: AttachmentLoadError[] = []
+    for (const result of results) {
+      if ('id' in result) accepted.push(result)
+      else errors.push(result)
+    }
+    if (accepted.length > 0) {
+      setAttachments((current) => [...current, ...accepted])
+    }
+    reportAttachmentErrors(errors)
+  }
+
+  function removeAttachment(id: string) {
+    setAttachments((current) => {
+      const target = current.find((att) => att.id === id)
+      if (target) revokeAttachment(target)
+      return current.filter((att) => att.id !== id)
+    })
+  }
+
+  function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const files = Array.from(event.clipboardData.items)
+      .filter((item) => item.kind === 'file')
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => file !== null)
+    if (files.length === 0) return
+    event.preventDefault()
+    void addFiles(files)
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault()
+    setIsDragOver(false)
+    if (event.dataTransfer.files.length === 0) return
+    void addFiles(event.dataTransfer.files)
+  }
+
+  function handleDragOver(event: DragEvent<HTMLDivElement>) {
+    if (event.dataTransfer.types.includes('Files')) {
+      event.preventDefault()
+      setIsDragOver(true)
+    }
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (event.currentTarget === event.target) setIsDragOver(false)
+  }
+
+  function handleFileInputChange(event: ChangeEvent<HTMLInputElement>) {
+    if (event.target.files && event.target.files.length > 0) {
+      void addFiles(event.target.files)
+    }
+    event.target.value = ''
+  }
 
   function updatePermission(
     kind: 'fileAccess' | 'shellAccess',
@@ -130,16 +238,53 @@ export const SessionComposer = memo(function SessionComposer({
   }
 
   function submit() {
-    if (!input.trim() || isRunning) return
+    if (isRunning) return
+    const payload: ComposerInput = { text: input, attachments }
+    if (isComposerInputEmpty(payload)) return
     setInput('')
-    onRun(input)
+    setAttachments([])
+    setAttachmentError('')
+    onRun(payload)
   }
+
+  const canSubmit = !isComposerInputEmpty({ text: input, attachments })
 
   return (
     <footer className="shrink-0 bg-linear-to-t from-background via-background to-transparent px-4 pb-4 pt-2 sm:px-6">
       <div className="mx-auto max-w-4xl">
         {runError && <p className="error-box mb-3">{runError}</p>}
-        <div className="rounded-xl border border-border bg-card shadow-xl focus-within:border-ring">
+        <div
+          className={`relative rounded-xl border bg-card shadow-xl focus-within:border-ring ${
+            isDragOver ? 'border-primary border-dashed' : 'border-border'
+          }`}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-3 pt-3">
+              {attachments.map((att) => (
+                <AttachmentPreview
+                  att={att}
+                  key={att.id}
+                  onRemove={() => removeAttachment(att.id)}
+                  removeLabel={t('session.composer.attachment.remove')}
+                />
+              ))}
+            </div>
+          )}
+          {attachmentError && (
+            <p className="mx-3 mt-2 text-xs text-destructive">
+              {attachmentError}
+            </p>
+          )}
+          {isDragOver && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <span className="rounded-md bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+                {t('session.composer.attachment.dropHere')}
+              </span>
+            </div>
+          )}
           <textarea
             ref={inputRef}
             aria-label={t('session.composer.message')}
@@ -152,11 +297,30 @@ export const SessionComposer = memo(function SessionComposer({
                 submit()
               }
             }}
+            onPaste={handlePaste}
             placeholder={t('session.composer.placeholder')}
             value={input}
           />
+          <input
+            accept="image/*"
+            className="hidden"
+            multiple
+            onChange={handleFileInputChange}
+            ref={fileInputRef}
+            type="file"
+          />
           <div className="flex items-center justify-between px-2.5 pb-2.5">
             <div className="flex items-center gap-1.5">
+              <Button
+                aria-label={t('session.composer.attach')}
+                disabled={isRunning}
+                onClick={() => fileInputRef.current?.click()}
+                size="icon"
+                title={t('session.composer.attach')}
+                variant="ghost"
+              >
+                <Paperclip className="size-4" />
+              </Button>
               <div className="relative">
                 <Select
                   disabled={false}
@@ -268,13 +432,13 @@ export const SessionComposer = memo(function SessionComposer({
                   <Button
                     aria-label={t('session.composer.send')}
                     className="border-0 bg-transparent hover:bg-primary/90 rounded-none"
-                    disabled={!input.trim()}
+                    disabled={!canSubmit}
                     onClick={submit}
                     size="icon"
                     title={`${t('session.composer.send')} (${sendShortcutLabel})`}
                   >
                     <Send
-                      className={`size-4 ${input.trim() ? '' : 'opacity-50'}`}
+                      className={`size-4 ${canSubmit ? '' : 'opacity-50'}`}
                     />
                   </Button>
                   <DropdownMenu
@@ -326,3 +490,31 @@ export const SessionComposer = memo(function SessionComposer({
     </footer>
   )
 })
+
+function AttachmentPreview({
+  att,
+  onRemove,
+  removeLabel,
+}: {
+  att: ComposerAttachment
+  onRemove: () => void
+  removeLabel: string
+}) {
+  return (
+    <div className="group relative overflow-hidden rounded-md border border-border bg-background">
+      <ImageViewer
+        alt={att.name}
+        className="size-16 object-cover"
+        src={att.previewUrl}
+      />
+      <button
+        aria-label={removeLabel}
+        className="absolute right-0.5 top-0.5 flex size-5 items-center justify-center rounded-full bg-background/90 text-foreground opacity-0 transition-opacity group-hover:opacity-100"
+        onClick={onRemove}
+        type="button"
+      >
+        <X className="size-3" />
+      </button>
+    </div>
+  )
+}
