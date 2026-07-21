@@ -1,12 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
-import {
-  Archive,
-  Check,
-  LoaderCircle,
-  Sparkles,
-  TriangleAlert,
-} from 'lucide-react'
 import { Fragment, useMemo, useState } from 'react'
 
 import { useI18n } from '@/app/i18n'
@@ -18,15 +11,14 @@ import {
 } from '@/components/sessions/session-message'
 import { ApprovalCard, QuestionCard } from '@/components/sessions/run-prompts'
 import { SessionTurn } from '@/components/sessions/session-turn'
+import { CompactionActivity } from '@/components/sessions/compaction-activity'
+import { CompactionBoundary } from '@/components/sessions/compaction-boundary'
+import { EmptyConversation } from '@/components/sessions/empty-conversation'
+import { CenteredLoader } from '@/components/ui/centered-loader'
 import { useFollowLatest } from '@/components/sessions/use-follow-latest'
 import { useSessionRun } from '@/components/sessions/use-session-run'
 import { useRunCompletionNotification } from '@/components/sessions/use-run-completion-notification'
 import { kodaClient } from '@/lib/connect'
-import type {
-  CompactionProgress,
-  CompactionStatus,
-} from '@/gen/koda/v1/service_pb'
-import { CompactionProgressStage } from '@/gen/koda/v1/service_pb'
 import { TurnStatus } from '@/gen/koda/v1/service_pb'
 import { errorMessage, kodaKeys } from '@/lib/koda'
 import { groupEventsByTurn } from '@/lib/session-turns'
@@ -218,130 +210,6 @@ function SessionContent({ sessionId }: { sessionId: string }) {
         runError={sessionRun.runError}
         session={session}
       />
-    </div>
-  )
-}
-
-function CompactionActivity({ progress }: { progress: CompactionProgress }) {
-  const { t, locale } = useI18n()
-  const completed = progress.stage === CompactionProgressStage.COMPLETED
-  const failed = progress.stage === CompactionProgressStage.FAILED
-  const tokenFormatter = useTokenFormatter(locale)
-  const detail = completed
-    ? t('session.compaction.detail.completed', {
-        sourceTokens: tokenFormatter.format(progress.sourceTokens),
-        estimatedTokens: tokenFormatter.format(progress.estimatedTokensAfter),
-      })
-    : failed
-      ? t('session.compaction.continuing')
-      : t('session.compaction.detail.inProgress', {
-          contextTokens: tokenFormatter.format(progress.contextTokens),
-        })
-
-  return (
-    <div
-      className="ml-9 flex items-center gap-3 text-sm text-muted-foreground"
-      data-testid="compaction-progress"
-      role="status"
-    >
-      {completed ? (
-        <Check className="size-4 text-foreground" />
-      ) : failed ? (
-        <TriangleAlert className="size-4" />
-      ) : (
-        <LoaderCircle className="size-4 animate-spin" />
-      )}
-      <div>
-        <div className="font-medium text-foreground">
-          {completed
-            ? t('session.compaction.completed', {
-                generation: String(progress.generation),
-              })
-            : failed
-              ? t('session.compaction.failed')
-              : t('session.compaction.inProgress')}
-        </div>
-        <div className="mt-0.5 text-xs">{detail}</div>
-      </div>
-    </div>
-  )
-}
-
-function useTokenFormatter(locale: string) {
-  return useMemo(
-    () =>
-      new Intl.NumberFormat(locale, {
-        maximumFractionDigits: 1,
-        notation: 'compact',
-      }),
-    [locale],
-  )
-}
-
-function CompactionBoundary({ compaction }: { compaction: CompactionStatus }) {
-  const { t, locale } = useI18n()
-  const createdAt = new Date(Number(compaction.createdAt))
-  const tokenFormatter = useTokenFormatter(locale)
-  const title = [
-    t('session.compaction.boundary.titleGeneration', {
-      generation: String(compaction.generation),
-    }),
-    t('session.compaction.boundary.titleEvents', {
-      count: String(compaction.compactedEventCount),
-    }),
-    t('session.compaction.boundary.titleSourceTokens', {
-      count: tokenFormatter.format(compaction.sourceTokens),
-    }),
-    t('session.compaction.boundary.titleEstimatedTokens', {
-      count: tokenFormatter.format(compaction.estimatedTokensAfter),
-    }),
-    compaction.modelId
-      ? t('session.compaction.boundary.titleModel', {
-          modelId: compaction.modelId,
-        })
-      : '',
-    Number.isNaN(createdAt.getTime()) ? '' : createdAt.toLocaleString(),
-  ]
-    .filter(Boolean)
-    .join(' · ')
-
-  return (
-    <div
-      className="flex items-center gap-3 py-1 text-xs text-muted-foreground"
-      data-testid="compaction-boundary"
-      title={title}
-    >
-      <div className="h-px flex-1 bg-border" />
-      <span className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-muted/50 px-2.5 py-1">
-        <Archive className="size-3" />
-        {t('session.compaction.boundary.label', {
-          generation: String(compaction.generation),
-        })}
-      </span>
-      <div className="h-px flex-1 bg-border" />
-    </div>
-  )
-}
-
-function EmptyConversation() {
-  const { t } = useI18n()
-  return (
-    <div className="py-20 text-center">
-      <div className="mx-auto flex size-11 items-center justify-center rounded-xl border border-border bg-muted">
-        <Sparkles className="size-5 text-muted-foreground" />
-      </div>
-      <h2 className="mt-4 text-sm font-medium">{t('session.empty.title')}</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {t('session.empty.body')}
-      </p>
-    </div>
-  )
-}
-
-function CenteredLoader() {
-  return (
-    <div className="flex h-56 items-center justify-center">
-      <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
     </div>
   )
 }
