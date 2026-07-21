@@ -2,17 +2,20 @@ import { create } from '@bufbuild/protobuf'
 import { describe, expect, it } from 'vitest'
 import {
   EventSchema,
+  ImageSchema,
   InputSchema,
   ToolCallSchema,
   TurnSchema,
 } from '@/gen/koda/v1/service_pb'
-import { Role, TurnStatus } from '@/gen/koda/v1/service_pb'
+import { ImageDetail, Role, TurnStatus } from '@/gen/koda/v1/service_pb'
 import { dictionaries } from '@/app/i18n/dictionaries'
 import {
+  eventParts,
   eventText,
   groupEventsByTurn,
   groupTurnActivities,
   inputText,
+  inputToComposerInput,
   mergeConversationEvents,
   toolCallPresentation,
 } from '@/lib/session-turns'
@@ -90,6 +93,101 @@ describe('session turn helpers', () => {
     })
 
     expect(inputText(input)).toBe('one\ntwo')
+  })
+
+  it('exposes all parts of an event message', () => {
+    const event = create(EventSchema, {
+      id: '1',
+      message: {
+        role: Role.USER,
+        parts: [
+          { content: { case: 'text', value: 'hi' } },
+          {
+            content: {
+              case: 'image',
+              value: create(ImageSchema, {
+                source: { case: 'data', value: new Uint8Array([1, 2]) },
+                mimeType: 'image/png',
+                detail: ImageDetail.AUTO,
+              }),
+            },
+          },
+        ],
+      },
+    })
+
+    expect(eventParts(event)).toHaveLength(2)
+    expect(eventParts(event)[0]?.content.case).toBe('text')
+    expect(eventParts(event)[1]?.content.case).toBe('image')
+  })
+
+  it('returns an empty part list when the event has no message', () => {
+    expect(eventParts(create(EventSchema, { id: '1' }))).toEqual([])
+  })
+
+  it('converts an undone input with text and image data into a composer input', () => {
+    const input = create(InputSchema, {
+      parts: [
+        { content: { case: 'text', value: 'look at this' } },
+        {
+          content: {
+            case: 'image',
+            value: create(ImageSchema, {
+              source: { case: 'data', value: new Uint8Array([9, 9, 9]) },
+              mimeType: 'image/png',
+              detail: ImageDetail.HIGH,
+            }),
+          },
+        },
+      ],
+    })
+
+    const composerInput = inputToComposerInput(input)
+    expect(composerInput.text).toBe('look at this')
+    expect(composerInput.attachments).toHaveLength(1)
+    expect(composerInput.attachments[0]?.mimeType).toBe('image/png')
+    expect(Array.from(composerInput.attachments[0]?.data ?? [])).toEqual([
+      9, 9, 9,
+    ])
+    expect(composerInput.attachments[0]?.previewUrl).toMatch(
+      /^data:image\/png;base64,/,
+    )
+    expect(composerInput.attachments[0]?.id).toBeTruthy()
+  })
+
+  it('uses fallback text when an event has no text parts', () => {
+    const composerInput = inputToComposerInput({ parts: [] }, 'legacy text')
+    expect(composerInput.text).toBe('legacy text')
+    expect(composerInput.attachments).toEqual([])
+  })
+
+  it('drops url-based image parts when restoring a composer input', () => {
+    const input = create(InputSchema, {
+      parts: [
+        {
+          content: {
+            case: 'image',
+            value: create(ImageSchema, {
+              source: { case: 'url', value: 'https://example.com/a.png' },
+              mimeType: 'image/png',
+              detail: ImageDetail.AUTO,
+            }),
+          },
+        },
+      ],
+    })
+
+    expect(inputToComposerInput(input)).toEqual({
+      text: '',
+      attachments: [],
+    })
+  })
+
+  it('returns an empty composer input for undefined input', () => {
+    expect(inputToComposerInput(undefined)).toEqual({
+      text: '',
+      attachments: [],
+    })
   })
 
   it('associates tool results with the preceding assistant step', () => {

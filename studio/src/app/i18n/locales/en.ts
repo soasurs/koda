@@ -222,6 +222,13 @@ export const en = {
   'session.composer.fileAccess.full': 'Full',
   'session.composer.shellAccess.ask': 'Ask',
   'session.composer.shellAccess.free': 'Free',
+  'session.composer.attach': 'Attach images',
+  'session.composer.attachment.remove': 'Remove attachment',
+  'session.composer.attachment.notImage': 'Only images can be attached: {name}',
+  'session.composer.attachment.tooLarge':
+    'Image {name} exceeds the 10 MB limit',
+  'session.composer.attachment.readFailed': 'Could not read {name}',
+  'session.composer.attachment.dropHere': 'Drop images to attach',
 
   // Session model picker
   'session.modelPicker.settingsAria': 'Session model settings',

@@ -1,12 +1,18 @@
 import type {
   Event,
   Input,
+  Part,
   ToolCall,
   Turn as DurableTurn,
 } from '@/gen/koda/v1/service_pb'
 import { Role } from '@/gen/koda/v1/service_pb'
 import type { TKey } from '@/app/i18n'
 
+import {
+  bytesToDataURL,
+  type ComposerAttachment,
+  type ComposerInput,
+} from '@/lib/composer-attachments'
 import { lookupMCPTool } from '@/lib/mcp-tools'
 export type Turn = { id: string; events: Event[]; metadata?: DurableTurn }
 export type TurnActivity = { assistant: Event; tools: Event[] }
@@ -93,6 +99,43 @@ export function inputText(input?: Input) {
       .map((part) => (part.content.case === 'text' ? part.content.value : ''))
       .join('\n') ?? ''
   )
+}
+
+export function eventParts(event?: Event): Part[] {
+  return event?.message?.parts ?? []
+}
+
+export function inputToComposerInput(
+  input?: { parts: Part[] } | null,
+  fallbackText = '',
+): ComposerInput {
+  if (!input) return { text: fallbackText, attachments: [] }
+  const text: string[] = []
+  const attachments: ComposerAttachment[] = []
+  for (const part of input.parts) {
+    switch (part.content.case) {
+      case 'text':
+        text.push(part.content.value)
+        break
+      case 'image': {
+        const image = part.content.value
+        if (image.source.case === 'data') {
+          attachments.push({
+            id: crypto.randomUUID(),
+            mimeType: image.mimeType || 'application/octet-stream',
+            data: image.source.value,
+            previewUrl: bytesToDataURL(
+              image.source.value,
+              image.mimeType || 'application/octet-stream',
+            ),
+            name: 'image',
+          })
+        }
+        break
+      }
+    }
+  }
+  return { text: text.join('\n') || fallbackText, attachments }
 }
 
 // --- Tool detail extraction (non-translated) ---

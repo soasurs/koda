@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   CompactionProgress,
   Event,
+  Part,
   QuestionPrompt,
   Session,
   ToolApproval,
@@ -14,12 +15,23 @@ import type {
 import {
   AgentMode,
   EventSchema,
+  PartSchema,
   Role,
   RunState,
 } from '@/gen/koda/v1/service_pb'
 import { kodaClient } from '@/lib/connect'
+import type { ComposerInput } from '@/lib/composer-attachments'
+import {
+  attachmentToPart,
+  emptyComposerInput,
+  isComposerInputEmpty,
+  revokeAttachments,
+} from '@/lib/composer-attachments'
 import { errorMessage, kodaKeys, replaceSession } from '@/lib/koda'
-import { inputText, mergeConversationEvents } from '@/lib/session-turns'
+import {
+  inputToComposerInput,
+  mergeConversationEvents,
+} from '@/lib/session-turns'
 
 export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
   const queryClient = useQueryClient()
@@ -28,10 +40,10 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
   const activeRunIdRef = useRef('')
   const lastSequenceRef = useRef(0n)
   const terminalRef = useRef(false)
-  const [composerInput, setComposerInput] = useState({
-    revision: 0,
-    value: '',
-  })
+  const [composerInput, setComposerInput] = useState<{
+    revision: number
+    value: ComposerInput
+  }>({ revision: 0, value: emptyComposerInput })
   const [mode, setMode] = useState(AgentMode.BUILD)
   const [isRunning, setIsRunning] = useState(false)
   const [isCheckingRun, setIsCheckingRun] = useState(true)
@@ -40,6 +52,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
   const [optimisticUserEvent, setOptimisticUserEvent] = useState<Event | null>(
     null,
   )
+  const hasOptimisticUserEvent = optimisticUserEvent !== null
   const [liveEvents, setLiveEvents] = useState<Event[]>([])
   const [partialReasoning, setPartialReasoning] = useState('')
   const [partialText, setPartialText] = useState('')
@@ -265,13 +278,26 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     return () => abortController.abort()
   }, [invalidateSession, sessionId, watchUntilTerminal])
 
-  async function run(input: string) {
-    const text = input.trim()
-    if (!text || isRunning || isCheckingRun) return
+  async function run(input: ComposerInput) {
+    if (isRunning || isCheckingRun) return
+    if (isComposerInputEmpty(input)) return
+
+    const parts: Part[] = []
+    const trimmedText = input.text.trim()
+    if (trimmedText) {
+      parts.push(
+        create(PartSchema, {
+          content: { case: 'text' as const, value: trimmedText },
+        }),
+      )
+    }
+    for (const att of input.attachments) {
+      parts.push(attachmentToPart(att))
+    }
 
     setComposerInput((current) => ({
       revision: current.revision + 1,
-      value: '',
+      value: emptyComposerInput,
     }))
     setRunError('')
     setOptimisticUserEvent(
@@ -280,7 +306,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
         turnId: `pending-${sessionId}`,
         author: 'user',
         createdAt: BigInt(Date.now()),
-        message: { role: Role.USER, text },
+        message: { role: Role.USER, text: trimmedText, parts },
       }),
     )
     setLiveEvents([])
@@ -296,7 +322,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
 
     const request = {
       sessionId,
-      input: { parts: [{ content: { case: 'text' as const, value: text } }] },
+      input: { parts },
       mode,
       clientRequestId: crypto.randomUUID(),
     }
@@ -340,6 +366,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
         setRunError(errorMessage(error))
       }
     } finally {
+      revokeAttachments(input.attachments)
       if (!abortController.signal.aborted) {
         setIsRunning(false)
         setCompactionProgress(null)
@@ -364,14 +391,14 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
       if (response.turnId !== turnId) {
         throw new Error('Koda removed a different turn; reload before retrying')
       }
-      const input = inputText(response.input)
+      const restored = inputToComposerInput(response.input)
       setComposerInput((current) => ({
         revision: current.revision + 1,
-        value: input,
+        value: restored,
       }))
       await invalidateSession()
       if (retry) {
-        await run(input)
+        await run(restored)
       } else {
         requestAnimationFrame(() => inputRef.current?.focus())
       }
@@ -382,8 +409,9 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     }
   }
 
-  async function editLastTurn(turnId: string, newText: string) {
+  async function editLastTurn(turnId: string, newInput: ComposerInput) {
     if (isRunning || isCheckingRun || rewindingTurnId) return
+    if (isComposerInputEmpty(newInput)) return
     setRewindingTurnId(turnId)
     setRunError('')
     try {
@@ -394,8 +422,10 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
       if (response.turnId !== turnId) {
         throw new Error('Koda removed a different turn; reload before retrying')
       }
+      const previous = inputToComposerInput(response.input)
+      revokeAttachments(previous.attachments)
       await invalidateSession()
-      await run(newText)
+      await run(newInput)
     } catch (error) {
       setRunError(errorMessage(error))
     } finally {
@@ -442,7 +472,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
   useEffect(() => {
     runRef.current = run
   })
-  const stableRun = useCallback((input: string): void => {
+  const stableRun = useCallback((input: ComposerInput): void => {
     runRef.current(input)
   }, [])
 
@@ -460,6 +490,7 @@ export function useSessionRun(sessionId: string, persistedEvents: Event[]) {
     partialReasoning,
     partialText,
     questionPrompts,
+    hasOptimisticUserEvent,
     restoredInput: composerInput.value,
     rewindLastTurn,
     rewindingTurnId,

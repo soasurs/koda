@@ -122,7 +122,8 @@ function SessionContent({ sessionId }: { sessionId: string }) {
             <CenteredLoader />
           ) : eventsQuery.isError ? (
             <p className="error-box">{errorMessage(eventsQuery.error)}</p>
-          ) : sessionRun.events.length === 0 &&
+          ) : turns.length === 0 &&
+            !sessionRun.hasOptimisticUserEvent &&
             !sessionRun.partialReasoning &&
             !sessionRun.partialText ? (
             <EmptyConversation />
@@ -143,9 +144,9 @@ function SessionContent({ sessionId }: { sessionId: string }) {
                     isRewinding={sessionRun.rewindingTurnId === turn.id}
                     onEditCancel={() => setEditingTurnId('')}
                     onEditStart={() => setEditingTurnId(turn.id ?? '')}
-                    onEditSubmit={(text) => {
+                    onEditSubmit={(input) => {
                       setEditingTurnId('')
-                      void sessionRun.editLastTurn(turn.id ?? '', text)
+                      void sessionRun.editLastTurn(turn.id ?? '', input)
                     }}
                     onRetry={(input) => {
                       if (

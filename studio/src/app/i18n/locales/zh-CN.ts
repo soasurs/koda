@@ -209,6 +209,12 @@ export const zhCN: EnDictionary = {
   'session.composer.fileAccess.full': '完全',
   'session.composer.shellAccess.ask': '询问',
   'session.composer.shellAccess.free': '自由',
+  'session.composer.attach': '添加图片',
+  'session.composer.attachment.remove': '移除附件',
+  'session.composer.attachment.notImage': '只能添加图片:{name}',
+  'session.composer.attachment.tooLarge': '图片 {name} 超过 10 MB 限制',
+  'session.composer.attachment.readFailed': '无法读取 {name}',
+  'session.composer.attachment.dropHere': '拖放图片到此处添加',
   // Session model picker
   'session.modelPicker.settingsAria': '会话模型设置',
   'session.modelPicker.provider': '提供方',

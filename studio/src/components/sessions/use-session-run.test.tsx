@@ -10,6 +10,7 @@ import type { RunResponse } from '@/gen/koda/v1/service_pb'
 import {
   CompactionProgressSchema,
   CompactionProgressStage,
+  ImageSchema,
   InputSchema,
   QuestionPromptSchema,
   RunResponseSchema,
@@ -19,6 +20,7 @@ import {
   UndoLastMessageResponseSchema,
   WatchRunResponseSchema,
 } from '@/gen/koda/v1/service_pb'
+import { ImageDetail } from '@/gen/koda/v1/service_pb'
 
 const {
   cancelRunMock,
@@ -111,7 +113,9 @@ describe('useSessionRun interactions', () => {
     const { result } = renderSessionRun()
     await waitFor(() => expect(result.current.isRunning).toBe(false))
 
-    await act(async () => result.current.run('hello'))
+    await act(async () =>
+      result.current.run({ text: 'hello', attachments: [] }),
+    )
 
     expect(runMock).toHaveBeenCalledTimes(1)
     expect(result.current.runError).toContain('session is busy')
@@ -129,7 +133,10 @@ describe('useSessionRun interactions', () => {
 
     let runPromise: Promise<void>
     act(() => {
-      runPromise = result.current.run('check the workspace')
+      runPromise = result.current.run({
+        text: 'check the workspace',
+        attachments: [],
+      })
     })
     await waitFor(() => {
       expect(result.current.approvals.map(({ id }) => id)).toEqual([
@@ -160,7 +167,10 @@ describe('useSessionRun interactions', () => {
 
     let runPromise: Promise<void>
     act(() => {
-      runPromise = result.current.run('ask me questions')
+      runPromise = result.current.run({
+        text: 'ask me questions',
+        attachments: [],
+      })
     })
     await waitFor(() => {
       expect(result.current.questionPrompts.map(({ id }) => id)).toEqual([
@@ -189,7 +199,7 @@ describe('useSessionRun interactions', () => {
 
     let runPromise: Promise<void>
     act(() => {
-      runPromise = result.current.run('continue')
+      runPromise = result.current.run({ text: 'continue', attachments: [] })
     })
     await waitFor(() => {
       expect(result.current.compactionProgress?.stage).toBe(
@@ -218,7 +228,10 @@ describe('useSessionRun interactions', () => {
     await waitFor(() => expect(result.current.isRunning).toBe(false))
 
     await act(async () => {
-      await result.current.editLastTurn('turn-interrupted', 'edited message')
+      await result.current.editLastTurn('turn-interrupted', {
+        text: 'edited message',
+        attachments: [],
+      })
     })
 
     expect(undoLastMessageMock).toHaveBeenCalledWith({
@@ -229,7 +242,11 @@ describe('useSessionRun interactions', () => {
       expect.objectContaining({
         sessionId: 'session-1',
         input: {
-          parts: [{ content: { case: 'text', value: 'edited message' } }],
+          parts: [
+            expect.objectContaining({
+              content: { case: 'text', value: 'edited message' },
+            }),
+          ],
         },
       }),
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
@@ -237,6 +254,117 @@ describe('useSessionRun interactions', () => {
     expect(undoLastMessageMock.mock.invocationCallOrder[0]).toBeLessThan(
       runMock.mock.invocationCallOrder[0],
     )
+  })
+
+  it('builds image parts from attachments and carries them on the optimistic event', async () => {
+    runMock.mockReturnValue(finishedStream())
+    const { result } = renderSessionRun()
+    await waitFor(() => expect(result.current.isRunning).toBe(false))
+
+    const imageBytes = new Uint8Array([1, 2, 3, 4])
+    let runPromise: Promise<void>
+    await act(async () => {
+      runPromise = result.current.run({
+        text: 'look at this',
+        attachments: [
+          {
+            id: 'att-1',
+            mimeType: 'image/png',
+            data: imageBytes,
+            previewUrl: 'blob:preview',
+            name: 'photo.png',
+          },
+        ],
+      })
+    })
+
+    const requestArg = runMock.mock.calls[0]?.[0]
+    expect(requestArg.input.parts).toHaveLength(2)
+    expect(requestArg.input.parts[0]).toEqual(
+      expect.objectContaining({
+        content: { case: 'text', value: 'look at this' },
+      }),
+    )
+    const imagePart = requestArg.input.parts[1]
+    expect(imagePart.content.case).toBe('image')
+    if (imagePart.content.case !== 'image') throw new Error('expected image')
+    expect(imagePart.content.value.source.case).toBe('data')
+    if (imagePart.content.value.source.case !== 'data')
+      throw new Error('expected data')
+    expect(Array.from(imagePart.content.value.source.value)).toEqual([
+      1, 2, 3, 4,
+    ])
+    expect(imagePart.content.value.mimeType).toBe('image/png')
+    expect(imagePart.content.value.detail).toBe(ImageDetail.AUTO)
+
+    await act(async () => runPromise)
+  })
+
+  it('sends only an image part when text is empty', async () => {
+    runMock.mockReturnValue(finishedStream())
+    const { result } = renderSessionRun()
+    await waitFor(() => expect(result.current.isRunning).toBe(false))
+
+    let runPromise: Promise<void>
+    await act(async () => {
+      runPromise = result.current.run({
+        text: '   ',
+        attachments: [
+          {
+            id: 'att-1',
+            mimeType: 'image/png',
+            data: new Uint8Array([9]),
+            previewUrl: 'blob:preview',
+            name: 'photo.png',
+          },
+        ],
+      })
+    })
+
+    const requestArg = runMock.mock.calls[0]?.[0]
+    expect(requestArg.input.parts).toHaveLength(1)
+    expect(requestArg.input.parts[0].content.case).toBe('image')
+
+    await act(async () => runPromise)
+  })
+
+  it('restores attachments into the composer input after rewinding a turn', async () => {
+    undoLastMessageMock.mockResolvedValue(
+      create(UndoLastMessageResponseSchema, {
+        turnId: 'turn-rewind',
+        deletedEventCount: 1n,
+        input: create(InputSchema, {
+          parts: [
+            { content: { case: 'text', value: 'describe this' } },
+            {
+              content: {
+                case: 'image',
+                value: create(ImageSchema, {
+                  source: { case: 'data', value: new Uint8Array([7, 7]) },
+                  mimeType: 'image/png',
+                  detail: ImageDetail.AUTO,
+                }),
+              },
+            },
+          ],
+        }),
+      }),
+    )
+    const { result } = renderSessionRun()
+    await waitFor(() => expect(result.current.isRunning).toBe(false))
+
+    await act(async () => {
+      await result.current.rewindLastTurn('turn-rewind', false)
+    })
+
+    expect(result.current.restoredInput.text).toBe('describe this')
+    expect(result.current.restoredInput.attachments).toHaveLength(1)
+    expect(result.current.restoredInput.attachments[0]?.mimeType).toBe(
+      'image/png',
+    )
+    expect(
+      Array.from(result.current.restoredInput.attachments[0]?.data ?? []),
+    ).toEqual([7, 7])
   })
 })
 
